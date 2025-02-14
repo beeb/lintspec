@@ -53,85 +53,86 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// assert!(detect_solidity_version("pragma solidity 0.7.7;").is_err());
 /// ```
 pub fn detect_solidity_version(src: &str) -> Result<Version> {
-    let version = match REGEX.find(src) {
-        Some(pragma) => {
-            let parser = Parser::create(
-                Parser::SUPPORTED_VERSIONS
-                    .last()
-                    .expect("the SUPPORTED_VERSIONS list should not be empty")
-                    .to_owned(),
-            )
-            .expect("the Language struct should be initialized correctly with a supported solidity version");
-            let parse_result = parser.parse(NonterminalKind::PragmaDirective, pragma.as_str());
-            if !parse_result.is_valid() {
-                let Some(error) = parse_result.errors().first() else {
-                    return Err(Error::UnknownError);
-                };
-                return Err(Error::ParsingError(error.to_string()));
-            }
-            let cursor = parse_result.create_tree_cursor();
-            let query_set = Query::parse("@version_set [VersionExpressionSet]")
-                .expect("pragma query should compile");
-            let query_expr = Query::parse("@version_expr [VersionExpression]")
-                .expect("pragma query should compile");
-            let mut version_reqs = Vec::new();
-            for m in cursor.query(vec![query_set]) {
-                let Some((_, mut it)) = m.capture("version_set") else {
-                    continue;
-                };
-                let Some(set) = it.next() else {
-                    continue;
-                };
-                version_reqs.push(String::new());
-                let cursor = set.node().cursor_with_offset(TextIndex::default());
-                for m in cursor.query(vec![query_expr.clone()]) {
-                    let Some((_, mut it)) = m.capture("version_expr") else {
-                        continue;
-                    };
-                    let Some(expr) = it.next() else {
-                        continue;
-                    };
-                    let text = expr.node().unparse();
-                    let text = text.trim();
-                    // check if we are dealing with a version range with hyphen format
-                    if text.contains('-') {
-                        let (start, end) = text
-                            .split_once('-')
-                            .expect("version range should have a minus character");
-                        let v = version_reqs
-                            .last_mut()
-                            .expect("version expression should be inside an expression set");
-                        v.push_str(&format!(",>={},<={}", start.trim(), end.trim()));
-                    } else {
-                        let v = version_reqs
-                            .last_mut()
-                            .expect("version expression should be inside an expression set");
-                        // for `semver`, the different specifiers should be combined with a comma if they must all match
-                        if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
-                            // for `semver`, no comparator is the same as the caret comparator, but for solidity is means `=`
-                            v.push_str(&format!(",={text}"));
-                        } else {
-                            v.push_str(&format!(",{text}"));
-                        }
-                    }
+    let Some(pragma) = REGEX.find(src) else {
+        return Ok(Version::new(0, 8, 0));
+    };
+
+    let parser = Parser::create(
+        Parser::SUPPORTED_VERSIONS
+            .last()
+            .expect("the SUPPORTED_VERSIONS list should not be empty")
+            .to_owned(),
+    )
+    .expect("the Parser should be initialized correctly with a supported solidity version");
+
+    let parse_result = parser.parse(NonterminalKind::PragmaDirective, pragma.as_str());
+    if !parse_result.is_valid() {
+        let Some(error) = parse_result.errors().first() else {
+            return Err(Error::UnknownError);
+        };
+        return Err(Error::ParsingError(error.to_string()));
+    }
+
+    let cursor = parse_result.create_tree_cursor();
+    let query_set = Query::parse("@version_set [VersionExpressionSet]")
+        .expect("version set query should compile");
+    let query_expr = Query::parse("@version_expr [VersionExpression]")
+        .expect("version expr query should compile");
+
+    let mut version_reqs = Vec::new();
+    for m in cursor.query(vec![query_set]) {
+        let Some((_, mut it)) = m.capture("version_set") else {
+            continue;
+        };
+        let Some(set) = it.next() else {
+            continue;
+        };
+        version_reqs.push(String::new());
+        let cursor = set.node().cursor_with_offset(TextIndex::default());
+        for m in cursor.query(vec![query_expr.clone()]) {
+            let Some((_, mut it)) = m.capture("version_expr") else {
+                continue;
+            };
+            let Some(expr) = it.next() else {
+                continue;
+            };
+            let text = expr.node().unparse();
+            let text = text.trim();
+            // check if we are dealing with a version range with hyphen format
+            if text.contains('-') {
+                let (start, end) = text
+                    .split_once('-')
+                    .expect("version range should have a minus character");
+                let v = version_reqs
+                    .last_mut()
+                    .expect("version expression should be inside an expression set");
+                v.push_str(&format!(",>={},<={}", start.trim(), end.trim()));
+            } else {
+                let v = version_reqs
+                    .last_mut()
+                    .expect("version expression should be inside an expression set");
+                // for `semver`, the different specifiers should be combined with a comma if they must all match
+                if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
+                    // for `semver`, no comparator is the same as the caret comparator, but for solidity is means `=`
+                    v.push_str(&format!(",={text}"));
+                } else {
+                    v.push_str(&format!(",{text}"));
                 }
             }
-            let reqs = version_reqs
-                .into_iter()
-                .map(|r| VersionReq::parse(r.trim_start_matches(',')).map_err(Into::into))
-                .collect::<Result<Vec<_>>>()?;
-            reqs.iter()
-                .filter_map(|r| {
-                    Parser::SUPPORTED_VERSIONS
-                        .iter()
-                        .rev()
-                        .find(|v| r.matches(v))
-                })
-                .max()
-                .cloned()
-                .ok_or_else(|| Error::SolidityUnsupportedVersion(pragma.as_str().to_string()))?
         }
-        None => Version::new(0, 8, 0),
-    };
-    Ok(version)
+    }
+    let reqs = version_reqs
+        .into_iter()
+        .map(|r| VersionReq::parse(r.trim_start_matches(',')).map_err(Into::into))
+        .collect::<Result<Vec<_>>>()?;
+    reqs.iter()
+        .filter_map(|r| {
+            Parser::SUPPORTED_VERSIONS
+                .iter()
+                .rev()
+                .find(|v| r.matches(v))
+        })
+        .max()
+        .cloned()
+        .ok_or_else(|| Error::SolidityUnsupportedVersion(pragma.as_str().to_string()))
 }
