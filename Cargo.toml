@@ -23,7 +23,11 @@ anyhow = "1.0.95"
 clap = { version = "4.5.29", features = ["derive"] }
 dotenvy = "0.15.7"
 figment = { version = "0.10.19", features = ["env", "toml"] }
+regex = "1.11.1"
+semver = "1.0.25"
 serde = { version = "1.0.217", features = ["derive"] }
+slang_solidity = "0.18.3"
+thiserror = "2.0.11"
 
 [profile.release]
 lto = "thin"
