@@ -22,7 +22,7 @@ version = "0.1.0"
 anyhow = "1.0.95"
 clap = { version = "4.5.29", features = ["derive"] }
 dotenvy = "0.15.7"
-figment = { version = "0.10.19", features = ["env"] }
+figment = { version = "0.10.19", features = ["env", "toml"] }
 serde = { version = "1.0.217", features = ["derive"] }
 
 [profile.release]

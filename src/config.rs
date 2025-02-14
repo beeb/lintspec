@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use figment::{
-    providers::{Env, Serialized},
+    providers::{Env, Format as _, Serialized, Toml},
     Figment,
 };
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,9 @@ pub struct Config {
 
 pub fn read_config() -> Result<Config> {
     Figment::new()
-        .merge(Serialized::defaults(Config::parse()))
-        .merge(Env::prefixed("LINTSPEC_"))
+        .adjoin(Serialized::defaults(Config::parse()))
+        .adjoin(Env::prefixed("LINTSPEC_"))
+        .adjoin(Toml::file(".lintspec.toml"))
         .extract()
         .map_err(Into::into)
 }
