@@ -24,6 +24,7 @@ clap = { version = "4.5.29", features = ["derive"] }
 dotenvy = "0.15.7"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 ignore = { version = "0.4.23", features = ["simd-accel"] }
+rayon = "1.10.0"
 regex = "1.11.1"
 semver = "1.0.25"
 serde = { version = "1.0.217", features = ["derive"] }

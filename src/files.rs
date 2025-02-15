@@ -27,7 +27,7 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
         }
     }
     let Some(mut walker) = walker else {
-        return vec![];
+        return Vec::new();
     };
     walker
         .hidden(false)

@@ -15,6 +15,10 @@ pub enum Error {
     #[error("error parsing a semver string")]
     SemverParsingError(#[from] semver::Error),
 
+    /// IO error
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
+
     /// An unspecified error happening during parsing
     #[error("unknown error while parsing Solidity")]
     UnknownError,

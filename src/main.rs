@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-
-use lintspec::{config::read_config, files::find_sol_files};
+use lintspec::{config::read_config, files::find_sol_files, lint::lint};
+use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 fn main() -> Result<()> {
     dotenvy::dotenv().ok(); // load .env file if present
@@ -11,6 +11,16 @@ fn main() -> Result<()> {
     if paths.is_empty() {
         bail!("no Solidity file found, nothing to analyze");
     }
+
+    let diagnostics = paths
+        .par_iter()
+        .map(|p| lint(p).map_err(Into::into))
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    println!("{diagnostics:?}");
 
     Ok(())
 }
