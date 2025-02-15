@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 #[command(version, about, long_about = None)]
 #[non_exhaustive]
 pub struct Config {
-    /// Path(s) to files and folders to analyze
-    #[arg(value_hint = clap::ValueHint::AnyPath)]
-    pub path: Vec<PathBuf>,
+    /// One or more paths to files and folders to analyze
+    #[arg(name = "PATH", value_hint = clap::ValueHint::AnyPath)]
+    pub paths: Vec<PathBuf>,
 }
 
 pub fn read_config() -> Result<Config> {

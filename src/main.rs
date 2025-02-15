@@ -1,15 +1,16 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 
-use lintspec::{config::read_config, utils::detect_solidity_version};
+use lintspec::{config::read_config, files::find_sol_files};
 
 fn main() -> Result<()> {
     dotenvy::dotenv().ok(); // load .env file if present
 
     let config = read_config()?;
-    println!("{config:?}");
-
-    let version = detect_solidity_version("pragma solidity >=0.8.4 <0.8.26 || 0.7.0;").unwrap();
-    println!("{version:?}");
+    if config.paths.is_empty() {
+        bail!("no path provided, nothing to analyze");
+    }
+    let paths = find_sol_files(&config.paths);
+    println!("{paths:#?}");
 
     Ok(())
 }
