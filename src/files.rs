@@ -20,7 +20,7 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
                 continue;
             }
         }
-        if let Some(w) = walker.as_mut() {
+        if let Some(ref mut w) = walker {
             w.add(path);
         } else {
             walker = Some(WalkBuilder::new(path));
