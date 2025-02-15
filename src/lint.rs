@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use derive_more::From;
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, QueryMatch},
+    cst::{Cursor, NonterminalKind, Query},
     parser::Parser,
 };
 
@@ -81,7 +81,7 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         match m.query_number {
             0 => {
                 let function_name = capture!(m, "function_name");
-                let function_name = function_name.node().unparse().trim().to_string();
+                let function_name = function_name.node().unparse();
                 println!("Function name: {function_name}");
 
                 let function_params = capture!(m, "function_params");
