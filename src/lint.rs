@@ -65,6 +65,7 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
 
     let cursor = output.create_tree_cursor();
     let items = find_items(cursor);
+    println!("{items:?}");
 
     Ok(Vec::new())
 }
@@ -91,51 +92,80 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         ]",
     )
     .expect("query should compile");
+    let mut out = Vec::new();
     for m in cursor.query(vec![function_query, struct_query]) {
         println!("===== new match for query {}", m.query_number);
-        match m.query_number {
-            0 => {
-                let function = capture!(m, "function");
-                let mut comments = function.spawn();
-                while comments.go_to_next_terminal_with_kinds(&[
-                    TerminalKind::MultiLineNatSpecComment,
-                    TerminalKind::SingleLineNatSpecComment,
-                ]) {
-                    println!("Comment: {}", comments.node().unparse());
-                }
-
-                let function_name = capture!(m, "function_name");
-                let function_name = function_name.node().unparse();
-                println!("Function name: {function_name}");
-
-                let function_params = capture!(m, "function_params");
-                let function_params = function_params.node().unparse();
-                println!("Function params: {function_params}");
-
-                let function_returns = capture!(m, "function_returns");
-                let function_returns = function_returns.node().unparse();
-                println!("Function returns: {function_returns}");
-            }
-            1 => {
-                let item = capture!(m, "struct");
-                let mut comments = item.spawn();
-                while comments.go_to_next_terminal_with_kinds(&[
-                    TerminalKind::MultiLineNatSpecComment,
-                    TerminalKind::SingleLineNatSpecComment,
-                ]) {
-                    println!("Comment: {}", comments.node().unparse());
-                }
-
-                let struct_name = capture!(m, "struct_name");
-                let struct_name = struct_name.node().unparse();
-                println!("Struct name: {struct_name}");
-
-                let struct_members = capture!(m, "struct_members");
-                let struct_members = struct_members.node().unparse();
-                println!("Struct members: {struct_members}");
-            }
+        let def = match m.query_number {
+            0 => extract_function(
+                capture!(m, "function"),
+                capture!(m, "function_name"),
+                capture!(m, "function_params"),
+                capture!(m, "function_returns"),
+            ),
+            1 => extract_struct(
+                capture!(m, "struct"),
+                capture!(m, "struct_name"),
+                capture!(m, "struct_members"),
+            ),
             _ => unreachable!(),
-        }
+        };
+        out.push(def);
     }
-    vec![]
+    out
+}
+
+fn extract_comment(mut cursor: Cursor) -> Option<NatSpec> {
+    let items = Vec::new();
+    while cursor.go_to_next_terminal_with_kinds(&[
+        TerminalKind::MultiLineNatSpecComment,
+        TerminalKind::SingleLineNatSpecComment,
+    ]) {
+        println!("Comment: {}", cursor.node().unparse());
+    }
+    if items.is_empty() {
+        return None;
+    }
+    Some(NatSpec { items })
+}
+
+fn extract_function(cursor: Cursor, name: Cursor, params: Cursor, returns: Cursor) -> Definition {
+    let name = name.node().unparse();
+    println!("Function name: {name}");
+
+    let params = params.node().unparse();
+    println!("Function params: {params}");
+
+    let returns = returns.node().unparse();
+    println!("Function returns: {returns}");
+
+    FunctionDefinition {
+        name,
+        args: vec![],
+        returns: vec![],
+        natspec: extract_comment(cursor.spawn()),
+    }
+    .into()
+}
+
+fn extract_struct(cursor: Cursor, name: Cursor, members: Cursor) -> Definition {
+    let mut comments = cursor.spawn();
+    while comments.go_to_next_terminal_with_kinds(&[
+        TerminalKind::MultiLineNatSpecComment,
+        TerminalKind::SingleLineNatSpecComment,
+    ]) {
+        println!("Comment: {}", comments.node().unparse());
+    }
+
+    let name = name.node().unparse();
+    println!("Function name: {name}");
+
+    let members = members.node().unparse();
+    println!("Function params: {members}");
+
+    StructDefinition {
+        name,
+        members: vec![],
+        natspec: extract_comment(cursor.spawn()),
+    }
+    .into()
 }
