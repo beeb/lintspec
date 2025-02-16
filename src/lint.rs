@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use derive_more::From;
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query},
+    cst::{Cursor, NonterminalKind, Query, TerminalKind},
     parser::Parser,
 };
 
@@ -61,7 +61,7 @@ pub struct FunctionDefinition {
 
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let function_query = Query::parse(
-        "[FunctionDefinition
+        "@function [FunctionDefinition
             @function_name name:[FunctionName]
             parameters:[ParametersDeclaration
                 @function_params parameters:[Parameters]
@@ -74,12 +74,26 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         ]",
     )
     .expect("query should compile");
-    let struct_query = Query::parse("[StructDefinition @struct_members members:[StructMembers]]")
-        .expect("query should compile");
+    let struct_query = Query::parse(
+        "@struct [StructDefinition
+            @struct_name name:[Identifier]
+            @struct_members members:[StructMembers]
+        ]",
+    )
+    .expect("query should compile");
     for m in cursor.query(vec![function_query, struct_query]) {
         println!("===== new match for query {}", m.query_number);
         match m.query_number {
             0 => {
+                let function = capture!(m, "function");
+                let mut comments = function.spawn();
+                while comments.go_to_next_terminal_with_kinds(&[
+                    TerminalKind::MultiLineNatSpecComment,
+                    TerminalKind::SingleLineNatSpecComment,
+                ]) {
+                    println!("Comment: {}", comments.node().unparse());
+                }
+
                 let function_name = capture!(m, "function_name");
                 let function_name = function_name.node().unparse();
                 println!("Function name: {function_name}");
@@ -93,13 +107,22 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
                 println!("Function returns: {function_returns}");
             }
             1 => {
-                let Some((_, captures)) = m.capture("struct_members") else {
-                    continue;
-                };
-                for capture in captures {
-                    println!("new capture");
-                    println!("{}", capture.node().unparse().trim());
+                let item = capture!(m, "struct");
+                let mut comments = item.spawn();
+                while comments.go_to_next_terminal_with_kinds(&[
+                    TerminalKind::MultiLineNatSpecComment,
+                    TerminalKind::SingleLineNatSpecComment,
+                ]) {
+                    println!("Comment: {}", comments.node().unparse());
                 }
+
+                let struct_name = capture!(m, "struct_name");
+                let struct_name = struct_name.node().unparse();
+                println!("Struct name: {struct_name}");
+
+                let struct_members = capture!(m, "struct_members");
+                let struct_members = struct_members.node().unparse();
+                println!("Struct members: {struct_members}");
             }
             _ => unreachable!(),
         }
