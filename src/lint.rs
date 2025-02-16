@@ -27,6 +27,50 @@ pub struct Diagnostic {
     pub message: String,
 }
 
+#[derive(Debug, Clone, From)]
+pub enum Definition {
+    Function(FunctionDefinition),
+    Struct(StructDefinition),
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionDefinition {
+    pub name: String,
+    pub args: Vec<String>,
+    pub returns: Vec<String>,
+    pub natspec: Option<NatSpec>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDefinition {
+    pub name: String,
+    pub members: Vec<String>,
+    pub natspec: Option<NatSpec>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct NatSpec {
+    pub items: Vec<NatSpecItem>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NatSpecItem {
+    pub kind: NatSpecKind,
+    pub comment: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum NatSpecKind {
+    Title,
+    Author,
+    Notice,
+    Dev,
+    Param { name: String },
+    Return { name: Option<String> },
+    Inheritdoc { parent: String },
+    Custom { tag: String },
+}
+
 pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     let contents = fs::read_to_string(path)?;
     let solidity_version = detect_solidity_version(&contents)?;
@@ -45,18 +89,6 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     let items = find_items(cursor);
 
     Ok(Vec::new())
-}
-
-#[derive(Debug, Clone, From)]
-pub enum Definition {
-    Function(FunctionDefinition),
-}
-
-#[derive(Debug, Clone)]
-pub struct FunctionDefinition {
-    pub args: Vec<String>,
-    pub returns: Vec<String>,
-    pub comment: Option<String>,
 }
 
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
