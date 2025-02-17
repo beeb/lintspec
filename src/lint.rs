@@ -148,7 +148,7 @@ fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatS
         TerminalKind::MultiLineNatSpecComment,
         TerminalKind::SingleLineNatSpecComment,
     ]) {
-        let mut comment = &cursor.node().unparse();
+        let comment = &cursor.node().unparse();
         items.push(
             parse_comment
                 .parse(comment)
