@@ -121,17 +121,6 @@ fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
     .parse_next(input)
 }
 
-fn parse_comment_line_single(input: &mut &str) -> Result<NatSpecItem> {
-    seq! {NatSpecItem {
-        _: space0,
-        _: opt(terminated('*', space0)),
-        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
-        _: space0,
-        comment: till_line_ending.parse_to(),
-    }}
-    .parse_next(input)
-}
-
 fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         ("/**", space0, line_ending),
@@ -145,6 +134,17 @@ fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
 fn parse_empty_multiline(input: &mut &str) -> Result<NatSpec> {
     let _ = ("/**", space1, "*/").parse_next(input)?;
     Ok(NatSpec::default())
+}
+
+fn parse_comment_line_single(input: &mut &str) -> Result<NatSpecItem> {
+    seq! {NatSpecItem {
+        _: space0,
+        _: opt(terminated('*', space0)),
+        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        _: space0,
+        comment: till_line_ending.parse_to(),
+    }}
+    .parse_next(input)
 }
 
 fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
