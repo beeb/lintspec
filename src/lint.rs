@@ -73,7 +73,7 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
 
     let cursor = output.create_tree_cursor();
     let items = find_items(cursor);
-    println!("{items:?}");
+    println!("{items:#?}");
 
     Ok(Vec::new())
 }
@@ -102,7 +102,6 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     .expect("query should compile");
     let mut out = Vec::new();
     for m in cursor.query(vec![function_query, struct_query]) {
-        println!("===== new match for query {}", m.query_number);
         let def = match m.query_number {
             0 => extract_function(
                 capture!(m, "function"),
