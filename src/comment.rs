@@ -1,24 +1,31 @@
 //! NatSpec Comment Parser
-
-use chumsky::{
-    error::Simple,
-    prelude::{choice, just, take_until},
-    text::{self, TextParser as _},
-    Parser,
+use winnow::{
+    ascii::{space0, space1},
+    combinator::{alt, delimited, opt, preceded, repeat},
+    seq,
+    stream::AsChar,
+    token::take_till,
+    Parser as _, Result,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NatSpec {
     pub items: Vec<NatSpecItem>,
 }
 
-#[derive(Debug, Clone)]
+impl NatSpec {
+    pub fn append(&mut self, other: &mut Self) {
+        self.items.append(&mut other.items);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NatSpecItem {
     pub kind: NatSpecKind,
     pub comment: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NatSpecKind {
     Title,
     Author,
@@ -36,56 +43,79 @@ impl From<NatSpecItem> for NatSpec {
     }
 }
 
-pub fn parser() -> impl Parser<char, NatSpec, Error = Simple<char>> {
-    choice((multi_line(), single_line().map(NatSpec::from)))
-}
-
-fn natspec_kind() -> impl Parser<char, NatSpecKind, Error = Simple<char>> {
-    choice((
-        just("@title").to(NatSpecKind::Title),
-        just("@author").to(NatSpecKind::Author),
-        just("@notice").to(NatSpecKind::Notice),
-        just("@dev").to(NatSpecKind::Dev),
-        just("@param")
-            .padded()
-            .then(text::ident())
-            .map(|(name, _)| NatSpecKind::Param {
-                name: name.to_string(),
-            }),
-        just("@return").to(NatSpecKind::Return { name: None }), // we will process the name later since it's optional
-        just("@inheritdoc")
-            .padded()
-            .then(text::ident())
-            .map(|(parent, _)| NatSpecKind::Inheritdoc {
-                parent: parent.to_string(),
-            }),
-        just("@custom:")
-            .then(text::ident())
-            .map(|(tag, _)| NatSpecKind::Custom {
-                tag: tag.to_string(),
-            }),
+pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
+    alt((
+        parse_multiline_comment,
+        parse_single_line_comment.map(|c| c.into()),
     ))
+    .parse_next(input)
 }
 
-fn comment_line() -> impl Parser<char, NatSpecItem, Error = Simple<char>> {
-    just('*')
-        .or_not()
-        .padded()
-        .ignore_then(natspec_kind().or_not())
-        .then(take_until(text::newline()))
-        .map(|(kind, (comment, _))| NatSpecItem {
-            kind: kind.unwrap_or(NatSpecKind::Notice),
-            comment: comment.into_iter().collect(),
-        })
+fn parse_ident(input: &mut &str) -> Result<String> {
+    take_till(1.., |c: char| c.is_whitespace())
+        .map(|parent: &str| parent.to_owned())
+        .parse_next(input)
 }
 
-fn multi_line() -> impl Parser<char, NatSpec, Error = Simple<char>> {
-    comment_line()
-        .repeated()
-        .delimited_by(just("/**"), just("*/"))
-        .map(|list| NatSpec { items: list })
+fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
+    alt((
+        "@title".map(|_| NatSpecKind::Title),
+        "@author".map(|_| NatSpecKind::Author),
+        "@notice".map(|_| NatSpecKind::Notice),
+        "@dev".map(|_| NatSpecKind::Dev),
+        seq!(NatSpecKind::Param {
+            _: "@param",
+            _: space1,
+            name: parse_ident
+        }),
+        "@return".map(|_| NatSpecKind::Return { name: None }), // we will process the name later since it's optional
+        seq!(NatSpecKind::Inheritdoc {
+            _: "@inheritdoc",
+            _: space1,
+            parent: parse_ident
+        }),
+        seq!(NatSpecKind::Custom {
+            _: "@custom:",
+            tag: parse_ident
+        }),
+    ))
+    .parse_next(input)
 }
 
-fn single_line() -> impl Parser<char, NatSpecItem, Error = Simple<char>> {
-    just("///").padded().ignore_then(comment_line())
+fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
+    seq! {NatSpecItem {
+        _: opt(delimited(space0, '*', space0)),
+        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        comment: take_till(0.., |c: char| c.is_newline()).map(|s: &str| s.to_owned())
+    }}
+    .parse_next(input)
+}
+
+fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
+    delimited("/**", repeat(0.., parse_comment_line), "*/")
+        .map(|items| NatSpec { items })
+        .parse_next(input)
+}
+
+fn parse_single_line_comment(input: &mut &str) -> Result<NatSpecItem> {
+    preceded(("///", space0), parse_comment_line).parse_next(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_single_line() {
+        let res = parse_single_line_comment.parse("/// Foo bar");
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(
+            res,
+            NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "Foo bar".to_string()
+            }
+        );
+    }
 }
