@@ -29,10 +29,11 @@ pub struct Diagnostic {
     pub message: String,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, From)]
 pub enum Definition {
     Function(FunctionDefinition),
     Struct(StructDefinition),
+    ParsingError(Error),
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +72,7 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     Ok(Vec::new())
 }
 
-pub fn find_items(cursor: Cursor) -> Result<Vec<Definition>> {
+pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let function_query = Query::parse(
         "@function [FunctionDefinition
             @function_name name:[FunctionName]
@@ -102,17 +103,19 @@ pub fn find_items(cursor: Cursor) -> Result<Vec<Definition>> {
                 capture!(m, "function_name"),
                 capture!(m, "function_params"),
                 capture!(m, "function_returns"),
-            )?,
+            ),
             1 => extract_struct(
                 capture!(m, "struct"),
                 capture!(m, "struct_name"),
                 capture!(m, "struct_members"),
-            )?,
+            ),
             _ => unreachable!(),
-        };
+        }
+        .or_else(|err| Ok::<_, Error>(Definition::ParsingError(err)))
+        .expect("should be ok variant");
         out.push(def);
     }
-    Ok(out)
+    out
 }
 
 fn extract_comment(mut cursor: Cursor, returns: &[&str]) -> Result<Option<NatSpec>> {
