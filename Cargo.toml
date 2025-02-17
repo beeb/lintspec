@@ -20,6 +20,7 @@ version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.95"
+chumsky = "0.9.3"
 clap = { version = "4.5.29", features = ["derive"] }
 derive_more = { version = "2.0.1", features = ["from"] }
 dotenvy = "0.15.7"
