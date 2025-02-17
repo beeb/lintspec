@@ -1,4 +1,7 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use derive_more::From;
 use slang_solidity::{
@@ -8,7 +11,7 @@ use slang_solidity::{
 use winnow::Parser as _;
 
 use crate::{
-    comment::{parse_comment, NatSpec},
+    comment::{parse_comment, NatSpec, NatSpecKind},
     error::{Error, Result},
     utils::detect_solidity_version,
 };
@@ -26,6 +29,8 @@ macro_rules! capture {
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
+    pub path: PathBuf,
+    pub span: TextRange,
     pub message: String,
 }
 
@@ -38,16 +43,91 @@ pub enum Definition {
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
-    pub name: String,
+    pub name: Option<String>,
     pub span: TextRange,
+}
+
+pub trait Validate {
+    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic>;
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionDefinition {
     pub name: String,
+    pub span: TextRange,
     pub params: Vec<Identifier>,
     pub returns: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
+}
+
+impl Validate for FunctionDefinition {
+    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
+        let path = file_path.as_ref().to_path_buf();
+        // fallback and receive do not require NatSpec
+        if self.name == "receive" || self.name == "fallback" {
+            return vec![];
+        }
+        // raise error if no NatSpec is available
+        let Some(natspec) = &self.natspec else {
+            return vec![Diagnostic {
+                path,
+                span: self.span.clone(),
+                message: "missing NatSpec".to_string(),
+            }];
+        };
+        // if there is `inheritdoc`, no further validation is required
+        if natspec
+            .items
+            .iter()
+            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
+        {
+            return vec![];
+        }
+        let mut res = Vec::new();
+        for param in &self.params {
+            let Some(name) = &param.name else {
+                // no need to document unused params
+                continue;
+            };
+            let message = match natspec.count_param(param) {
+                0 => format!("@param {} is missing", name),
+                2.. => format!("@param {} is present more than once", name),
+                _ => {
+                    continue;
+                }
+            };
+            res.push(Diagnostic {
+                path: path.clone(),
+                span: param.span.clone(),
+                message,
+            })
+        }
+        let returns_count = natspec.count_all_returns();
+        for (idx, ret) in self.returns.iter().enumerate() {
+            let message = match &ret.name {
+                Some(name) => match natspec.count_return(ret) {
+                    0 => format!("@return {} is missing", name),
+                    2.. => format!("@return {} is present more than once", name),
+                    _ => {
+                        continue;
+                    }
+                },
+                None => {
+                    if idx > returns_count - 1 {
+                        format!("@return missing for unnamed return #{}", idx + 1)
+                    } else {
+                        continue;
+                    }
+                }
+            };
+            res.push(Diagnostic {
+                path: path.clone(),
+                span: ret.span.clone(),
+                message,
+            })
+        }
+        res
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -73,14 +153,6 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
 
     let cursor = output.create_tree_cursor();
     let items = find_items(cursor);
-    println!("======================== {:?}", path.as_ref());
-    println!(
-        "{:#?}",
-        items
-            .iter()
-            .filter(|i| matches!(i, Definition::NatspecParsingError(_)))
-            .collect::<Vec<_>>()
-    );
 
     Ok(Vec::new())
 }
@@ -134,9 +206,29 @@ fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
         out.push(Identifier {
-            name: cursor.node().unparse(),
+            name: Some(cursor.node().unparse()),
             span: cursor.text_range(),
         })
+    }
+    out
+}
+
+fn extract_params(cursor: Cursor) -> Vec<Identifier> {
+    let mut cursor = cursor.spawn();
+    let mut out = Vec::new();
+    while cursor.go_to_next_nonterminal_with_kind(NonterminalKind::Parameter) {
+        let mut sub_cursor = cursor.spawn();
+        if sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+            out.push(Identifier {
+                name: Some(sub_cursor.node().unparse()),
+                span: sub_cursor.text_range(),
+            });
+        } else {
+            out.push(Identifier {
+                name: None,
+                span: cursor.text_range(),
+            });
+        }
     }
     out
 }
@@ -156,7 +248,7 @@ fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatS
                     span: cursor.text_range(),
                     message: e.to_string(),
                 })?
-                .populate_returns(returns.iter().map(|r| r.name.as_str())),
+                .populate_returns(returns),
         );
     }
     let items = items.into_iter().reduce(|mut acc, mut i| {
@@ -173,12 +265,14 @@ fn extract_function(
     returns: Cursor,
 ) -> Result<Definition> {
     let name = name.node().unparse();
-    let params = extract_identifiers(params);
-    let returns = extract_identifiers(returns);
+    let params = extract_params(params);
+    let returns = extract_params(returns);
+    let span = cursor.text_range();
     let natspec = extract_comment(cursor, &returns)?;
 
     Ok(FunctionDefinition {
         name,
+        span,
         params,
         returns,
         natspec,

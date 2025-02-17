@@ -7,6 +7,8 @@ use winnow::{
     Parser as _, Result,
 };
 
+use crate::lint::Identifier;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NatSpec {
     pub items: Vec<NatSpecItem>,
@@ -17,11 +19,44 @@ impl NatSpec {
         self.items.append(&mut other.items);
     }
 
-    pub fn populate_returns<'a>(mut self, returns: impl Iterator<Item = &'a str> + Clone) -> Self {
+    pub fn populate_returns(mut self, returns: &[Identifier]) -> Self {
         for i in self.items.iter_mut() {
-            i.populate_return(returns.clone());
+            i.populate_return(returns);
         }
         self
+    }
+
+    pub fn count_param(&self, ident: &Identifier) -> usize {
+        let Some(ident_name) = &ident.name else {
+            return 0;
+        };
+        self.items
+            .iter()
+            .filter(|n| match &n.kind {
+                NatSpecKind::Param { name } => name == ident_name,
+                _ => false,
+            })
+            .count()
+    }
+
+    pub fn count_return(&self, ident: &Identifier) -> usize {
+        let Some(ident_name) = &ident.name else {
+            return 0;
+        };
+        self.items
+            .iter()
+            .filter(|n| match &n.kind {
+                NatSpecKind::Return { name: Some(name) } => name == ident_name,
+                _ => false,
+            })
+            .count()
+    }
+
+    pub fn count_all_returns(&self) -> usize {
+        self.items
+            .iter()
+            .filter(|n| matches!(&n.kind, NatSpecKind::Return { .. }))
+            .count()
     }
 }
 
@@ -32,7 +67,7 @@ pub struct NatSpecItem {
 }
 
 impl NatSpecItem {
-    pub fn populate_return<'a>(&mut self, mut returns: impl Iterator<Item = &'a str>) {
+    pub fn populate_return(&mut self, returns: &[Identifier]) {
         if !matches!(self.kind, NatSpecKind::Return { name: _ }) {
             return;
         }
@@ -41,7 +76,12 @@ impl NatSpecItem {
                 .comment
                 .split_whitespace()
                 .next()
-                .filter(|first_word| returns.any(|r| r == *first_word))
+                .filter(|first_word| {
+                    returns.iter().any(|r| match &r.name {
+                        Some(name) => first_word == name,
+                        None => false,
+                    })
+                })
                 .map(|first_word| first_word.to_owned()),
         }
     }
