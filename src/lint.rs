@@ -111,8 +111,7 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
             ),
             _ => unreachable!(),
         }
-        .or_else(|err| Ok::<_, Error>(Definition::ParsingError(err)))
-        .expect("should be ok variant");
+        .unwrap_or_else(Definition::ParsingError);
         out.push(def);
     }
     out
