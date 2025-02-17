@@ -313,6 +313,34 @@ mod tests {
     }
 
     #[test]
+    fn test_multiline2() {
+        let comment = "/**
+     * @notice Some notice text.
+     * @custom:something
+     */";
+        let res = parse_multiline_comment.parse(comment);
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(
+            res,
+            NatSpec {
+                items: vec![
+                    NatSpecItem {
+                        kind: NatSpecKind::Notice,
+                        comment: "Some notice text.".to_string()
+                    },
+                    NatSpecItem {
+                        kind: NatSpecKind::Custom {
+                            tag: "something".to_string()
+                        },
+                        comment: String::new()
+                    }
+                ]
+            }
+        );
+    }
+
+    #[test]
     fn test_multiline_empty() {
         let comment = "/**
         */";
