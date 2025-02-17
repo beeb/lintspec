@@ -41,14 +41,97 @@ pub enum Definition {
     NatspecParsingError(Error),
 }
 
+impl Definition {
+    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
+        let path = file_path.as_ref().to_path_buf();
+        let mut res = Vec::new();
+        match self {
+            Definition::NatspecParsingError(error) => {
+                let (span, message) = match error {
+                    Error::NatspecParsingError { span, message } => (span.clone(), message.clone()),
+                    _ => (TextRange::default(), error.to_string()),
+                };
+                return vec![Diagnostic {
+                    path,
+                    span,
+                    message,
+                }];
+            }
+            Definition::Function(def) => {
+                // raise error if no NatSpec is available
+                let Some(natspec) = &def.natspec else {
+                    return vec![Diagnostic {
+                        path,
+                        span: def.span.clone(),
+                        message: "missing NatSpec".to_string(),
+                    }];
+                };
+                // fallback and receive do not require NatSpec
+                if def.name == "receive" || def.name == "fallback" {
+                    return vec![];
+                }
+                // if there is `inheritdoc`, no further validation is required
+                if natspec
+                    .items
+                    .iter()
+                    .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
+                {
+                    return vec![];
+                }
+                // check params and returns
+                for param in &def.params {
+                    let Some(name) = &param.name else {
+                        // no need to document unused params
+                        continue;
+                    };
+                    let message = match natspec.count_param(param) {
+                        0 => format!("@param {} is missing", name),
+                        2.. => format!("@param {} is present more than once", name),
+                        _ => {
+                            continue;
+                        }
+                    };
+                    res.push(Diagnostic {
+                        path: path.clone(),
+                        span: param.span.clone(),
+                        message,
+                    })
+                }
+                let returns_count = natspec.count_all_returns();
+                for (idx, ret) in def.returns.iter().enumerate() {
+                    let message = match &ret.name {
+                        Some(name) => match natspec.count_return(ret) {
+                            0 => format!("@return {} is missing", name),
+                            2.. => format!("@return {} is present more than once", name),
+                            _ => {
+                                continue;
+                            }
+                        },
+                        None => {
+                            if idx > returns_count - 1 {
+                                format!("@return missing for unnamed return #{}", idx + 1)
+                            } else {
+                                continue;
+                            }
+                        }
+                    };
+                    res.push(Diagnostic {
+                        path: path.clone(),
+                        span: ret.span.clone(),
+                        message,
+                    })
+                }
+            }
+            Definition::Struct(def) => {}
+        }
+        res
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Identifier {
     pub name: Option<String>,
     pub span: TextRange,
-}
-
-pub trait Validate {
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic>;
 }
 
 #[derive(Debug, Clone)]
@@ -58,76 +141,6 @@ pub struct FunctionDefinition {
     pub params: Vec<Identifier>,
     pub returns: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
-}
-
-impl Validate for FunctionDefinition {
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
-        let path = file_path.as_ref().to_path_buf();
-        // fallback and receive do not require NatSpec
-        if self.name == "receive" || self.name == "fallback" {
-            return vec![];
-        }
-        // raise error if no NatSpec is available
-        let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                path,
-                span: self.span.clone(),
-                message: "missing NatSpec".to_string(),
-            }];
-        };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return vec![];
-        }
-        let mut res = Vec::new();
-        for param in &self.params {
-            let Some(name) = &param.name else {
-                // no need to document unused params
-                continue;
-            };
-            let message = match natspec.count_param(param) {
-                0 => format!("@param {} is missing", name),
-                2.. => format!("@param {} is present more than once", name),
-                _ => {
-                    continue;
-                }
-            };
-            res.push(Diagnostic {
-                path: path.clone(),
-                span: param.span.clone(),
-                message,
-            })
-        }
-        let returns_count = natspec.count_all_returns();
-        for (idx, ret) in self.returns.iter().enumerate() {
-            let message = match &ret.name {
-                Some(name) => match natspec.count_return(ret) {
-                    0 => format!("@return {} is missing", name),
-                    2.. => format!("@return {} is present more than once", name),
-                    _ => {
-                        continue;
-                    }
-                },
-                None => {
-                    if idx > returns_count - 1 {
-                        format!("@return missing for unnamed return #{}", idx + 1)
-                    } else {
-                        continue;
-                    }
-                }
-            };
-            res.push(Diagnostic {
-                path: path.clone(),
-                span: ret.span.clone(),
-                message,
-            })
-        }
-        res
-    }
 }
 
 #[derive(Debug, Clone)]
