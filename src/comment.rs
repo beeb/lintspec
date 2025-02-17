@@ -151,25 +151,26 @@ mod tests {
             ("/// Foo bar", NatSpecKind::Notice, "Foo bar"),
             ("///  Baz", NatSpecKind::Notice, "Baz"),
             (
-                "/// @title This is the title",
-                NatSpecKind::Title,
-                "This is the title",
-            ),
-            (
-                "/// @author Boaty McBoatface",
-                NatSpecKind::Author,
-                "Boaty McBoatface",
-            ),
-            (
-                "/// @notice Hello world",
+                "/// @notice  Hello world",
                 NatSpecKind::Notice,
                 "Hello world",
             ),
-            ("/// @dev Hello world", NatSpecKind::Dev, "Hello world"),
             (
                 "/// @param foo This is bar",
                 NatSpecKind::Param {
                     name: "foo".to_string(),
+                },
+                "This is bar",
+            ),
+            (
+                "/// @return The return value",
+                NatSpecKind::Return { name: None },
+                "The return value",
+            ),
+            (
+                "/// @custom:foo  This is bar",
+                NatSpecKind::Custom {
+                    tag: "foo".to_string(),
                 },
                 "This is bar",
             ),
