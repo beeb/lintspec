@@ -148,9 +148,10 @@ fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatS
         TerminalKind::MultiLineNatSpecComment,
         TerminalKind::SingleLineNatSpecComment,
     ]) {
+        let mut comment = &cursor.node().unparse();
         items.push(
             parse_comment
-                .parse(&cursor.node().unparse())
+                .parse(comment)
                 .map_err(|e| Error::NatspecParsingError {
                     span: cursor.text_range(),
                     message: e.to_string(),

@@ -121,6 +121,17 @@ fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
     .parse_next(input)
 }
 
+fn parse_comment_line_single(input: &mut &str) -> Result<NatSpecItem> {
+    seq! {NatSpecItem {
+        _: space0,
+        _: opt(terminated('*', space0)),
+        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        _: space0,
+        comment: till_line_ending.parse_to(),
+    }}
+    .parse_next(input)
+}
+
 fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         ("/**", space0, line_ending),
@@ -137,7 +148,7 @@ fn parse_empty_multiline(input: &mut &str) -> Result<NatSpec> {
 }
 
 fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
-    let item = preceded("///", parse_comment_line).parse_next(input)?;
+    let item = preceded("///", parse_comment_line_single).parse_next(input)?;
     if item.is_empty() {
         return Ok(NatSpec::default());
     }
@@ -232,27 +243,27 @@ mod tests {
     #[test]
     fn test_single_line() {
         let cases = [
-            ("/// Foo bar\n", NatSpecKind::Notice, "Foo bar"),
-            ("///  Baz\n", NatSpecKind::Notice, "Baz"),
+            ("/// Foo bar", NatSpecKind::Notice, "Foo bar"),
+            ("///  Baz", NatSpecKind::Notice, "Baz"),
             (
-                "/// @notice  Hello world\n",
+                "/// @notice  Hello world",
                 NatSpecKind::Notice,
                 "Hello world",
             ),
             (
-                "/// @param foo This is bar\r\n",
+                "/// @param foo This is bar",
                 NatSpecKind::Param {
                     name: "foo".to_string(),
                 },
                 "This is bar",
             ),
             (
-                "/// @return The return value\n",
+                "/// @return The return value",
                 NatSpecKind::Return { name: None },
                 "The return value",
             ),
             (
-                "/// @custom:foo  This is bar\n",
+                "/// @custom:foo  This is bar",
                 NatSpecKind::Custom {
                     tag: "foo".to_string(),
                 },
@@ -276,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_single_line_empty() {
-        let res = parse_single_line_comment.parse("///\n");
+        let res = parse_single_line_comment.parse("///");
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
@@ -285,7 +296,7 @@ mod tests {
     #[test]
     fn test_multiline() {
         let comment = "/**
-     * @notice The address of the USDN token.
+     * @notice Some notice text.
      */";
         let res = parse_multiline_comment.parse(comment);
         assert!(res.is_ok(), "{res:?}");
@@ -295,7 +306,7 @@ mod tests {
             NatSpec {
                 items: vec![NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "The address of the USDN token.".to_string()
+                    comment: "Some notice text.".to_string()
                 }]
             }
         );
