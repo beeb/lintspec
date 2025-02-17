@@ -1,7 +1,7 @@
 //! NatSpec Comment Parser
 use winnow::{
     ascii::{space0, space1},
-    combinator::{alt, delimited, opt, preceded, repeat},
+    combinator::{alt, delimited, opt, preceded, repeat, terminated},
     seq,
     stream::AsChar,
     token::take_till,
@@ -58,27 +58,30 @@ fn parse_ident(input: &mut &str) -> Result<String> {
 }
 
 fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
-    alt((
-        "@title".map(|_| NatSpecKind::Title),
-        "@author".map(|_| NatSpecKind::Author),
-        "@notice".map(|_| NatSpecKind::Notice),
-        "@dev".map(|_| NatSpecKind::Dev),
-        seq!(NatSpecKind::Param {
-            _: "@param",
-            _: space1,
-            name: parse_ident
-        }),
-        "@return".map(|_| NatSpecKind::Return { name: None }), // we will process the name later since it's optional
-        seq!(NatSpecKind::Inheritdoc {
-            _: "@inheritdoc",
-            _: space1,
-            parent: parse_ident
-        }),
-        seq!(NatSpecKind::Custom {
-            _: "@custom:",
-            tag: parse_ident
-        }),
-    ))
+    terminated(
+        alt((
+            "@title".map(|_| NatSpecKind::Title),
+            "@author".map(|_| NatSpecKind::Author),
+            "@notice".map(|_| NatSpecKind::Notice),
+            "@dev".map(|_| NatSpecKind::Dev),
+            seq!(NatSpecKind::Param {
+                _: "@param",
+                _: space1,
+                name: parse_ident
+            }),
+            "@return".map(|_| NatSpecKind::Return { name: None }), // we will process the name later since it's optional
+            seq!(NatSpecKind::Inheritdoc {
+                _: "@inheritdoc",
+                _: space1,
+                parent: parse_ident
+            }),
+            seq!(NatSpecKind::Custom {
+                _: "@custom:",
+                tag: parse_ident
+            }),
+        )),
+        space0,
+    )
     .parse_next(input)
 }
 
@@ -106,16 +109,82 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_kind() {
+        let cases = [
+            ("@title", NatSpecKind::Title),
+            ("@title ", NatSpecKind::Title),
+            ("@title  ", NatSpecKind::Title),
+            ("@author", NatSpecKind::Author),
+            ("@notice", NatSpecKind::Notice),
+            ("@dev", NatSpecKind::Dev),
+            (
+                "@param  foo  ",
+                NatSpecKind::Param {
+                    name: "foo".to_string(),
+                },
+            ),
+            ("@return", NatSpecKind::Return { name: None }),
+            (
+                "@inheritdoc  ISomething  ",
+                NatSpecKind::Inheritdoc {
+                    parent: "ISomething".to_string(),
+                },
+            ),
+            (
+                "@custom:foo  ",
+                NatSpecKind::Custom {
+                    tag: "foo".to_string(),
+                },
+            ),
+        ];
+        for case in cases {
+            let res = parse_natspec_kind.parse(case.0);
+            assert!(res.is_ok(), "{res:?}");
+            let res = res.unwrap();
+            assert_eq!(res, case.1);
+        }
+    }
+
+    #[test]
     fn test_single_line() {
-        let res = parse_single_line_comment.parse("/// Foo bar");
-        assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
-        assert_eq!(
-            res,
-            NatSpecItem {
-                kind: NatSpecKind::Notice,
-                comment: "Foo bar".to_string()
-            }
-        );
+        let cases = [
+            ("/// Foo bar", NatSpecKind::Notice, "Foo bar"),
+            ("///  Baz", NatSpecKind::Notice, "Baz"),
+            (
+                "/// @title This is the title",
+                NatSpecKind::Title,
+                "This is the title",
+            ),
+            (
+                "/// @author Boaty McBoatface",
+                NatSpecKind::Author,
+                "Boaty McBoatface",
+            ),
+            (
+                "/// @notice Hello world",
+                NatSpecKind::Notice,
+                "Hello world",
+            ),
+            ("/// @dev Hello world", NatSpecKind::Dev, "Hello world"),
+            (
+                "/// @param foo This is bar",
+                NatSpecKind::Param {
+                    name: "foo".to_string(),
+                },
+                "This is bar",
+            ),
+        ];
+        for case in cases {
+            let res = parse_single_line_comment.parse(case.0);
+            assert!(res.is_ok(), "{res:?}");
+            let res = res.unwrap();
+            assert_eq!(
+                res,
+                NatSpecItem {
+                    kind: case.1,
+                    comment: case.2.to_string()
+                }
+            );
+        }
     }
 }
