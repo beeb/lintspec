@@ -45,6 +45,10 @@ impl NatSpecItem {
                 .map(|first_word| first_word.to_owned()),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.kind == NatSpecKind::Notice && self.comment.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,8 +71,9 @@ impl From<NatSpecItem> for NatSpec {
 
 pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
     alt((
+        parse_single_line_comment,
         parse_multiline_comment,
-        parse_single_line_comment.map(|c| c.into()),
+        parse_empty_multiline,
     ))
     .parse_next(input)
 }
@@ -126,8 +131,17 @@ fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
     .parse_next(input)
 }
 
-fn parse_single_line_comment(input: &mut &str) -> Result<NatSpecItem> {
-    preceded("///", parse_comment_line).parse_next(input)
+fn parse_empty_multiline(input: &mut &str) -> Result<NatSpec> {
+    let _ = ("/**", space1, "*/").parse_next(input)?;
+    Ok(NatSpec::default())
+}
+
+fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
+    let item = preceded("///", parse_comment_line).parse_next(input)?;
+    if item.is_empty() {
+        return Ok(NatSpec::default());
+    }
+    Ok(item.into())
 }
 
 #[cfg(test)]
@@ -255,8 +269,17 @@ mod tests {
                     kind: case.1,
                     comment: case.2.to_string()
                 }
+                .into()
             );
         }
+    }
+
+    #[test]
+    fn test_single_line_empty() {
+        let res = parse_single_line_comment.parse("///\n");
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(res, NatSpec::default());
     }
 
     #[test]
@@ -276,5 +299,21 @@ mod tests {
                 }]
             }
         );
+    }
+
+    #[test]
+    fn test_multiline_empty() {
+        let comment = "/**
+        */";
+        let res = parse_comment.parse(comment);
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(res, NatSpec::default());
+
+        let comment = "/** */";
+        let res = parse_comment.parse(comment);
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(res, NatSpec::default());
     }
 }
