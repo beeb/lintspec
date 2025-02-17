@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use derive_more::From;
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, TerminalKind},
+    cst::{Cursor, NonterminalKind, Query, TerminalKind, TextRange},
     parser::Parser,
 };
 use winnow::Parser as _;
@@ -37,17 +37,23 @@ pub enum Definition {
 }
 
 #[derive(Debug, Clone)]
+pub struct Identifier {
+    pub name: String,
+    pub span: TextRange,
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionDefinition {
     pub name: String,
-    pub args: Vec<String>,
-    pub returns: Vec<String>,
+    pub params: Vec<Identifier>,
+    pub returns: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
 }
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
     pub name: String,
-    pub members: Vec<String>,
+    pub members: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
 }
 
@@ -117,7 +123,19 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     out
 }
 
-fn extract_comment(cursor: Cursor, returns: &[&str]) -> Result<Option<NatSpec>> {
+fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
+    let mut cursor = cursor.spawn();
+    let mut out = Vec::new();
+    while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+        out.push(Identifier {
+            name: cursor.node().unparse(),
+            span: cursor.text_range(),
+        })
+    }
+    out
+}
+
+fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
     let mut cursor = cursor.spawn();
     let mut items = Vec::new();
     while cursor.go_to_next_terminal_with_kinds(&[
@@ -128,7 +146,7 @@ fn extract_comment(cursor: Cursor, returns: &[&str]) -> Result<Option<NatSpec>> 
             parse_comment
                 .parse(&cursor.node().unparse())
                 .map_err(|e| Error::NatspecParsingError(e.to_string()))?
-                .populate_returns(returns),
+                .populate_returns(returns.iter().map(|r| r.name.as_str())),
         );
     }
     let items = items.into_iter().reduce(|mut acc, mut i| {
@@ -145,20 +163,14 @@ fn extract_function(
     returns: Cursor,
 ) -> Result<Definition> {
     let name = name.node().unparse();
-    println!("Function name: {name}");
-
-    let params = params.node().unparse();
-    println!("Function params: {params}");
-
-    let returns = returns.node().unparse();
-    println!("Function returns: {returns}");
-
-    let natspec = extract_comment(cursor, &[])?; // TODO: parse returns
+    let params = extract_identifiers(params);
+    let returns = extract_identifiers(returns);
+    let natspec = extract_comment(cursor, &returns)?;
 
     Ok(FunctionDefinition {
         name,
-        args: vec![],
-        returns: vec![],
+        params,
+        returns,
         natspec,
     }
     .into())
@@ -166,16 +178,12 @@ fn extract_function(
 
 fn extract_struct(cursor: Cursor, name: Cursor, members: Cursor) -> Result<Definition> {
     let name = name.node().unparse();
-    println!("Function name: {name}");
-
-    let members = members.node().unparse();
-    println!("Function params: {members}");
-
-    let natspec = extract_comment(cursor, &[])?; // TODO: parse returns
+    let members = extract_identifiers(members);
+    let natspec = extract_comment(cursor, &[])?;
 
     Ok(StructDefinition {
         name,
-        members: vec![],
+        members,
         natspec,
     }
     .into())

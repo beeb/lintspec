@@ -18,9 +18,9 @@ impl NatSpec {
         self.items.append(&mut other.items);
     }
 
-    pub fn populate_returns(mut self, returns: &[&str]) -> Self {
+    pub fn populate_returns<'a>(mut self, returns: impl Iterator<Item = &'a str> + Clone) -> Self {
         for i in self.items.iter_mut() {
-            i.populate_return(returns);
+            i.populate_return(returns.clone());
         }
         self
     }
@@ -33,7 +33,7 @@ pub struct NatSpecItem {
 }
 
 impl NatSpecItem {
-    pub fn populate_return(&mut self, returns: &[&str]) {
+    pub fn populate_return<'a>(&mut self, mut returns: impl Iterator<Item = &'a str>) {
         if !matches!(self.kind, NatSpecKind::Return { name: _ }) {
             return;
         }
@@ -42,7 +42,7 @@ impl NatSpecItem {
                 .comment
                 .split_whitespace()
                 .next()
-                .filter(|first_word| returns.contains(first_word))
+                .filter(|first_word| returns.any(|r| r == *first_word))
                 .map(|first_word| first_word.to_owned()),
         }
     }
