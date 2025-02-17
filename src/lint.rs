@@ -33,7 +33,7 @@ pub struct Diagnostic {
 pub enum Definition {
     Function(FunctionDefinition),
     Struct(StructDefinition),
-    ParsingError(Error),
+    NatspecParsingError(Error),
 }
 
 #[derive(Debug, Clone)]
@@ -58,7 +58,7 @@ pub struct StructDefinition {
 }
 
 pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
-    let contents = fs::read_to_string(path)?;
+    let contents = fs::read_to_string(&path)?;
     let solidity_version = detect_solidity_version(&contents)?;
 
     let parser = Parser::create(solidity_version).expect("parser should initialize");
@@ -73,7 +73,14 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
 
     let cursor = output.create_tree_cursor();
     let items = find_items(cursor);
-    // println!("{items:#?}");
+    println!("======================== {:?}", path.as_ref());
+    println!(
+        "{:#?}",
+        items
+            .iter()
+            .filter(|i| matches!(i, Definition::NatspecParsingError(_)))
+            .collect::<Vec<_>>()
+    );
 
     Ok(Vec::new())
 }
@@ -116,7 +123,7 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
             ),
             _ => unreachable!(),
         }
-        .unwrap_or_else(Definition::ParsingError);
+        .unwrap_or_else(Definition::NatspecParsingError);
         out.push(def);
     }
     out
@@ -144,7 +151,10 @@ fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatS
         items.push(
             parse_comment
                 .parse(&cursor.node().unparse())
-                .map_err(|e| Error::NatspecParsingError(e.to_string()))?
+                .map_err(|e| Error::NatspecParsingError {
+                    span: cursor.text_range(),
+                    message: e.to_string(),
+                })?
                 .populate_returns(returns.iter().map(|r| r.name.as_str())),
         );
     }

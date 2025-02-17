@@ -110,24 +110,26 @@ fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
 
 fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
-        _: multispace0,
-        _: opt('*'),
         _: space0,
+        _: opt(terminated('*', space0)),
         kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
-        _: space0,
-        comment: take_till(0.., |c: char| c.is_newline()).map(|s: &str| s.to_owned())
+        comment: take_till(0.., |_| false).map(|s: &str| s.to_owned())
     }}
     .parse_next(input)
 }
 
 fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
-    delimited("/**", separated(1.., parse_comment_line, line_ending), "*/")
-        .map(|items| NatSpec { items })
-        .parse_next(input)
+    delimited(
+        ("/**", multispace0),
+        separated(0.., parse_comment_line, line_ending),
+        (multispace0, "*/"),
+    )
+    .map(|items| NatSpec { items })
+    .parse_next(input)
 }
 
 fn parse_single_line_comment(input: &mut &str) -> Result<NatSpecItem> {
-    preceded(("///", space0), parse_comment_line).parse_next(input)
+    preceded("///", parse_comment_line).parse_next(input)
 }
 
 #[cfg(test)]
@@ -259,5 +261,16 @@ mod tests {
                 }
             );
         }
+    }
+
+    #[test]
+    fn test_multiline() {
+        let comment = "/**
+     * @notice The address of the USDN token.
+     */";
+        // let comment = "/**
+        // */";
+        let res = parse_multiline_comment.parse(comment);
+        assert!(res.is_ok(), "{res:?}");
     }
 }

@@ -1,3 +1,5 @@
+use slang_solidity::cst::TextRange;
+
 /// The result of a lintspec operation
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -16,8 +18,8 @@ pub enum Error {
     SemverParsingError(#[from] semver::Error),
 
     /// Error during parsing of a NatSpec comment
-    #[error("error parsing a natspec comment: {0}")]
-    NatspecParsingError(String),
+    #[error("error parsing a natspec comment: {message}")]
+    NatspecParsingError { span: TextRange, message: String },
 
     /// IO error
     #[error("IO error: {0}")]
