@@ -76,7 +76,7 @@ pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
 
 fn parse_ident(input: &mut &str) -> Result<String> {
     take_till(1.., |c: char| c.is_whitespace())
-        .map(|parent: &str| parent.to_owned())
+        .map(|ident: &str| ident.to_owned())
         .parse_next(input)
 }
 
@@ -87,21 +87,21 @@ fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
             "@author".map(|_| NatSpecKind::Author),
             "@notice".map(|_| NatSpecKind::Notice),
             "@dev".map(|_| NatSpecKind::Dev),
-            seq!(NatSpecKind::Param {
+            seq! {NatSpecKind::Param {
                 _: "@param",
                 _: space1,
                 name: parse_ident
-            }),
+            }},
             "@return".map(|_| NatSpecKind::Return { name: None }), // we will process the name later since it's optional
-            seq!(NatSpecKind::Inheritdoc {
+            seq! {NatSpecKind::Inheritdoc {
                 _: "@inheritdoc",
                 _: space1,
                 parent: parse_ident
-            }),
-            seq!(NatSpecKind::Custom {
+            }},
+            seq! {NatSpecKind::Custom {
                 _: "@custom:",
                 tag: parse_ident
-            }),
+            }},
         )),
         space0,
     )
@@ -110,8 +110,11 @@ fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
 
 fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
-        _: opt(delimited(multispace0, '*', space0)),
+        _: multispace0,
+        _: opt('*'),
+        _: space0,
         kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        _: space0,
         comment: take_till(0.., |c: char| c.is_newline()).map(|s: &str| s.to_owned())
     }}
     .parse_next(input)
@@ -165,6 +168,52 @@ mod tests {
             assert!(res.is_ok(), "{res:?}");
             let res = res.unwrap();
             assert_eq!(res, case.1);
+        }
+    }
+
+    #[test]
+    fn test_comment_line() {
+        let cases = [
+            ("  lorem ipsum", NatSpecKind::Notice, "lorem ipsum"),
+            ("\t*  foobar", NatSpecKind::Notice, "foobar"),
+            ("    * foobar", NatSpecKind::Notice, "foobar"),
+            ("@dev Hello world", NatSpecKind::Dev, "Hello world"),
+            (
+                "        * @author McGyver <hi@buildanything.com>",
+                NatSpecKind::Author,
+                "McGyver <hi@buildanything.com>",
+            ),
+            (
+                " @param foo The bar",
+                NatSpecKind::Param {
+                    name: "foo".to_string(),
+                },
+                "The bar",
+            ),
+            (
+                " @return something The return value",
+                NatSpecKind::Return { name: None },
+                "something The return value",
+            ),
+            (
+                "\t* @custom:foo bar",
+                NatSpecKind::Custom {
+                    tag: "foo".to_string(),
+                },
+                "bar",
+            ),
+        ];
+        for case in cases {
+            let res = parse_comment_line.parse(case.0);
+            assert!(res.is_ok(), "{res:?}");
+            let res = res.unwrap();
+            assert_eq!(
+                res,
+                NatSpecItem {
+                    kind: case.1,
+                    comment: case.2.to_string()
+                }
+            );
         }
     }
 
