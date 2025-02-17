@@ -1,7 +1,7 @@
 //! NatSpec Comment Parser
 use winnow::{
-    ascii::{space0, space1},
-    combinator::{alt, delimited, opt, preceded, repeat, terminated},
+    ascii::{line_ending, multispace0, space0, space1},
+    combinator::{alt, delimited, opt, preceded, repeat, separated, terminated},
     seq,
     stream::AsChar,
     token::take_till,
@@ -110,7 +110,7 @@ fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
 
 fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
-        _: opt(delimited(space0, '*', space0)),
+        _: opt(delimited(multispace0, '*', space0)),
         kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
         comment: take_till(0.., |c: char| c.is_newline()).map(|s: &str| s.to_owned())
     }}
@@ -118,7 +118,7 @@ fn parse_comment_line(input: &mut &str) -> Result<NatSpecItem> {
 }
 
 fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
-    delimited("/**", repeat(0.., parse_comment_line), "*/")
+    delimited("/**", separated(1.., parse_comment_line, line_ending), "*/")
         .map(|items| NatSpec { items })
         .parse_next(input)
 }
