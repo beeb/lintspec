@@ -1,7 +1,7 @@
 //! NatSpec Comment Parser
 use winnow::{
     ascii::{line_ending, multispace0, space0, space1},
-    combinator::{alt, delimited, opt, preceded, repeat, separated, terminated},
+    combinator::{alt, delimited, opt, preceded, separated, terminated},
     seq,
     stream::AsChar,
     token::take_till,
