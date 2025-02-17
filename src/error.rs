@@ -12,8 +12,12 @@ pub enum Error {
     ParsingError(String),
 
     /// Error during parsing of a version specifier string
-    #[error("error parsing a semver string")]
+    #[error("error parsing a semver string: {0}")]
     SemverParsingError(#[from] semver::Error),
+
+    /// Error during parsing of a NatSpec comment
+    #[error("error parsing a natspec comment: {0}")]
+    NatspecParsingError(String),
 
     /// IO error
     #[error("IO error: {0}")]

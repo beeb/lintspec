@@ -17,12 +17,35 @@ impl NatSpec {
     pub fn append(&mut self, other: &mut Self) {
         self.items.append(&mut other.items);
     }
+
+    pub fn populate_returns(mut self, returns: &[&str]) -> Self {
+        for i in self.items.iter_mut() {
+            i.populate_return(returns);
+        }
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NatSpecItem {
     pub kind: NatSpecKind,
     pub comment: String,
+}
+
+impl NatSpecItem {
+    pub fn populate_return(&mut self, returns: &[&str]) {
+        if !matches!(self.kind, NatSpecKind::Return { name: _ }) {
+            return;
+        }
+        self.kind = NatSpecKind::Return {
+            name: self
+                .comment
+                .split_whitespace()
+                .next()
+                .filter(|first_word| returns.contains(first_word))
+                .map(|first_word| first_word.to_owned()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

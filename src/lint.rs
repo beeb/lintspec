@@ -5,9 +5,10 @@ use slang_solidity::{
     cst::{Cursor, NonterminalKind, Query, TerminalKind},
     parser::Parser,
 };
+use winnow::Parser as _;
 
 use crate::{
-    comment::NatSpec,
+    comment::{parse_comment, NatSpec},
     error::{Error, Result},
     utils::detect_solidity_version,
 };
@@ -70,7 +71,7 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     Ok(Vec::new())
 }
 
-pub fn find_items(cursor: Cursor) -> Vec<Definition> {
+pub fn find_items(cursor: Cursor) -> Result<Vec<Definition>> {
     let function_query = Query::parse(
         "@function [FunctionDefinition
             @function_name name:[FunctionName]
@@ -101,34 +102,45 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
                 capture!(m, "function_name"),
                 capture!(m, "function_params"),
                 capture!(m, "function_returns"),
-            ),
+            )?,
             1 => extract_struct(
                 capture!(m, "struct"),
                 capture!(m, "struct_name"),
                 capture!(m, "struct_members"),
-            ),
+            )?,
             _ => unreachable!(),
         };
         out.push(def);
     }
-    out
+    Ok(out)
 }
 
-fn extract_comment(mut cursor: Cursor) -> Option<NatSpec> {
-    let items = Vec::new();
+fn extract_comment(mut cursor: Cursor, returns: &[&str]) -> Result<Option<NatSpec>> {
+    let mut items = Vec::new();
     while cursor.go_to_next_terminal_with_kinds(&[
         TerminalKind::MultiLineNatSpecComment,
         TerminalKind::SingleLineNatSpecComment,
     ]) {
-        println!("Comment: {}", cursor.node().unparse());
+        items.push(
+            parse_comment
+                .parse(&cursor.node().unparse())
+                .map_err(|e| Error::NatspecParsingError(e.to_string()))?
+                .populate_returns(returns),
+        );
     }
-    if items.is_empty() {
-        return None;
-    }
-    Some(NatSpec { items })
+    let items = items.into_iter().reduce(|mut acc, mut i| {
+        acc.append(&mut i);
+        acc
+    });
+    Ok(items)
 }
 
-fn extract_function(cursor: Cursor, name: Cursor, params: Cursor, returns: Cursor) -> Definition {
+fn extract_function(
+    cursor: Cursor,
+    name: Cursor,
+    params: Cursor,
+    returns: Cursor,
+) -> Result<Definition> {
     let name = name.node().unparse();
     println!("Function name: {name}");
 
@@ -138,16 +150,18 @@ fn extract_function(cursor: Cursor, name: Cursor, params: Cursor, returns: Curso
     let returns = returns.node().unparse();
     println!("Function returns: {returns}");
 
-    FunctionDefinition {
+    let natspec = extract_comment(cursor.spawn(), &[])?; // TODO: parse returns
+
+    Ok(FunctionDefinition {
         name,
         args: vec![],
         returns: vec![],
-        natspec: extract_comment(cursor.spawn()),
+        natspec,
     }
-    .into()
+    .into())
 }
 
-fn extract_struct(cursor: Cursor, name: Cursor, members: Cursor) -> Definition {
+fn extract_struct(cursor: Cursor, name: Cursor, members: Cursor) -> Result<Definition> {
     let mut comments = cursor.spawn();
     while comments.go_to_next_terminal_with_kinds(&[
         TerminalKind::MultiLineNatSpecComment,
@@ -162,10 +176,12 @@ fn extract_struct(cursor: Cursor, name: Cursor, members: Cursor) -> Definition {
     let members = members.node().unparse();
     println!("Function params: {members}");
 
-    StructDefinition {
+    let natspec = extract_comment(cursor.spawn(), &[])?; // TODO: parse returns
+
+    Ok(StructDefinition {
         name,
         members: vec![],
-        natspec: extract_comment(cursor.spawn()),
+        natspec,
     }
-    .into()
+    .into())
 }
