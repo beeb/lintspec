@@ -1,5 +1,6 @@
 use derive_more::From;
 use error::ErrorDefinition;
+use event::EventDefinition;
 use function::FunctionDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
 use structure::StructDefinition;
@@ -12,6 +13,7 @@ use crate::{
 };
 
 pub mod error;
+pub mod event;
 pub mod function;
 pub mod structure;
 
@@ -43,6 +45,7 @@ pub struct Identifier {
 #[derive(Debug, From)]
 pub enum Definition {
     Error(ErrorDefinition),
+    Event(EventDefinition),
     Function(FunctionDefinition),
     Struct(StructDefinition),
     NatspecParsingError(Error),
@@ -60,6 +63,7 @@ impl Definition {
                 return vec![Diagnostic { span, message }];
             }
             Definition::Error(def) => res.append(&mut def.validate()),
+            Definition::Event(def) => res.append(&mut def.validate()),
             Definition::Function(def) => res.append(&mut def.validate()),
             Definition::Struct(def) => res.append(&mut def.validate()),
         }
@@ -81,10 +85,10 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     out
 }
 
-pub fn extract_params(cursor: Cursor) -> Vec<Identifier> {
+pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> {
     let mut cursor = cursor.spawn();
     let mut out = Vec::new();
-    while cursor.go_to_next_nonterminal_with_kind(NonterminalKind::Parameter) {
+    while cursor.go_to_next_nonterminal_with_kind(kind) {
         let mut sub_cursor = cursor.spawn();
         if sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
             out.push(Identifier {

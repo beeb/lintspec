@@ -1,4 +1,4 @@
-use slang_solidity::cst::{Query, QueryMatch, TextRange};
+use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
     comment::{NatSpec, NatSpecKind},
@@ -46,8 +46,8 @@ impl Validate for FunctionDefinition {
 
         let span = name.text_range();
         let name = name.node().unparse();
-        let params = extract_params(params);
-        let returns = extract_params(returns);
+        let params = extract_params(params, NonterminalKind::Parameter);
+        let returns = extract_params(returns, NonterminalKind::Parameter);
         let natspec = extract_comment(func, &returns)?;
 
         Ok(FunctionDefinition {
