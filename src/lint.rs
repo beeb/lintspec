@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use serde::Serialize;
 use slang_solidity::{
     cst::{NonterminalKind, TextRange},
     parser::Parser,
@@ -14,7 +15,7 @@ use crate::{
     utils::detect_solidity_version,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     pub path: PathBuf,
     pub span: TextRange,
