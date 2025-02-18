@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{comment::NatSpec, error::Result, lint::Diagnostic};
@@ -46,15 +44,13 @@ impl Validate for StructDefinition {
         .into())
     }
 
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
-        let path = file_path.as_ref().to_path_buf();
+    fn validate(&self) -> Vec<Diagnostic> {
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                path,
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(&path, natspec, &self.members)
+        check_params(natspec, &self.members)
     }
 }

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{
@@ -62,13 +60,11 @@ impl Validate for FunctionDefinition {
         .into())
     }
 
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
-        let path = file_path.as_ref().to_path_buf();
+    fn validate(&self) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                path,
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -86,8 +82,8 @@ impl Validate for FunctionDefinition {
             return vec![];
         }
         // check params and returns
-        res.append(&mut check_params(&path, natspec, &self.params));
-        res.append(&mut check_returns(&path, natspec, &self.returns));
+        res.append(&mut check_params(natspec, &self.params));
+        res.append(&mut check_returns(natspec, &self.returns));
         res
     }
 }

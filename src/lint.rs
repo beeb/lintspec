@@ -16,13 +16,18 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Diagnostic {
+pub struct FileDiagnostics {
     pub path: PathBuf,
+    pub diags: Vec<Diagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Diagnostic {
     pub span: TextRange,
     pub message: String,
 }
 
-pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
+pub fn lint(path: impl AsRef<Path>) -> Result<FileDiagnostics> {
     let contents = fs::read_to_string(&path)?;
     let solidity_version = detect_solidity_version(&contents)?;
 
@@ -37,10 +42,13 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     }
 
     let cursor = output.create_tree_cursor();
-    let mut out = Vec::new();
+    let mut diags = Vec::new();
     for item in find_items(cursor) {
-        out.append(&mut item.validate(&path));
+        diags.append(&mut item.validate());
     }
-    println!("{out:#?}");
-    Ok(out)
+    println!("{diags:#?}");
+    Ok(FileDiagnostics {
+        path: path.as_ref().to_path_buf(),
+        diags,
+    })
 }

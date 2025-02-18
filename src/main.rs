@@ -15,10 +15,7 @@ fn main() -> Result<()> {
     let diagnostics = paths
         .par_iter()
         .map(|p| lint(p).map_err(Into::into))
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>()?;
 
     println!("{diagnostics:?}");
 

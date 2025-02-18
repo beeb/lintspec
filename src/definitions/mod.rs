@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use derive_more::From;
 use function::FunctionDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
@@ -31,7 +29,7 @@ pub(crate) use capture;
 pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic>;
+    fn validate(&self) -> Vec<Diagnostic>;
 }
 
 #[derive(Debug, Clone)]
@@ -48,8 +46,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
-        let path = file_path.as_ref().to_path_buf();
+    pub fn validate(&self) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
@@ -57,14 +54,10 @@ impl Definition {
                     Error::NatspecParsingError { span, message } => (span.clone(), message.clone()),
                     _ => (TextRange::default(), error.to_string()),
                 };
-                return vec![Diagnostic {
-                    path,
-                    span,
-                    message,
-                }];
+                return vec![Diagnostic { span, message }];
             }
-            Definition::Function(def) => res.append(&mut def.validate(&path)),
-            Definition::Struct(def) => res.append(&mut def.validate(&path)),
+            Definition::Function(def) => res.append(&mut def.validate()),
+            Definition::Struct(def) => res.append(&mut def.validate()),
         }
         res
     }
@@ -141,11 +134,7 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     out
 }
 
-pub fn check_params(
-    path: impl AsRef<Path>,
-    natspec: &NatSpec,
-    params: &[Identifier],
-) -> Vec<Diagnostic> {
+pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
         let Some(name) = &param.name else {
@@ -160,7 +149,6 @@ pub fn check_params(
             }
         };
         res.push(Diagnostic {
-            path: path.as_ref().to_path_buf(),
             span: param.span.clone(),
             message,
         })
@@ -168,11 +156,7 @@ pub fn check_params(
     res
 }
 
-pub fn check_returns(
-    path: impl AsRef<Path>,
-    natspec: &NatSpec,
-    returns: &[Identifier],
-) -> Vec<Diagnostic> {
+pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     let returns_count = natspec.count_all_returns();
     for (idx, ret) in returns.iter().enumerate() {
@@ -193,7 +177,6 @@ pub fn check_returns(
             }
         };
         res.push(Diagnostic {
-            path: path.as_ref().to_path_buf(),
             span: ret.span.clone(),
             message,
         })
