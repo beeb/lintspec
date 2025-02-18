@@ -7,7 +7,7 @@ fn main() -> Result<()> {
 
     let config = read_config()?;
 
-    let paths = find_sol_files(&config.paths);
+    let paths = find_sol_files(&config.paths, &config.exclude)?;
     if paths.is_empty() {
         bail!("no Solidity file found, nothing to analyze");
     }

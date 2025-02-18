@@ -1,11 +1,19 @@
 use std::{
     path::{Path, PathBuf},
-    sync::mpsc,
+    sync::{mpsc, Arc},
 };
 
 use ignore::{types::TypesBuilder, WalkBuilder, WalkState};
 
-pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
+use crate::error::Result;
+
+pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<PathBuf>> {
+    let exclude = exclude
+        .iter()
+        .map(|p| dunce::canonicalize(p.as_ref()).map_err(Into::into))
+        .collect::<Result<Vec<_>>>()?;
+    let exclude = Arc::new(exclude.iter().map(|p| p.as_path()).collect::<Vec<_>>());
+
     let types = TypesBuilder::new()
         .add_defaults()
         .negate("all")
@@ -14,7 +22,8 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
         .expect("types builder should build");
     let mut walker: Option<WalkBuilder> = None;
     for path in paths {
-        if let Some(ext) = path.as_ref().extension() {
+        let path = dunce::canonicalize(path.as_ref())?;
+        if let Some(ext) = path.extension() {
             // if users submit paths to non-solidity files, we ignore them
             if ext != "sol" {
                 continue;
@@ -27,7 +36,7 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
         }
     }
     let Some(mut walker) = walker else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     walker
         .hidden(false)
@@ -40,12 +49,16 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
     let (tx, rx) = mpsc::channel::<PathBuf>();
     walker.run(|| {
         let tx = tx.clone();
+        let exclude = Arc::clone(&exclude);
         // function executed for each DirEntry
         Box::new(move |result| {
             let Ok(entry) = result else {
                 return WalkState::Continue;
             };
             let path = entry.path();
+            if exclude.contains(&path) {
+                return WalkState::Skip;
+            }
             if path.is_dir() {
                 return WalkState::Continue;
             }
@@ -61,5 +74,5 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T]) -> Vec<PathBuf> {
     while let Ok(path) = rx.recv() {
         files.push(path);
     }
-    files
+    Ok(files)
 }
