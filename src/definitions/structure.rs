@@ -1,4 +1,4 @@
-use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 
 use crate::{
     comment::NatSpec,
