@@ -24,6 +24,10 @@ pub struct Config {
     #[arg(short, long, default_value_t = false)]
     pub constructor: bool,
 
+    /// Enforce that enums have `@param` NatSpec for each variant
+    #[arg(long, default_value_t = false)]
+    pub enum_params: bool,
+
     /// Output diagnostics in JSON format
     #[arg(short, long, default_value_t = false)]
     pub json: bool,

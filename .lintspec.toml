@@ -1,4 +1,5 @@
 paths = []
 exclude = []
 constructor = false
+enum_params = false
 json = false
