@@ -6,10 +6,13 @@ use crate::{
     lint::{Diagnostic, ItemType},
 };
 
-use super::{capture, check_params, extract_comment, Definition, Identifier, Validate};
+use super::{
+    capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Validate,
+};
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
+    pub contract: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub members: Vec<Identifier>,
@@ -17,6 +20,18 @@ pub struct StructDefinition {
 }
 
 impl Validate for StructDefinition {
+    fn contract(&self) -> Option<String> {
+        self.contract.clone()
+    }
+
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn span(&self) -> TextRange {
+        self.span.clone()
+    }
+
     fn query() -> Query {
         Query::parse(
             "@struct [StructDefinition
@@ -32,12 +47,14 @@ impl Validate for StructDefinition {
         let name = capture!(m, "struct_name");
         let members = capture!(m, "struct_members");
 
-        let span = name.text_range();
+        let span = structure.text_range();
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(members)?;
-        let natspec = extract_comment(structure, &[])?;
+        let natspec = extract_comment(structure.clone(), &[])?;
+        let contract = parent_contract_name(structure);
 
         Ok(StructDefinition {
+            contract,
             name,
             span,
             members,
@@ -50,13 +67,14 @@ impl Validate for StructDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
+                contract: self.contract(),
                 item_type: ItemType::Struct,
-                item_name: self.name.clone(),
-                span: self.span.clone(),
+                item_name: self.name(),
+                span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(&self.name, natspec, &self.members, ItemType::Struct)
+        check_params(self, natspec, &self.members, ItemType::Struct)
     }
 }
 

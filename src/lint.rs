@@ -36,6 +36,7 @@ pub enum ItemType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
+    pub contract: Option<String>,
     pub item_type: ItemType,
     pub item_name: String,
     pub span: TextRange,

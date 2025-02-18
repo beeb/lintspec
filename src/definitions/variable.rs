@@ -6,16 +6,29 @@ use crate::{
     lint::{Diagnostic, ItemType},
 };
 
-use super::{capture, extract_comment, Definition, Validate};
+use super::{capture, extract_comment, parent_contract_name, Definition, Validate};
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
+    pub contract: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub natspec: Option<NatSpec>,
 }
 
 impl Validate for VariableDeclaration {
+    fn contract(&self) -> Option<String> {
+        self.contract.clone()
+    }
+
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn span(&self) -> TextRange {
+        self.span.clone()
+    }
+
     fn query() -> Query {
         Query::parse(
             "@variable [StateVariableDefinition
@@ -29,11 +42,13 @@ impl Validate for VariableDeclaration {
         let variable = capture!(m, "variable");
         let name = capture!(m, "variable_name");
 
-        let span = name.text_range();
+        let span = variable.text_range();
         let name = name.node().unparse().trim().to_string();
-        let natspec = extract_comment(variable, &[])?;
+        let natspec = extract_comment(variable.clone(), &[])?;
+        let contract = parent_contract_name(variable);
 
         Ok(VariableDeclaration {
+            contract,
             name,
             span,
             natspec,
@@ -45,9 +60,10 @@ impl Validate for VariableDeclaration {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
+                contract: self.contract(),
                 item_type: ItemType::Variable,
-                item_name: self.name.clone(),
-                span: self.span.clone(),
+                item_name: self.name(),
+                span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];
         };
@@ -65,9 +81,10 @@ impl Validate for VariableDeclaration {
             .any(|n| matches!(n.kind, NatSpecKind::Notice | NatSpecKind::Dev))
         {
             return vec![Diagnostic {
+                contract: self.contract(),
                 item_type: ItemType::Variable,
-                item_name: self.name.clone(),
-                span: self.span.clone(),
+                item_name: self.name(),
+                span: self.span(),
                 message: "missing @notice or @dev".to_string(),
             }];
         }

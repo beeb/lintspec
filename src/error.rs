@@ -19,7 +19,11 @@ pub enum Error {
 
     /// Error during parsing of a NatSpec comment
     #[error("error parsing a natspec comment: {message}")]
-    NatspecParsingError { span: TextRange, message: String },
+    NatspecParsingError {
+        contract: Option<String>,
+        span: TextRange,
+        message: String,
+    },
 
     /// IO error
     #[error("IO error: {0}")]

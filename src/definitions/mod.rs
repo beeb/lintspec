@@ -38,6 +38,9 @@ pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
     fn validate(&self) -> Vec<Diagnostic>;
+    fn contract(&self) -> Option<String>;
+    fn name(&self) -> String;
+    fn span(&self) -> TextRange;
 }
 
 #[derive(Debug, Clone)]
@@ -62,11 +65,16 @@ impl Definition {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
-                let (span, message) = match error {
-                    Error::NatspecParsingError { span, message } => (span.clone(), message.clone()),
-                    _ => (TextRange::default(), error.to_string()),
+                let (contract, span, message) = match error {
+                    Error::NatspecParsingError {
+                        contract,
+                        span,
+                        message,
+                    } => (contract.clone(), span.clone(), message.clone()),
+                    _ => (None, TextRange::default(), error.to_string()),
                 };
                 return vec![Diagnostic {
+                    contract,
                     item_type: ItemType::ParsingError,
                     item_name: String::new(),
                     span,
@@ -149,6 +157,7 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
             parse_comment
                 .parse(comment)
                 .map_err(|e| Error::NatspecParsingError {
+                    contract: parent_contract_name(cursor.clone()),
                     span: cursor.text_range(),
                     message: e.to_string(),
                 })?
@@ -180,7 +189,7 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
 }
 
 pub fn check_params(
-    item_name: &str,
+    item: &impl Validate,
     natspec: &NatSpec,
     params: &[Identifier],
     check_type: ItemType,
@@ -199,8 +208,9 @@ pub fn check_params(
             }
         };
         res.push(Diagnostic {
+            contract: item.contract(),
             item_type: check_type,
-            item_name: item_name.to_string(),
+            item_name: item.name(),
             span: param.span.clone(),
             message,
         })
@@ -209,7 +219,7 @@ pub fn check_params(
 }
 
 pub fn check_returns(
-    item_name: &str,
+    item: &impl Validate,
     natspec: &NatSpec,
     returns: &[Identifier],
     check_type: ItemType,
@@ -234,8 +244,9 @@ pub fn check_returns(
             }
         };
         res.push(Diagnostic {
+            contract: item.contract(),
             item_type: check_type,
-            item_name: item_name.to_string(),
+            item_name: item.name(),
             span: ret.span.clone(),
             message,
         })

@@ -7,11 +7,13 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, extract_params, Definition, Identifier, Validate,
+    capture, check_params, extract_comment, extract_params, parent_contract_name, Definition,
+    Identifier, Validate,
 };
 
 #[derive(Debug, Clone)]
 pub struct EventDefinition {
+    pub contract: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -19,6 +21,18 @@ pub struct EventDefinition {
 }
 
 impl Validate for EventDefinition {
+    fn contract(&self) -> Option<String> {
+        self.contract.clone()
+    }
+
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn span(&self) -> TextRange {
+        self.span.clone()
+    }
+
     fn query() -> Query {
         Query::parse(
             "@event [EventDefinition
@@ -34,12 +48,14 @@ impl Validate for EventDefinition {
         let name = capture!(m, "event_name");
         let params = capture!(m, "event_params");
 
-        let span = name.text_range();
+        let span = event.text_range();
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::EventParameter);
-        let natspec = extract_comment(event, &[])?;
+        let natspec = extract_comment(event.clone(), &[])?;
+        let contract = parent_contract_name(event);
 
         Ok(EventDefinition {
+            contract,
             name,
             span,
             params,
@@ -52,12 +68,13 @@ impl Validate for EventDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
+                contract: self.contract(),
                 item_type: ItemType::Event,
-                item_name: self.name.clone(),
-                span: self.span.clone(),
+                item_name: self.name(),
+                span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(&self.name, natspec, &self.params, ItemType::Event)
+        check_params(self, natspec, &self.params, ItemType::Event)
     }
 }
