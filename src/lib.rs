@@ -1,5 +1,6 @@
 pub mod comment;
 pub mod config;
+pub mod definitions;
 pub mod error;
 pub mod files;
 pub mod lint;

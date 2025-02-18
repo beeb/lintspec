@@ -1,0 +1,155 @@
+use std::path::Path;
+
+use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
+use winnow::Parser as _;
+
+use crate::{
+    comment::{parse_comment, NatSpec},
+    error::{Error, Result},
+    lint::{Definition, Diagnostic},
+};
+
+pub mod function;
+pub mod structure;
+
+macro_rules! capture {
+    ($m:ident, $name:expr) => {
+        match $m.capture($name).map(|(_, mut captures)| captures.next()) {
+            Some(Some(res)) => res,
+            _ => {
+                return Err($crate::error::Error::UnknownError);
+            }
+        }
+    };
+}
+
+pub(crate) use capture;
+
+pub trait Validate {
+    fn query() -> Query;
+    fn extract(m: QueryMatch) -> Result<Definition>;
+    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic>;
+}
+
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    pub name: Option<String>,
+    pub span: TextRange,
+}
+
+pub fn extract_params(cursor: Cursor) -> Vec<Identifier> {
+    let mut cursor = cursor.spawn();
+    let mut out = Vec::new();
+    while cursor.go_to_next_nonterminal_with_kind(NonterminalKind::Parameter) {
+        let mut sub_cursor = cursor.spawn();
+        if sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+            out.push(Identifier {
+                name: Some(sub_cursor.node().unparse()),
+                span: sub_cursor.text_range(),
+            });
+        } else {
+            out.push(Identifier {
+                name: None,
+                span: cursor.text_range(),
+            });
+        }
+    }
+    out
+}
+
+pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
+    let mut cursor = cursor.spawn();
+    let mut items = Vec::new();
+    while cursor.go_to_next_terminal_with_kinds(&[
+        TerminalKind::MultiLineNatSpecComment,
+        TerminalKind::SingleLineNatSpecComment,
+    ]) {
+        let comment = &cursor.node().unparse();
+        items.push(
+            parse_comment
+                .parse(comment)
+                .map_err(|e| Error::NatspecParsingError {
+                    span: cursor.text_range(),
+                    message: e.to_string(),
+                })?
+                .populate_returns(returns),
+        );
+    }
+    let items = items.into_iter().reduce(|mut acc, mut i| {
+        acc.append(&mut i);
+        acc
+    });
+    Ok(items)
+}
+
+pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
+    let mut cursor = cursor.spawn();
+    let mut out = Vec::new();
+    while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+        out.push(Identifier {
+            name: Some(cursor.node().unparse()),
+            span: cursor.text_range(),
+        })
+    }
+    out
+}
+
+pub fn check_params(
+    path: impl AsRef<Path>,
+    natspec: &NatSpec,
+    params: &[Identifier],
+) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    for param in params {
+        let Some(name) = &param.name else {
+            // no need to document unused params
+            continue;
+        };
+        let message = match natspec.count_param(param) {
+            0 => format!("@param {} is missing", name),
+            2.. => format!("@param {} is present more than once", name),
+            _ => {
+                continue;
+            }
+        };
+        res.push(Diagnostic {
+            path: path.as_ref().to_path_buf(),
+            span: param.span.clone(),
+            message,
+        })
+    }
+    res
+}
+
+pub fn check_returns(
+    path: impl AsRef<Path>,
+    natspec: &NatSpec,
+    returns: &[Identifier],
+) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    let returns_count = natspec.count_all_returns();
+    for (idx, ret) in returns.iter().enumerate() {
+        let message = match &ret.name {
+            Some(name) => match natspec.count_return(ret) {
+                0 => format!("@return {} is missing", name),
+                2.. => format!("@return {} is present more than once", name),
+                _ => {
+                    continue;
+                }
+            },
+            None => {
+                if idx > returns_count - 1 {
+                    format!("@return missing for unnamed return #{}", idx + 1)
+                } else {
+                    continue;
+                }
+            }
+        };
+        res.push(Diagnostic {
+            path: path.as_ref().to_path_buf(),
+            span: ret.span.clone(),
+            message,
+        })
+    }
+    res
+}

@@ -7,7 +7,7 @@ use winnow::{
     Parser as _, Result,
 };
 
-use crate::lint::Identifier;
+use crate::definitions::Identifier;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NatSpec {
