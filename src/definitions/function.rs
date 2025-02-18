@@ -46,10 +46,10 @@ impl Validate for FunctionDefinition {
         let params = capture!(m, "function_params");
         let returns = capture!(m, "function_returns");
 
+        let span = name.text_range();
         let name = name.node().unparse();
         let params = extract_params(params);
         let returns = extract_params(returns);
-        let span = func.text_range();
         let natspec = extract_comment(func, &returns)?;
 
         Ok(FunctionDefinition {
