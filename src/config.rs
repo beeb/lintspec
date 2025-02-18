@@ -17,7 +17,7 @@ pub struct Config {
     pub paths: Vec<PathBuf>,
 
     /// Path to a file or folder to exclude (can be used more than once)
-    #[arg(short, long, name = "PATH", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
 }
 
