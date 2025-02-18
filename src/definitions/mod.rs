@@ -40,11 +40,21 @@ macro_rules! capture {
 
 pub(crate) use capture;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ValidationOptions {
     pub inheritdoc: bool,
     pub constructor: bool,
     pub enum_params: bool,
+}
+
+impl Default for ValidationOptions {
+    fn default() -> Self {
+        Self {
+            inheritdoc: true,
+            constructor: false,
+            enum_params: false,
+        }
+    }
 }
 
 impl From<&Config> for ValidationOptions {

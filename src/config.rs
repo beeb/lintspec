@@ -21,7 +21,7 @@ pub struct Config {
     pub exclude: Vec<PathBuf>,
 
     /// Enforce that all public and external items have `@inheritdoc`
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long, default_value_t = true)]
     pub inheritdoc: bool,
 
     /// Enforce that constructors have NatSpec
