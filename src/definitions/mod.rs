@@ -112,13 +112,21 @@ pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> 
     let mut cursor = cursor.spawn();
     let mut out = Vec::new();
     while cursor.go_to_next_nonterminal_with_kind(kind) {
-        let mut sub_cursor = cursor.spawn();
-        if sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+        let mut sub_cursor = cursor.spawn().with_edges();
+        let mut found = false;
+        while sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+            if let Some(label) = sub_cursor.label() {
+                if label.to_string() != "name" {
+                    continue;
+                }
+            }
+            found = true;
             out.push(Identifier {
                 name: Some(sub_cursor.node().unparse()),
                 span: sub_cursor.text_range(),
             });
-        } else {
+        }
+        if !found {
             out.push(Identifier {
                 name: None,
                 span: cursor.text_range(),
@@ -154,9 +162,14 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
 }
 
 pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
-    let mut cursor = cursor.spawn();
+    let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
+        if let Some(label) = cursor.label() {
+            if label.to_string() != "name" {
+                continue;
+            }
+        }
         out.push(Identifier {
             name: Some(cursor.node().unparse()),
             span: cursor.text_range(),

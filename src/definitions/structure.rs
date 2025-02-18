@@ -1,4 +1,4 @@
-use slang_solidity::cst::{Query, QueryMatch, TextRange};
+use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
     comment::NatSpec,
@@ -6,9 +6,7 @@ use crate::{
     lint::{CheckType, Diagnostic},
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_identifiers, Definition, Identifier, Validate,
-};
+use super::{capture, check_params, extract_comment, Definition, Identifier, Validate};
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
@@ -36,7 +34,7 @@ impl Validate for StructDefinition {
 
         let span = name.text_range();
         let name = name.node().unparse();
-        let members = extract_identifiers(members);
+        let members = extract_struct_members(members)?;
         let natspec = extract_comment(structure, &[])?;
 
         Ok(StructDefinition {
@@ -59,4 +57,23 @@ impl Validate for StructDefinition {
         };
         check_params(natspec, &self.members, CheckType::Struct)
     }
+}
+
+fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
+    let cursor = cursor.spawn();
+    let mut out = Vec::new();
+    let query = Query::parse(
+        "[StructMember
+        @member_name name:[Identifier]
+    ]",
+    )
+    .expect("query should compile");
+    for m in cursor.query(vec![query]) {
+        let member_name = capture!(m, "member_name");
+        out.push(Identifier {
+            name: Some(member_name.node().unparse()),
+            span: member_name.text_range(),
+        })
+    }
+    Ok(out)
 }
