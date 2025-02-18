@@ -1,4 +1,5 @@
 use derive_more::From;
+use error::ErrorDefinition;
 use function::FunctionDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
 use structure::StructDefinition;
@@ -10,6 +11,7 @@ use crate::{
     lint::Diagnostic,
 };
 
+pub mod error;
 pub mod function;
 pub mod structure;
 
@@ -40,6 +42,7 @@ pub struct Identifier {
 
 #[derive(Debug, From)]
 pub enum Definition {
+    Error(ErrorDefinition),
     Function(FunctionDefinition),
     Struct(StructDefinition),
     NatspecParsingError(Error),
@@ -56,6 +59,7 @@ impl Definition {
                 };
                 return vec![Diagnostic { span, message }];
             }
+            Definition::Error(def) => res.append(&mut def.validate()),
             Definition::Function(def) => res.append(&mut def.validate()),
             Definition::Struct(def) => res.append(&mut def.validate()),
         }
