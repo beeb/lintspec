@@ -19,6 +19,10 @@ pub struct Config {
     /// Path to a file or folder to exclude (can be used more than once)
     #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
+
+    /// Output diagnostics in JSON format
+    #[arg(short, long, default_value_t = false)]
+    pub json: bool,
 }
 
 pub fn read_config() -> Result<Config> {

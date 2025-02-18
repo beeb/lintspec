@@ -18,10 +18,16 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
     diagnostics.retain(|p| p.is_some());
 
-    println!("{diagnostics:#?}");
+    if config.json {
+        print!("{}", serde_json::to_string_pretty(&diagnostics)?);
+    } else {
+        println!("{diagnostics:#?}");
+    }
     if diagnostics.is_empty() {
         return Ok(());
     }
-    println!("Some files contain errors");
+    if !config.json {
+        println!("Some files contain errors");
+    }
     std::process::exit(1);
 }
