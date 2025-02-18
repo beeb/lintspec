@@ -20,6 +20,10 @@ pub struct Config {
     #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
 
+    /// Enforce that constructors have NatSpec
+    #[arg(short, long, default_value_t = false)]
+    pub constructor: bool,
+
     /// Output diagnostics in JSON format
     #[arg(short, long, default_value_t = false)]
     pub json: bool,

@@ -1,3 +1,4 @@
+use constructor::ConstructorDefinition;
 use derive_more::From;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -14,6 +15,7 @@ use crate::{
     lint::{Diagnostic, ItemType},
 };
 
+pub mod constructor;
 pub mod error;
 pub mod event;
 pub mod function;
@@ -51,6 +53,7 @@ pub struct Identifier {
 
 #[derive(Debug, From)]
 pub enum Definition {
+    Constructor(ConstructorDefinition),
     Error(ErrorDefinition),
     Event(EventDefinition),
     Function(FunctionDefinition),
@@ -61,7 +64,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn validate(&self) -> Vec<Diagnostic> {
+    pub fn validate(&self, constructor: bool) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
@@ -82,6 +85,11 @@ impl Definition {
                     message,
                 }];
             }
+            Definition::Constructor(def) => {
+                if constructor {
+                    res.append(&mut def.validate())
+                }
+            }
             Definition::Error(def) => res.append(&mut def.validate()),
             Definition::Event(def) => res.append(&mut def.validate()),
             Definition::Function(def) => res.append(&mut def.validate()),
@@ -96,6 +104,7 @@ impl Definition {
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let mut out = Vec::new();
     for m in cursor.query(vec![
+        ConstructorDefinition::query(),
         ErrorDefinition::query(),
         EventDefinition::query(),
         FunctionDefinition::query(),
@@ -104,12 +113,13 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         VariableDeclaration::query(),
     ]) {
         let def = match m.query_number {
-            0 => ErrorDefinition::extract(m),
-            1 => EventDefinition::extract(m),
-            2 => FunctionDefinition::extract(m),
-            3 => ModifierDefinition::extract(m),
-            4 => StructDefinition::extract(m),
-            5 => VariableDeclaration::extract(m),
+            0 => ConstructorDefinition::extract(m),
+            1 => ErrorDefinition::extract(m),
+            2 => EventDefinition::extract(m),
+            3 => FunctionDefinition::extract(m),
+            4 => ModifierDefinition::extract(m),
+            5 => StructDefinition::extract(m),
+            6 => VariableDeclaration::extract(m),
             _ => unreachable!(),
         }
         .unwrap_or_else(Definition::NatspecParsingError);

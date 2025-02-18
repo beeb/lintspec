@@ -14,7 +14,7 @@ fn main() -> Result<()> {
 
     let mut diagnostics = paths
         .par_iter()
-        .map(|p| lint(p).map_err(Into::into))
+        .map(|p| lint(p, config.constructor).map_err(Into::into))
         .collect::<Result<Vec<_>>>()?;
     diagnostics.retain(|p| p.is_some());
 

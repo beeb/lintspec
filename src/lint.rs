@@ -24,6 +24,7 @@ pub struct FileDiagnostics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
+    Constructor,
     Enum,
     Error,
     Event,
@@ -44,7 +45,7 @@ pub struct Diagnostic {
     pub message: String,
 }
 
-pub fn lint(path: impl AsRef<Path>) -> Result<Option<FileDiagnostics>> {
+pub fn lint(path: impl AsRef<Path>, constructor: bool) -> Result<Option<FileDiagnostics>> {
     let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
         path: path.as_ref().to_path_buf(),
         err,
@@ -64,7 +65,7 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Option<FileDiagnostics>> {
     let cursor = output.create_tree_cursor();
     let mut diags = Vec::new();
     for item in find_items(cursor) {
-        diags.append(&mut item.validate());
+        diags.append(&mut item.validate(constructor));
     }
     if diags.is_empty() {
         return Ok(None);
