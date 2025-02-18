@@ -50,7 +50,7 @@ impl Validate for ModifierDefinition {
         let name = capture!(m, "modifier_name");
         let params = capture!(m, "modifier_params");
 
-        let span = params.text_range();
+        let span = name.text_range().start..params.text_range().end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let natspec = extract_comment(modifier.clone(), &[])?;
