@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use itertools::Itertools as _;
 
@@ -22,13 +22,13 @@ pub fn print_reports(root_path: impl AsRef<Path>, file_diags: FileDiagnostics) {
             .expect("path should have a filename")
             .to_string_lossy(),
     };
-    let source = NamedSource::new(source_name, file_diags.contents);
+    let source = Arc::new(NamedSource::new(source_name, file_diags.contents));
     for (_, chunk) in &file_diags.diags.into_iter().chunk_by(|d| d.item_span.start) {
-        print_report(source.clone(), chunk);
+        print_report(Arc::clone(&source), chunk);
     }
 }
 
-fn print_report(source: NamedSource<String>, diags: impl Iterator<Item = Diagnostic>) {
+fn print_report(source: Arc<NamedSource<String>>, diags: impl Iterator<Item = Diagnostic>) {
     let mut diags = diags.peekable();
     let first = diags
         .peek()
