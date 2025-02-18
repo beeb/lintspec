@@ -1,5 +1,7 @@
 use anyhow::{bail, Result};
-use lintspec::{config::read_config, files::find_sol_files, lint::lint};
+use lintspec::{
+    config::read_config, definitions::ValidationOptions, files::find_sol_files, lint::lint,
+};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 fn main() -> Result<()> {
@@ -12,9 +14,13 @@ fn main() -> Result<()> {
         bail!("no Solidity file found, nothing to analyze");
     }
 
+    let options = ValidationOptions {
+        constructor: config.constructor,
+        enum_params: config.enum_params,
+    };
     let mut diagnostics = paths
         .par_iter()
-        .map(|p| lint(p, config.constructor, config.enum_params).map_err(Into::into))
+        .map(|p| lint(p, &options).map_err(Into::into))
         .collect::<Result<Vec<_>>>()?;
     diagnostics.retain(|p| p.is_some());
 

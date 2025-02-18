@@ -38,10 +38,16 @@ macro_rules! capture {
 
 pub(crate) use capture;
 
+#[derive(Debug, Clone, Default)]
+pub struct ValidationOptions {
+    pub constructor: bool,
+    pub enum_params: bool,
+}
+
 pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
-    fn validate(&self) -> Vec<Diagnostic>;
+    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic>;
     fn parent(&self) -> Option<String>;
     fn name(&self) -> String;
     fn span(&self) -> TextRange;
@@ -67,7 +73,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn validate(&mut self, constructor: bool, enum_params: bool) -> Vec<Diagnostic> {
+    pub fn validate(&mut self, options: &ValidationOptions) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
@@ -88,23 +94,14 @@ impl Definition {
                     message,
                 }];
             }
-            Definition::Constructor(def) => {
-                if constructor {
-                    res.append(&mut def.validate())
-                }
-            }
-            Definition::Enumeration(def) => {
-                if enum_params {
-                    def.check_params = true;
-                }
-                res.append(&mut def.validate())
-            }
-            Definition::Error(def) => res.append(&mut def.validate()),
-            Definition::Event(def) => res.append(&mut def.validate()),
-            Definition::Function(def) => res.append(&mut def.validate()),
-            Definition::Modifier(def) => res.append(&mut def.validate()),
-            Definition::Struct(def) => res.append(&mut def.validate()),
-            Definition::Variable(def) => res.append(&mut def.validate()),
+            Definition::Constructor(def) => res.append(&mut def.validate(options)),
+            Definition::Enumeration(def) => res.append(&mut def.validate(options)),
+            Definition::Error(def) => res.append(&mut def.validate(options)),
+            Definition::Event(def) => res.append(&mut def.validate(options)),
+            Definition::Function(def) => res.append(&mut def.validate(options)),
+            Definition::Modifier(def) => res.append(&mut def.validate(options)),
+            Definition::Struct(def) => res.append(&mut def.validate(options)),
+            Definition::Variable(def) => res.append(&mut def.validate(options)),
         }
         res
     }

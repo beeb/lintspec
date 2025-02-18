@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     capture, check_params, check_returns, extract_comment, extract_params, parent_contract_name,
-    Definition, Identifier, Validate,
+    Definition, Identifier, Validate, ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
@@ -75,7 +75,7 @@ impl Validate for FunctionDefinition {
         .into())
     }
 
-    fn validate(&self) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {

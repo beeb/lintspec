@@ -8,6 +8,7 @@ use crate::{
 
 use super::{
     capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Validate,
+    ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +18,6 @@ pub struct EnumDefinition {
     pub span: TextRange,
     pub members: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
-    pub check_params: bool,
 }
 
 impl Validate for EnumDefinition {
@@ -60,12 +60,11 @@ impl Validate for EnumDefinition {
             span,
             members,
             natspec,
-            check_params: false,
         }
         .into())
     }
 
-    fn validate(&self) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
@@ -77,7 +76,7 @@ impl Validate for EnumDefinition {
                 message: "missing NatSpec".to_string(),
             }];
         };
-        if self.check_params {
+        if options.enum_params {
             check_params(self, natspec, &self.members, ItemType::Enum)
         } else {
             vec![]

@@ -10,7 +10,7 @@ use slang_solidity::{
 };
 
 use crate::{
-    definitions::find_items,
+    definitions::{find_items, ValidationOptions},
     error::{Error, Result},
     utils::detect_solidity_version,
 };
@@ -47,8 +47,7 @@ pub struct Diagnostic {
 
 pub fn lint(
     path: impl AsRef<Path>,
-    constructor: bool,
-    enum_params: bool,
+    options: &ValidationOptions,
 ) -> Result<Option<FileDiagnostics>> {
     let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
         path: path.as_ref().to_path_buf(),
@@ -69,7 +68,7 @@ pub fn lint(
     let cursor = output.create_tree_cursor();
     let mut diags = Vec::new();
     for mut item in find_items(cursor) {
-        diags.append(&mut item.validate(constructor, enum_params));
+        diags.append(&mut item.validate(options));
     }
     if diags.is_empty() {
         return Ok(None);

@@ -6,7 +6,9 @@ use crate::{
     lint::{Diagnostic, ItemType},
 };
 
-use super::{capture, extract_comment, parent_contract_name, Definition, Validate};
+use super::{
+    capture, extract_comment, parent_contract_name, Definition, Validate, ValidationOptions,
+};
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
@@ -56,7 +58,7 @@ impl Validate for VariableDeclaration {
         .into())
     }
 
-    fn validate(&self) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
