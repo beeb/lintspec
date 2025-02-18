@@ -2,6 +2,7 @@ use derive_more::From;
 use error::ErrorDefinition;
 use event::EventDefinition;
 use function::FunctionDefinition;
+use modifier::ModifierDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
 use structure::StructDefinition;
 use winnow::Parser as _;
@@ -15,6 +16,7 @@ use crate::{
 pub mod error;
 pub mod event;
 pub mod function;
+pub mod modifier;
 pub mod structure;
 
 macro_rules! capture {
@@ -47,6 +49,7 @@ pub enum Definition {
     Error(ErrorDefinition),
     Event(EventDefinition),
     Function(FunctionDefinition),
+    Modifier(ModifierDefinition),
     Struct(StructDefinition),
     NatspecParsingError(Error),
 }
@@ -69,6 +72,7 @@ impl Definition {
             Definition::Error(def) => res.append(&mut def.validate()),
             Definition::Event(def) => res.append(&mut def.validate()),
             Definition::Function(def) => res.append(&mut def.validate()),
+            Definition::Modifier(def) => res.append(&mut def.validate()),
             Definition::Struct(def) => res.append(&mut def.validate()),
         }
         res
