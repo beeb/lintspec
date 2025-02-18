@@ -11,7 +11,7 @@ use winnow::Parser as _;
 use crate::{
     comment::{parse_comment, NatSpec},
     error::{Error, Result},
-    lint::{CheckType, Diagnostic},
+    lint::{Diagnostic, ItemType},
 };
 
 pub mod error;
@@ -67,7 +67,8 @@ impl Definition {
                     _ => (TextRange::default(), error.to_string()),
                 };
                 return vec![Diagnostic {
-                    check_type: CheckType::ParsingError,
+                    item_type: ItemType::ParsingError,
+                    item_name: String::new(),
                     span,
                     message,
                 }];
@@ -179,9 +180,10 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
 }
 
 pub fn check_params(
+    item_name: &str,
     natspec: &NatSpec,
     params: &[Identifier],
-    check_type: CheckType,
+    check_type: ItemType,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
@@ -197,7 +199,8 @@ pub fn check_params(
             }
         };
         res.push(Diagnostic {
-            check_type,
+            item_type: check_type,
+            item_name: item_name.to_string(),
             span: param.span.clone(),
             message,
         })
@@ -206,9 +209,10 @@ pub fn check_params(
 }
 
 pub fn check_returns(
+    item_name: &str,
     natspec: &NatSpec,
     returns: &[Identifier],
-    check_type: CheckType,
+    check_type: ItemType,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     let returns_count = returns.len();
@@ -230,7 +234,8 @@ pub fn check_returns(
             }
         };
         res.push(Diagnostic {
-            check_type,
+            item_type: check_type,
+            item_name: item_name.to_string(),
             span: ret.span.clone(),
             message,
         })

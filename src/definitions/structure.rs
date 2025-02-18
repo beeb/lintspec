@@ -3,7 +3,7 @@ use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 use crate::{
     comment::NatSpec,
     error::Result,
-    lint::{CheckType, Diagnostic},
+    lint::{Diagnostic, ItemType},
 };
 
 use super::{capture, check_params, extract_comment, Definition, Identifier, Validate};
@@ -50,12 +50,13 @@ impl Validate for StructDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                check_type: CheckType::Struct,
+                item_type: ItemType::Struct,
+                item_name: self.name.clone(),
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(natspec, &self.members, CheckType::Struct)
+        check_params(&self.name, natspec, &self.members, ItemType::Struct)
     }
 }
 

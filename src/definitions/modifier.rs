@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{CheckType, Diagnostic},
+    lint::{Diagnostic, ItemType},
 };
 
 use super::{
@@ -55,7 +55,8 @@ impl Validate for ModifierDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                check_type: CheckType::Modifier,
+                item_type: ItemType::Modifier,
+                item_name: self.name.clone(),
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -70,9 +71,10 @@ impl Validate for ModifierDefinition {
         }
         // check params
         res.append(&mut check_params(
+            &self.name,
             natspec,
             &self.params,
-            CheckType::Modifier,
+            ItemType::Modifier,
         ));
         res
     }

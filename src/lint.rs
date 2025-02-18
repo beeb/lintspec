@@ -23,7 +23,7 @@ pub struct FileDiagnostics {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum CheckType {
+pub enum ItemType {
     Enum,
     Error,
     Event,
@@ -36,7 +36,8 @@ pub enum CheckType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
-    pub check_type: CheckType,
+    pub item_type: ItemType,
+    pub item_name: String,
     pub span: TextRange,
     pub message: String,
 }

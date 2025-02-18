@@ -3,7 +3,7 @@ use slang_solidity::cst::{Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{CheckType, Diagnostic},
+    lint::{Diagnostic, ItemType},
 };
 
 use super::{capture, extract_comment, Definition, Validate};
@@ -45,7 +45,8 @@ impl Validate for VariableDeclaration {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                check_type: CheckType::Variable,
+                item_type: ItemType::Variable,
+                item_name: self.name.clone(),
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -64,7 +65,8 @@ impl Validate for VariableDeclaration {
             .any(|n| matches!(n.kind, NatSpecKind::Notice | NatSpecKind::Dev))
         {
             return vec![Diagnostic {
-                check_type: CheckType::Variable,
+                item_type: ItemType::Variable,
+                item_name: self.name.clone(),
                 span: self.span.clone(),
                 message: "missing @notice or @dev".to_string(),
             }];

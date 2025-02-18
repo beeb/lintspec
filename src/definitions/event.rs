@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::NatSpec,
     error::Result,
-    lint::{CheckType, Diagnostic},
+    lint::{Diagnostic, ItemType},
 };
 
 use super::{
@@ -52,11 +52,12 @@ impl Validate for EventDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                check_type: CheckType::Event,
+                item_type: ItemType::Event,
+                item_name: self.name.clone(),
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(natspec, &self.params, CheckType::Event)
+        check_params(&self.name, natspec, &self.params, ItemType::Event)
     }
 }
