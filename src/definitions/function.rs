@@ -13,7 +13,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct FunctionDefinition {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -22,8 +22,8 @@ pub struct FunctionDefinition {
 }
 
 impl Validate for FunctionDefinition {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -62,10 +62,10 @@ impl Validate for FunctionDefinition {
         let params = extract_params(params, NonterminalKind::Parameter);
         let returns = extract_params(returns, NonterminalKind::Parameter);
         let natspec = extract_comment(func.clone(), &returns)?;
-        let contract = parent_contract_name(func);
+        let parent = parent_contract_name(func);
 
         Ok(FunctionDefinition {
-            contract,
+            parent,
             name,
             span,
             params,
@@ -80,7 +80,7 @@ impl Validate for FunctionDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Function,
                 item_name: self.name(),
                 span: self.span(),

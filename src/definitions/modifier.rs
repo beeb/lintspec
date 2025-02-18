@@ -13,7 +13,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct ModifierDefinition {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -21,8 +21,8 @@ pub struct ModifierDefinition {
 }
 
 impl Validate for ModifierDefinition {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -54,10 +54,10 @@ impl Validate for ModifierDefinition {
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let natspec = extract_comment(modifier.clone(), &[])?;
-        let contract = parent_contract_name(modifier);
+        let parent = parent_contract_name(modifier);
 
         Ok(ModifierDefinition {
-            contract,
+            parent,
             name,
             span,
             params,
@@ -71,7 +71,7 @@ impl Validate for ModifierDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Modifier,
                 item_name: self.name(),
                 span: self.span(),

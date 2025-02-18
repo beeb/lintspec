@@ -13,7 +13,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct ErrorDefinition {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -21,8 +21,8 @@ pub struct ErrorDefinition {
 }
 
 impl Validate for ErrorDefinition {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -52,10 +52,10 @@ impl Validate for ErrorDefinition {
         let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(params);
         let natspec = extract_comment(err.clone(), &[])?;
-        let contract = parent_contract_name(err);
+        let parent = parent_contract_name(err);
 
         Ok(ErrorDefinition {
-            contract,
+            parent,
             name,
             span,
             params,
@@ -68,7 +68,7 @@ impl Validate for ErrorDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract.clone(),
+                parent: self.parent.clone(),
                 item_type: ItemType::Error,
                 item_name: self.name.clone(),
                 span: self.span(),

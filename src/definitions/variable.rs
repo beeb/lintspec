@@ -10,15 +10,15 @@ use super::{capture, extract_comment, parent_contract_name, Definition, Validate
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub natspec: Option<NatSpec>,
 }
 
 impl Validate for VariableDeclaration {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -45,10 +45,10 @@ impl Validate for VariableDeclaration {
         let span = variable.text_range();
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(variable.clone(), &[])?;
-        let contract = parent_contract_name(variable);
+        let parent = parent_contract_name(variable);
 
         Ok(VariableDeclaration {
-            contract,
+            parent,
             name,
             span,
             natspec,
@@ -60,7 +60,7 @@ impl Validate for VariableDeclaration {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Variable,
                 item_name: self.name(),
                 span: self.span(),
@@ -81,7 +81,7 @@ impl Validate for VariableDeclaration {
             .any(|n| matches!(n.kind, NatSpecKind::Notice | NatSpecKind::Dev))
         {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Variable,
                 item_name: self.name(),
                 span: self.span(),

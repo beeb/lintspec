@@ -13,7 +13,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct EventDefinition {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -21,8 +21,8 @@ pub struct EventDefinition {
 }
 
 impl Validate for EventDefinition {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -52,10 +52,10 @@ impl Validate for EventDefinition {
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::EventParameter);
         let natspec = extract_comment(event.clone(), &[])?;
-        let contract = parent_contract_name(event);
+        let parent = parent_contract_name(event);
 
         Ok(EventDefinition {
-            contract,
+            parent,
             name,
             span,
             params,
@@ -68,7 +68,7 @@ impl Validate for EventDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Event,
                 item_name: self.name(),
                 span: self.span(),

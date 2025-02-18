@@ -38,7 +38,7 @@ pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
     fn validate(&self) -> Vec<Diagnostic>;
-    fn contract(&self) -> Option<String>;
+    fn parent(&self) -> Option<String>;
     fn name(&self) -> String;
     fn span(&self) -> TextRange;
 }
@@ -74,7 +74,7 @@ impl Definition {
                     _ => (None, TextRange::default(), error.to_string()),
                 };
                 return vec![Diagnostic {
-                    contract,
+                    parent,
                     item_type: ItemType::ParsingError,
                     item_name: String::new(),
                     span,
@@ -208,7 +208,7 @@ pub fn check_params(
             }
         };
         res.push(Diagnostic {
-            contract: item.contract(),
+            parent: item.parent(),
             item_type: check_type,
             item_name: item.name(),
             span: param.span.clone(),
@@ -244,7 +244,7 @@ pub fn check_returns(
             }
         };
         res.push(Diagnostic {
-            contract: item.contract(),
+            parent: item.parent(),
             item_type: check_type,
             item_name: item.name(),
             span: ret.span.clone(),
@@ -256,10 +256,11 @@ pub fn check_returns(
 
 pub fn parent_contract_name(mut cursor: Cursor) -> Option<String> {
     while cursor.go_to_parent() {
-        if let Some(contract) = cursor
-            .node()
-            .as_nonterminal_with_kind(NonterminalKind::ContractDefinition)
-        {
+        if let Some(contract) = cursor.node().as_nonterminal_with_kinds(&[
+            NonterminalKind::ContractDefinition,
+            NonterminalKind::InterfaceDefinition,
+            NonterminalKind::LibraryDefinition,
+        ]) {
             for child in &contract.children {
                 if child.is_terminal_with_kind(TerminalKind::Identifier) {
                     return Some(child.node.unparse().trim().to_string());

@@ -12,7 +12,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
-    pub contract: Option<String>,
+    pub parent: Option<String>,
     pub name: String,
     pub span: TextRange,
     pub members: Vec<Identifier>,
@@ -20,8 +20,8 @@ pub struct StructDefinition {
 }
 
 impl Validate for StructDefinition {
-    fn contract(&self) -> Option<String> {
-        self.contract.clone()
+    fn parent(&self) -> Option<String> {
+        self.parent.clone()
     }
 
     fn name(&self) -> String {
@@ -51,10 +51,10 @@ impl Validate for StructDefinition {
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(members)?;
         let natspec = extract_comment(structure.clone(), &[])?;
-        let contract = parent_contract_name(structure);
+        let parent = parent_contract_name(structure);
 
         Ok(StructDefinition {
-            contract,
+            parent,
             name,
             span,
             members,
@@ -67,7 +67,7 @@ impl Validate for StructDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                contract: self.contract(),
+                parent: self.parent(),
                 item_type: ItemType::Struct,
                 item_name: self.name(),
                 span: self.span(),
