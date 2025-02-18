@@ -85,10 +85,21 @@ impl Definition {
 
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let mut out = Vec::new();
-    for m in cursor.query(vec![FunctionDefinition::query(), StructDefinition::query()]) {
+    for m in cursor.query(vec![
+        ErrorDefinition::query(),
+        EventDefinition::query(),
+        FunctionDefinition::query(),
+        ModifierDefinition::query(),
+        StructDefinition::query(),
+        VariableDeclaration::query(),
+    ]) {
         let def = match m.query_number {
-            0 => FunctionDefinition::extract(m),
-            1 => StructDefinition::extract(m),
+            0 => ErrorDefinition::extract(m),
+            1 => EventDefinition::extract(m),
+            2 => FunctionDefinition::extract(m),
+            3 => ModifierDefinition::extract(m),
+            4 => StructDefinition::extract(m),
+            5 => VariableDeclaration::extract(m),
             _ => unreachable!(),
         }
         .unwrap_or_else(Definition::NatspecParsingError);
