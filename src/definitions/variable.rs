@@ -30,7 +30,7 @@ impl Validate for VariableDeclaration {
         let name = capture!(m, "variable_name");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(variable, &[])?;
 
         Ok(VariableDeclaration {

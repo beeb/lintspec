@@ -45,7 +45,7 @@ impl Validate for FunctionDefinition {
         let returns = capture!(m, "function_returns");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let returns = extract_params(returns, NonterminalKind::Parameter);
         let natspec = extract_comment(func, &returns)?;

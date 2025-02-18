@@ -35,7 +35,7 @@ impl Validate for EventDefinition {
         let params = capture!(m, "event_params");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::EventParameter);
         let natspec = extract_comment(event, &[])?;
 

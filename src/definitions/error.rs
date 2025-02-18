@@ -35,7 +35,7 @@ impl Validate for ErrorDefinition {
         let params = capture!(m, "err_params");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(params);
         let natspec = extract_comment(err, &[])?;
 

@@ -33,7 +33,7 @@ impl Validate for StructDefinition {
         let members = capture!(m, "struct_members");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(members)?;
         let natspec = extract_comment(structure, &[])?;
 
@@ -72,7 +72,7 @@ fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
     for m in cursor.query(vec![query]) {
         let member_name = capture!(m, "member_name");
         out.push(Identifier {
-            name: Some(member_name.node().unparse()),
+            name: Some(member_name.node().unparse().trim().to_string()),
             span: member_name.text_range(),
         })
     }

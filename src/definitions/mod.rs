@@ -123,7 +123,7 @@ pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> 
             }
             found = true;
             out.push(Identifier {
-                name: Some(sub_cursor.node().unparse()),
+                name: Some(sub_cursor.node().unparse().trim().to_string()),
                 span: sub_cursor.text_range(),
             });
         }
@@ -172,7 +172,7 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
             }
         }
         out.push(Identifier {
-            name: Some(cursor.node().unparse()),
+            name: Some(cursor.node().unparse().trim().to_string()),
             span: cursor.text_range(),
         })
     }

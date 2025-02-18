@@ -37,7 +37,7 @@ impl Validate for ModifierDefinition {
         let params = capture!(m, "modifier_params");
 
         let span = name.text_range();
-        let name = name.node().unparse();
+        let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let natspec = extract_comment(modifier, &[])?;
 
