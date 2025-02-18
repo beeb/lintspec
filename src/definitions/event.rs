@@ -64,7 +64,7 @@ impl Validate for EventDefinition {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, _: &ValidationOptions) -> Vec<Diagnostic> {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {

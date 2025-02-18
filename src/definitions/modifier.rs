@@ -66,7 +66,7 @@ impl Validate for ModifierDefinition {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, _: &ValidationOptions) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {

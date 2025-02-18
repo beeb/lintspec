@@ -7,7 +7,8 @@ use crate::{
 };
 
 use super::{
-    capture, extract_comment, parent_contract_name, Definition, Parent, Validate, ValidationOptions,
+    capture, extract_comment, get_attributes, parent_contract_name, Attributes, Definition, Parent,
+    Validate, ValidationOptions, Visibility,
 };
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,15 @@ pub struct VariableDeclaration {
     pub name: String,
     pub span: TextRange,
     pub natspec: Option<NatSpec>,
+    pub attributes: Attributes,
+}
+
+impl VariableDeclaration {
+    fn requires_inheritdoc(&self) -> bool {
+        let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
+        let public = self.attributes.visibility == Visibility::Public;
+        parent_is_contract && public
+    }
 }
 
 impl Validate for VariableDeclaration {
@@ -34,6 +44,7 @@ impl Validate for VariableDeclaration {
     fn query() -> Query {
         Query::parse(
             "@variable [StateVariableDefinition
+            @variable_attr attributes:[StateVariableAttributes]
             @variable_name name:[Identifier]
         ]",
         )
@@ -42,6 +53,7 @@ impl Validate for VariableDeclaration {
 
     fn extract(m: QueryMatch) -> Result<Definition> {
         let variable = capture!(m, "variable");
+        let attributes = capture!(m, "variable_attr");
         let name = capture!(m, "variable_name");
 
         let span = variable.text_range();
@@ -54,6 +66,7 @@ impl Validate for VariableDeclaration {
             name,
             span,
             natspec,
+            attributes: get_attributes(attributes),
         }
         .into())
     }
@@ -77,6 +90,15 @@ impl Validate for VariableDeclaration {
             .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
         {
             return vec![];
+        } else if options.inheritdoc && self.requires_inheritdoc() {
+            return vec![Diagnostic {
+                parent: self.parent(),
+                item_type: ItemType::Variable,
+                item_name: self.name(),
+                item_span: self.span(),
+                span: self.span(),
+                message: "@inheritdoc is missing".to_string(),
+            }];
         }
         if !natspec
             .items
