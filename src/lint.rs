@@ -46,7 +46,6 @@ pub fn lint(path: impl AsRef<Path>) -> Result<FileDiagnostics> {
     for item in find_items(cursor) {
         diags.append(&mut item.validate());
     }
-    println!("{diags:#?}");
     Ok(FileDiagnostics {
         path: path.as_ref().to_path_buf(),
         diags,
