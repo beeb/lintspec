@@ -65,9 +65,9 @@ impl Definition {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
-                let (contract, span, message) = match error {
+                let (parent, span, message) = match error {
                     Error::NatspecParsingError {
-                        contract,
+                        parent: contract,
                         span,
                         message,
                     } => (contract.clone(), span.clone(), message.clone()),
@@ -157,7 +157,7 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
             parse_comment
                 .parse(comment)
                 .map_err(|e| Error::NatspecParsingError {
-                    contract: parent_contract_name(cursor.clone()),
+                    parent: parent_contract_name(cursor.clone()),
                     span: cursor.text_range(),
                     message: e.to_string(),
                 })?

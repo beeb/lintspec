@@ -22,7 +22,7 @@ pub enum Error {
     /// Error during parsing of a NatSpec comment
     #[error("error parsing a natspec comment: {message}")]
     NatspecParsingError {
-        contract: Option<String>,
+        parent: Option<String>,
         span: TextRange,
         message: String,
     },
