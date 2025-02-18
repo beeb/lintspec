@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use slang_solidity::cst::TextRange;
 
 /// The result of a lintspec operation
@@ -26,8 +28,8 @@ pub enum Error {
     },
 
     /// IO error
-    #[error("IO error: {0}")]
-    IOError(#[from] std::io::Error),
+    #[error("IO error for {path:?}: {err}")]
+    IOError { path: PathBuf, err: std::io::Error },
 
     /// An unspecified error happening during parsing
     #[error("unknown error while parsing Solidity")]

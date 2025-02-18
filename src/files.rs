@@ -5,12 +5,17 @@ use std::{
 
 use ignore::{types::TypesBuilder, WalkBuilder, WalkState};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<PathBuf>> {
     let exclude = exclude
         .iter()
-        .map(|p| dunce::canonicalize(p.as_ref()).map_err(Into::into))
+        .map(|p| {
+            dunce::canonicalize(p.as_ref()).map_err(|err| Error::IOError {
+                path: p.as_ref().to_path_buf(),
+                err,
+            })
+        })
         .collect::<Result<Vec<_>>>()?;
     let exclude = Arc::new(exclude.iter().map(|p| p.as_path()).collect::<Vec<_>>());
 
@@ -22,7 +27,10 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<
         .expect("types builder should build");
     let mut walker: Option<WalkBuilder> = None;
     for path in paths {
-        let path = dunce::canonicalize(path.as_ref())?;
+        let path = dunce::canonicalize(path.as_ref()).map_err(|err| Error::IOError {
+            path: path.as_ref().to_path_buf(),
+            err,
+        })?;
         if let Some(ext) = path.extension() {
             // if users submit paths to non-solidity files, we ignore them
             if ext != "sol" {

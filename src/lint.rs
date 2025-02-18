@@ -44,7 +44,10 @@ pub struct Diagnostic {
 }
 
 pub fn lint(path: impl AsRef<Path>) -> Result<Option<FileDiagnostics>> {
-    let contents = fs::read_to_string(&path)?;
+    let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
+        path: path.as_ref().to_path_buf(),
+        err,
+    })?;
     let solidity_version = detect_solidity_version(&contents)?;
 
     let parser = Parser::create(solidity_version).expect("parser should initialize");
