@@ -45,7 +45,11 @@ pub struct Diagnostic {
     pub message: String,
 }
 
-pub fn lint(path: impl AsRef<Path>, constructor: bool) -> Result<Option<FileDiagnostics>> {
+pub fn lint(
+    path: impl AsRef<Path>,
+    constructor: bool,
+    enum_params: bool,
+) -> Result<Option<FileDiagnostics>> {
     let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
         path: path.as_ref().to_path_buf(),
         err,
@@ -64,8 +68,8 @@ pub fn lint(path: impl AsRef<Path>, constructor: bool) -> Result<Option<FileDiag
 
     let cursor = output.create_tree_cursor();
     let mut diags = Vec::new();
-    for item in find_items(cursor) {
-        diags.append(&mut item.validate(constructor));
+    for mut item in find_items(cursor) {
+        diags.append(&mut item.validate(constructor, enum_params));
     }
     if diags.is_empty() {
         return Ok(None);

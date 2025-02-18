@@ -17,6 +17,7 @@ pub struct EnumDefinition {
     pub span: TextRange,
     pub members: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
+    pub check_params: bool,
 }
 
 impl Validate for EnumDefinition {
@@ -59,6 +60,7 @@ impl Validate for EnumDefinition {
             span,
             members,
             natspec,
+            check_params: false,
         }
         .into())
     }
@@ -75,7 +77,11 @@ impl Validate for EnumDefinition {
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(self, natspec, &self.members, ItemType::Enum)
+        if self.check_params {
+            check_params(self, natspec, &self.members, ItemType::Enum)
+        } else {
+            vec![]
+        }
     }
 }
 

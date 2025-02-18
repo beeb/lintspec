@@ -67,7 +67,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn validate(&self, constructor: bool) -> Vec<Diagnostic> {
+    pub fn validate(&mut self, constructor: bool, enum_params: bool) -> Vec<Diagnostic> {
         let mut res = Vec::new();
         match self {
             Definition::NatspecParsingError(error) => {
@@ -93,7 +93,12 @@ impl Definition {
                     res.append(&mut def.validate())
                 }
             }
-            Definition::Enumeration(def) => res.append(&mut def.validate()),
+            Definition::Enumeration(def) => {
+                if enum_params {
+                    def.check_params = true;
+                }
+                res.append(&mut def.validate())
+            }
             Definition::Error(def) => res.append(&mut def.validate()),
             Definition::Event(def) => res.append(&mut def.validate()),
             Definition::Function(def) => res.append(&mut def.validate()),
