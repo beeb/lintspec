@@ -16,7 +16,8 @@ use crate::{
     utils::detect_solidity_version,
 };
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, thiserror::Error)]
+#[error("Error")]
 pub struct FileDiagnostics {
     pub path: PathBuf,
     #[serde(skip_serializing)]

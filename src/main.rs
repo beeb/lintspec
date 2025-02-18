@@ -1,3 +1,5 @@
+use std::env;
+
 use anyhow::{bail, Result};
 use lintspec::{
     config::read_config, definitions::ValidationOptions, files::find_sol_files, lint::lint,
@@ -32,8 +34,9 @@ fn main() -> Result<()> {
     if config.json {
         eprint!("{}", serde_json::to_string_pretty(&diagnostics)?);
     } else {
+        let cwd = dunce::canonicalize(env::current_dir()?)?;
         for file_diags in diagnostics {
-            print_reports(file_diags)?;
+            print_reports(&cwd, file_diags);
         }
     }
     std::process::exit(1);
