@@ -9,7 +9,7 @@ use winnow::Parser as _;
 use crate::{
     comment::{parse_comment, NatSpec},
     error::{Error, Result},
-    lint::Diagnostic,
+    lint::{CheckType, Diagnostic},
 };
 
 pub mod error;
@@ -60,7 +60,11 @@ impl Definition {
                     Error::NatspecParsingError { span, message } => (span.clone(), message.clone()),
                     _ => (TextRange::default(), error.to_string()),
                 };
-                return vec![Diagnostic { span, message }];
+                return vec![Diagnostic {
+                    check_type: CheckType::ParsingError,
+                    span,
+                    message,
+                }];
             }
             Definition::Error(def) => res.append(&mut def.validate()),
             Definition::Event(def) => res.append(&mut def.validate()),
@@ -142,7 +146,11 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     out
 }
 
-pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
+pub fn check_params(
+    natspec: &NatSpec,
+    params: &[Identifier],
+    check_type: CheckType,
+) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
         let Some(name) = &param.name else {
@@ -157,6 +165,7 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
             }
         };
         res.push(Diagnostic {
+            check_type,
             span: param.span.clone(),
             message,
         })
@@ -164,7 +173,11 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
     res
 }
 
-pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
+pub fn check_returns(
+    natspec: &NatSpec,
+    returns: &[Identifier],
+    check_type: CheckType,
+) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     let returns_count = returns.len();
     for (idx, ret) in returns.iter().enumerate() {
@@ -185,6 +198,7 @@ pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnosti
             }
         };
         res.push(Diagnostic {
+            check_type,
             span: ret.span.clone(),
             message,
         })

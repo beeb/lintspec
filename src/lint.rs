@@ -21,8 +21,22 @@ pub struct FileDiagnostics {
     pub diags: Vec<Diagnostic>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CheckType {
+    Enum,
+    Error,
+    Event,
+    Function,
+    Modifier,
+    ParsingError,
+    Struct,
+    Variable,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
+    pub check_type: CheckType,
     pub span: TextRange,
     pub message: String,
 }

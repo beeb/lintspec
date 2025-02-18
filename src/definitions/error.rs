@@ -1,6 +1,10 @@
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
-use crate::{comment::NatSpec, error::Result, lint::Diagnostic};
+use crate::{
+    comment::NatSpec,
+    error::Result,
+    lint::{CheckType, Diagnostic},
+};
 
 use super::{
     capture, check_params, extract_comment, extract_identifiers, Definition, Identifier, Validate,
@@ -47,10 +51,11 @@ impl Validate for ErrorDefinition {
     fn validate(&self) -> Vec<Diagnostic> {
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
+                check_type: CheckType::Error,
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
         };
-        check_params(natspec, &self.members)
+        check_params(natspec, &self.members, CheckType::Error)
     }
 }

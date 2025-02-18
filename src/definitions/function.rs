@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::Diagnostic,
+    lint::{CheckType, Diagnostic},
 };
 
 use super::{
@@ -65,6 +65,7 @@ impl Validate for FunctionDefinition {
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
+                check_type: CheckType::Function,
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -82,8 +83,16 @@ impl Validate for FunctionDefinition {
             return vec![];
         }
         // check params and returns
-        res.append(&mut check_params(natspec, &self.params));
-        res.append(&mut check_returns(natspec, &self.returns));
+        res.append(&mut check_params(
+            natspec,
+            &self.params,
+            CheckType::Function,
+        ));
+        res.append(&mut check_returns(
+            natspec,
+            &self.returns,
+            CheckType::Function,
+        ));
         res
     }
 }
