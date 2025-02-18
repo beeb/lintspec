@@ -51,6 +51,7 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<
         .parents(false)
         .git_global(false)
         .git_exclude(false)
+        .add_custom_ignore_filename(".nsignore")
         .types(types);
     let walker = walker.build_parallel();
 
