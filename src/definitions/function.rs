@@ -5,11 +5,12 @@ use slang_solidity::cst::{Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{Definition, Diagnostic},
+    lint::Diagnostic,
 };
 
 use super::{
-    capture, check_params, check_returns, extract_comment, extract_params, Identifier, Validate,
+    capture, check_params, check_returns, extract_comment, extract_params, Definition, Identifier,
+    Validate,
 };
 
 #[derive(Debug, Clone)]

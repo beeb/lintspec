@@ -2,13 +2,9 @@ use std::path::Path;
 
 use slang_solidity::cst::{Query, QueryMatch};
 
-use crate::{
-    comment::NatSpec,
-    error::Result,
-    lint::{Definition, Diagnostic},
-};
+use crate::{comment::NatSpec, error::Result, lint::Diagnostic};
 
-use super::{capture, extract_comment, extract_identifiers, Identifier, Validate};
+use super::{capture, extract_comment, extract_identifiers, Definition, Identifier, Validate};
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {

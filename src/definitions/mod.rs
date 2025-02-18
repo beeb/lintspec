@@ -1,12 +1,15 @@
 use std::path::Path;
 
+use derive_more::From;
+use function::FunctionDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
+use structure::StructDefinition;
 use winnow::Parser as _;
 
 use crate::{
     comment::{parse_comment, NatSpec},
     error::{Error, Result},
-    lint::{Definition, Diagnostic},
+    lint::Diagnostic,
 };
 
 pub mod function;
@@ -35,6 +38,50 @@ pub trait Validate {
 pub struct Identifier {
     pub name: Option<String>,
     pub span: TextRange,
+}
+
+#[derive(Debug, From)]
+pub enum Definition {
+    Function(FunctionDefinition),
+    Struct(StructDefinition),
+    NatspecParsingError(Error),
+}
+
+impl Definition {
+    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
+        let path = file_path.as_ref().to_path_buf();
+        let mut res = Vec::new();
+        match self {
+            Definition::NatspecParsingError(error) => {
+                let (span, message) = match error {
+                    Error::NatspecParsingError { span, message } => (span.clone(), message.clone()),
+                    _ => (TextRange::default(), error.to_string()),
+                };
+                return vec![Diagnostic {
+                    path,
+                    span,
+                    message,
+                }];
+            }
+            Definition::Function(def) => res.append(&mut def.validate(&path)),
+            Definition::Struct(def) => res.append(&mut def.validate(&path)),
+        }
+        res
+    }
+}
+
+pub fn find_items(cursor: Cursor) -> Vec<Definition> {
+    let mut out = Vec::new();
+    for m in cursor.query(vec![FunctionDefinition::query(), StructDefinition::query()]) {
+        let def = match m.query_number {
+            0 => FunctionDefinition::extract(m),
+            1 => StructDefinition::extract(m),
+            _ => unreachable!(),
+        }
+        .unwrap_or_else(Definition::NatspecParsingError);
+        out.push(def);
+    }
+    out
 }
 
 pub fn extract_params(cursor: Cursor) -> Vec<Identifier> {
