@@ -27,7 +27,7 @@ pub struct Diagnostic {
     pub message: String,
 }
 
-pub fn lint(path: impl AsRef<Path>) -> Result<FileDiagnostics> {
+pub fn lint(path: impl AsRef<Path>) -> Result<Option<FileDiagnostics>> {
     let contents = fs::read_to_string(&path)?;
     let solidity_version = detect_solidity_version(&contents)?;
 
@@ -46,8 +46,11 @@ pub fn lint(path: impl AsRef<Path>) -> Result<FileDiagnostics> {
     for item in find_items(cursor) {
         diags.append(&mut item.validate());
     }
-    Ok(FileDiagnostics {
+    if diags.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(FileDiagnostics {
         path: path.as_ref().to_path_buf(),
         diags,
-    })
+    }))
 }

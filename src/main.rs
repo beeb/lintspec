@@ -12,12 +12,16 @@ fn main() -> Result<()> {
         bail!("no Solidity file found, nothing to analyze");
     }
 
-    let diagnostics = paths
+    let mut diagnostics = paths
         .par_iter()
         .map(|p| lint(p).map_err(Into::into))
         .collect::<Result<Vec<_>>>()?;
+    diagnostics.retain(|p| p.is_some());
 
-    println!("{diagnostics:?}");
-
-    Ok(())
+    println!("{diagnostics:#?}");
+    if diagnostics.is_empty() {
+        return Ok(());
+    }
+    println!("Some files contain errors");
+    std::process::exit(1);
 }
