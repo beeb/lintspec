@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
@@ -57,7 +59,7 @@ impl Validate for FunctionDefinition {
         let params = capture!(m, "function_params");
         let returns = capture!(m, "function_returns");
 
-        let span = params.text_range();
+        let span = name.text_range().start..returns.text_range().end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let returns = extract_params(returns, NonterminalKind::Parameter);
