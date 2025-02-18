@@ -1,4 +1,4 @@
-use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{
     comment::{NatSpec, NatSpecKind},
@@ -6,56 +6,46 @@ use crate::{
     lint::{CheckType, Diagnostic},
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_params, Definition, Identifier, Validate,
-};
+use super::{capture, extract_comment, Definition, Validate};
 
 #[derive(Debug, Clone)]
-pub struct ModifierDefinition {
+pub struct VariableDeclaration {
     pub name: String,
     pub span: TextRange,
-    pub params: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
 }
 
-impl Validate for ModifierDefinition {
+impl Validate for VariableDeclaration {
     fn query() -> Query {
         Query::parse(
-            "@modifier [ModifierDefinition
-            @modifier_name name:[Identifier]
-            parameters:[ParametersDeclaration
-                @modifier_params parameters:[Parameters]
-            ]
+            "@variable [StateVariableDefinition
+            @variable_name name:[Identifier]
         ]",
         )
         .expect("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let modifier = capture!(m, "modifier");
-        let name = capture!(m, "modifier_name");
-        let params = capture!(m, "modifier_params");
+        let variable = capture!(m, "variable");
+        let name = capture!(m, "variable_name");
 
         let span = name.text_range();
         let name = name.node().unparse();
-        let params = extract_params(params, NonterminalKind::Parameter);
-        let natspec = extract_comment(modifier, &[])?;
+        let natspec = extract_comment(variable, &[])?;
 
-        Ok(ModifierDefinition {
+        Ok(VariableDeclaration {
             name,
             span,
-            params,
             natspec,
         }
         .into())
     }
 
     fn validate(&self) -> Vec<Diagnostic> {
-        let mut res = Vec::new();
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             return vec![Diagnostic {
-                check_type: CheckType::Modifier,
+                check_type: CheckType::Variable,
                 span: self.span.clone(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -68,12 +58,17 @@ impl Validate for ModifierDefinition {
         {
             return vec![];
         }
-        // check params
-        res.append(&mut check_params(
-            natspec,
-            &self.params,
-            CheckType::Modifier,
-        ));
-        res
+        if !natspec
+            .items
+            .iter()
+            .any(|n| matches!(n.kind, NatSpecKind::Notice | NatSpecKind::Dev))
+        {
+            return vec![Diagnostic {
+                check_type: CheckType::Variable,
+                span: self.span.clone(),
+                message: "missing @notice or @dev".to_string(),
+            }];
+        }
+        vec![]
     }
 }

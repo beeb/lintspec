@@ -5,6 +5,7 @@ use function::FunctionDefinition;
 use modifier::ModifierDefinition;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
 use structure::StructDefinition;
+use variable::VariableDeclaration;
 use winnow::Parser as _;
 
 use crate::{
@@ -18,6 +19,7 @@ pub mod event;
 pub mod function;
 pub mod modifier;
 pub mod structure;
+pub mod variable;
 
 macro_rules! capture {
     ($m:ident, $name:expr) => {
@@ -51,6 +53,7 @@ pub enum Definition {
     Function(FunctionDefinition),
     Modifier(ModifierDefinition),
     Struct(StructDefinition),
+    Variable(VariableDeclaration),
     NatspecParsingError(Error),
 }
 
@@ -74,6 +77,7 @@ impl Definition {
             Definition::Function(def) => res.append(&mut def.validate()),
             Definition::Modifier(def) => res.append(&mut def.validate()),
             Definition::Struct(def) => res.append(&mut def.validate()),
+            Definition::Variable(def) => res.append(&mut def.validate()),
         }
         res
     }
