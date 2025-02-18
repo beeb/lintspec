@@ -67,16 +67,17 @@ impl Definition {
             Definition::NatspecParsingError(error) => {
                 let (parent, span, message) = match error {
                     Error::NatspecParsingError {
-                        parent: contract,
+                        parent,
                         span,
                         message,
-                    } => (contract.clone(), span.clone(), message.clone()),
+                    } => (parent.clone(), span.clone(), message.clone()),
                     _ => (None, TextRange::default(), error.to_string()),
                 };
                 return vec![Diagnostic {
                     parent,
                     item_type: ItemType::ParsingError,
                     item_name: String::new(),
+                    item_span: span.clone(),
                     span,
                     message,
                 }];
@@ -211,6 +212,7 @@ pub fn check_params(
             parent: item.parent(),
             item_type: check_type,
             item_name: item.name(),
+            item_span: item.span(),
             span: param.span.clone(),
             message,
         })
@@ -247,6 +249,7 @@ pub fn check_returns(
             parent: item.parent(),
             item_type: check_type,
             item_name: item.name(),
+            item_span: item.span(),
             span: ret.span.clone(),
             message,
         })

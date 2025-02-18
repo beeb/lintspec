@@ -39,6 +39,7 @@ pub struct Diagnostic {
     pub parent: Option<String>,
     pub item_type: ItemType,
     pub item_name: String,
+    pub item_span: TextRange,
     pub span: TextRange,
     pub message: String,
 }

@@ -71,6 +71,7 @@ impl Validate for EventDefinition {
                 parent: self.parent(),
                 item_type: ItemType::Event,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];

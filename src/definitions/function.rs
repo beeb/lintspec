@@ -83,6 +83,7 @@ impl Validate for FunctionDefinition {
                 parent: self.parent(),
                 item_type: ItemType::Function,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];

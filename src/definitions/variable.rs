@@ -63,6 +63,7 @@ impl Validate for VariableDeclaration {
                 parent: self.parent(),
                 item_type: ItemType::Variable,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];
@@ -84,6 +85,7 @@ impl Validate for VariableDeclaration {
                 parent: self.parent(),
                 item_type: ItemType::Variable,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing @notice or @dev".to_string(),
             }];

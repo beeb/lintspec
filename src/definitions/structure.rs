@@ -70,6 +70,7 @@ impl Validate for StructDefinition {
                 parent: self.parent(),
                 item_type: ItemType::Struct,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];

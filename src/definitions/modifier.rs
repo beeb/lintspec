@@ -74,6 +74,7 @@ impl Validate for ModifierDefinition {
                 parent: self.parent(),
                 item_type: ItemType::Modifier,
                 item_name: self.name(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];

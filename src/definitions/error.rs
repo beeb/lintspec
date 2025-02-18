@@ -71,6 +71,7 @@ impl Validate for ErrorDefinition {
                 parent: self.parent.clone(),
                 item_type: ItemType::Error,
                 item_name: self.name.clone(),
+                item_span: self.span(),
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             }];
