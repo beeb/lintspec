@@ -158,7 +158,7 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
 
 pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    let returns_count = natspec.count_all_returns();
+    let returns_count = returns.len();
     for (idx, ret) in returns.iter().enumerate() {
         let message = match &ret.name {
             Some(name) => match natspec.count_return(ret) {

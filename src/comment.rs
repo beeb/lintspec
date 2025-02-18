@@ -51,13 +51,6 @@ impl NatSpec {
             })
             .count()
     }
-
-    pub fn count_all_returns(&self) -> usize {
-        self.items
-            .iter()
-            .filter(|n| matches!(&n.kind, NatSpecKind::Return { .. }))
-            .count()
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
