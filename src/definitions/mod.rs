@@ -242,3 +242,19 @@ pub fn check_returns(
     }
     res
 }
+
+pub fn parent_contract_name(mut cursor: Cursor) -> Option<String> {
+    while cursor.go_to_parent() {
+        if let Some(contract) = cursor
+            .node()
+            .as_nonterminal_with_kind(NonterminalKind::ContractDefinition)
+        {
+            for child in &contract.children {
+                if child.is_terminal_with_kind(TerminalKind::Identifier) {
+                    return Some(child.node.unparse().trim().to_string());
+                }
+            }
+        }
+    }
+    None
+}
