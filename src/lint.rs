@@ -10,7 +10,7 @@ use slang_solidity::{
 };
 
 use crate::{
-    definitions::{find_items, ValidationOptions},
+    definitions::{find_items, Parent, ValidationOptions},
     error::{Error, Result},
     utils::detect_solidity_version,
 };
@@ -37,7 +37,7 @@ pub enum ItemType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
-    pub parent: Option<String>,
+    pub parent: Option<Parent>,
     pub item_type: ItemType,
     pub item_name: String,
     pub item_span: TextRange,

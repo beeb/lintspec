@@ -14,10 +14,7 @@ fn main() -> Result<()> {
         bail!("no Solidity file found, nothing to analyze");
     }
 
-    let options = ValidationOptions {
-        constructor: config.constructor,
-        enum_params: config.enum_params,
-    };
+    let options: ValidationOptions = (&config).into();
     let mut diagnostics = paths
         .par_iter()
         .map(|p| lint(p, &options).map_err(Into::into))

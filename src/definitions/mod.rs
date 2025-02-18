@@ -1,10 +1,11 @@
 use constructor::ConstructorDefinition;
-use derive_more::From;
+use derive_more::{Display, From};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
 use function::FunctionDefinition;
 use modifier::ModifierDefinition;
+use serde::Serialize;
 use slang_solidity::cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange};
 use structure::StructDefinition;
 use variable::VariableDeclaration;
@@ -12,6 +13,7 @@ use winnow::Parser as _;
 
 use crate::{
     comment::{parse_comment, NatSpec},
+    config::Config,
     error::{Error, Result},
     lint::{Diagnostic, ItemType},
 };
@@ -40,15 +42,26 @@ pub(crate) use capture;
 
 #[derive(Debug, Clone, Default)]
 pub struct ValidationOptions {
+    pub inheritdoc: bool,
     pub constructor: bool,
     pub enum_params: bool,
+}
+
+impl From<&Config> for ValidationOptions {
+    fn from(value: &Config) -> Self {
+        Self {
+            inheritdoc: value.inheritdoc,
+            constructor: value.constructor,
+            enum_params: value.enum_params,
+        }
+    }
 }
 
 pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
     fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic>;
-    fn parent(&self) -> Option<String>;
+    fn parent(&self) -> Option<Parent>;
     fn name(&self) -> String;
     fn span(&self) -> TextRange;
 }
@@ -57,6 +70,29 @@ pub trait Validate {
 pub struct Identifier {
     pub name: Option<String>,
     pub span: TextRange,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Visibility {
+    External,
+    #[default]
+    Internal,
+    Private,
+    Public,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Attributes {
+    pub visibility: Visibility,
+    pub r#override: bool,
+}
+
+#[derive(Debug, Clone, Display, Serialize)]
+#[serde(untagged)]
+pub enum Parent {
+    Contract(String),
+    Interface(String),
+    Library(String),
 }
 
 #[derive(Debug, From)]
@@ -275,19 +311,52 @@ pub fn check_returns(
     res
 }
 
-pub fn parent_contract_name(mut cursor: Cursor) -> Option<String> {
+pub fn parent_contract_name(mut cursor: Cursor) -> Option<Parent> {
     while cursor.go_to_parent() {
-        if let Some(contract) = cursor.node().as_nonterminal_with_kinds(&[
+        if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
             NonterminalKind::ContractDefinition,
             NonterminalKind::InterfaceDefinition,
             NonterminalKind::LibraryDefinition,
         ]) {
-            for child in &contract.children {
+            for child in &parent.children {
                 if child.is_terminal_with_kind(TerminalKind::Identifier) {
-                    return Some(child.node.unparse().trim().to_string());
+                    let name = child.node.unparse().trim().to_string();
+                    return Some(match parent.kind {
+                        NonterminalKind::ContractDefinition => Parent::Contract(name),
+                        NonterminalKind::InterfaceDefinition => Parent::Interface(name),
+                        NonterminalKind::LibraryDefinition => Parent::Library(name),
+                        _ => unreachable!(),
+                    });
                 }
             }
         }
     }
     None
+}
+
+pub fn get_attributes(cursor: Cursor) -> Attributes {
+    let mut cursor = cursor.spawn();
+    let mut out = Attributes::default();
+    while cursor.go_to_next_terminal_with_kinds(&[
+        TerminalKind::ExternalKeyword,
+        TerminalKind::InternalKeyword,
+        TerminalKind::PrivateKeyword,
+        TerminalKind::PublicKeyword,
+        TerminalKind::OverrideKeyword,
+    ]) {
+        match cursor
+            .node()
+            .as_terminal()
+            .expect("should be terminal kind")
+            .kind
+        {
+            TerminalKind::ExternalKeyword => out.visibility = Visibility::External,
+            TerminalKind::InternalKeyword => out.visibility = Visibility::Internal,
+            TerminalKind::PrivateKeyword => out.visibility = Visibility::Private,
+            TerminalKind::PublicKeyword => out.visibility = Visibility::Public,
+            TerminalKind::OverrideKeyword => out.r#override = true,
+            _ => unreachable!(),
+        }
+    }
+    out
 }

@@ -7,13 +7,13 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Validate,
-    ValidationOptions,
+    capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Parent,
+    Validate, ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
-    pub parent: Option<String>,
+    pub parent: Option<Parent>,
     pub name: String,
     pub span: TextRange,
     pub members: Vec<Identifier>,
@@ -21,7 +21,7 @@ pub struct StructDefinition {
 }
 
 impl Validate for StructDefinition {
-    fn parent(&self) -> Option<String> {
+    fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
 

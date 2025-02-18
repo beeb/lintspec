@@ -7,19 +7,19 @@ use crate::{
 };
 
 use super::{
-    capture, extract_comment, parent_contract_name, Definition, Validate, ValidationOptions,
+    capture, extract_comment, parent_contract_name, Definition, Parent, Validate, ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
-    pub parent: Option<String>,
+    pub parent: Option<Parent>,
     pub name: String,
     pub span: TextRange,
     pub natspec: Option<NatSpec>,
 }
 
 impl Validate for VariableDeclaration {
-    fn parent(&self) -> Option<String> {
+    fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
 

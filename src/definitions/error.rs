@@ -8,12 +8,12 @@ use crate::{
 
 use super::{
     capture, check_params, extract_comment, extract_identifiers, parent_contract_name, Definition,
-    Identifier, Validate, ValidationOptions,
+    Identifier, Parent, Validate, ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
 pub struct ErrorDefinition {
-    pub parent: Option<String>,
+    pub parent: Option<Parent>,
     pub name: String,
     pub span: TextRange,
     pub params: Vec<Identifier>,
@@ -21,7 +21,7 @@ pub struct ErrorDefinition {
 }
 
 impl Validate for ErrorDefinition {
-    fn parent(&self) -> Option<String> {
+    fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
 

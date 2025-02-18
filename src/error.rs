@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use slang_solidity::cst::TextRange;
 
+use crate::definitions::Parent;
+
 /// The result of a lintspec operation
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -22,7 +24,7 @@ pub enum Error {
     /// Error during parsing of a NatSpec comment
     #[error("error parsing a natspec comment: {message}")]
     NatspecParsingError {
-        parent: Option<String>,
+        parent: Option<Parent>,
         span: TextRange,
         message: String,
     },

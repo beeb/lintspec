@@ -8,19 +8,19 @@ use crate::{
 
 use super::{
     capture, check_params, extract_comment, extract_params, parent_contract_name, Definition,
-    Identifier, Validate, ValidationOptions,
+    Identifier, Parent, Validate, ValidationOptions,
 };
 
 #[derive(Debug, Clone)]
 pub struct ConstructorDefinition {
-    pub parent: Option<String>,
+    pub parent: Option<Parent>,
     pub span: TextRange,
     pub params: Vec<Identifier>,
     pub natspec: Option<NatSpec>,
 }
 
 impl Validate for ConstructorDefinition {
-    fn parent(&self) -> Option<String> {
+    fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
 
