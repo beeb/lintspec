@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use lintspec::{
     config::read_config, definitions::ValidationOptions, files::find_sol_files, lint::lint,
+    print_reports,
 };
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
@@ -15,22 +16,25 @@ fn main() -> Result<()> {
     }
 
     let options: ValidationOptions = (&config).into();
-    let mut diagnostics = paths
+    let diagnostics = paths
         .par_iter()
-        .map(|p| lint(p, &options).map_err(Into::into))
+        .filter_map(|p| lint(p, &options).map_err(Into::into).transpose())
         .collect::<Result<Vec<_>>>()?;
-    diagnostics.retain(|p| p.is_some());
 
-    if config.json {
-        print!("{}", serde_json::to_string_pretty(&diagnostics)?);
-    } else {
-        println!("{diagnostics:#?}");
-    }
     if diagnostics.is_empty() {
+        if config.json {
+            print!("[]");
+        } else {
+            println!("No issue found");
+        }
         return Ok(());
     }
-    if !config.json {
-        println!("Some files contain errors");
+    if config.json {
+        eprint!("{}", serde_json::to_string_pretty(&diagnostics)?);
+    } else {
+        for file_diags in diagnostics {
+            print_reports(file_diags)?;
+        }
     }
     std::process::exit(1);
 }

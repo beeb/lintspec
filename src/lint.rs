@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use derive_more::Display;
 use serde::Serialize;
 use slang_solidity::{
     cst::{NonterminalKind, TextRange},
@@ -18,10 +19,12 @@ use crate::{
 #[derive(Debug, Clone, Serialize)]
 pub struct FileDiagnostics {
     pub path: PathBuf,
+    #[serde(skip_serializing)]
+    pub contents: String,
     pub diags: Vec<Diagnostic>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Display)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Constructor,
@@ -73,8 +76,10 @@ pub fn lint(
     if diags.is_empty() {
         return Ok(None);
     }
+    diags.sort_unstable_by_key(|d| d.span.start);
     Ok(Some(FileDiagnostics {
         path: path.as_ref().to_path_buf(),
+        contents,
         diags,
     }))
 }
