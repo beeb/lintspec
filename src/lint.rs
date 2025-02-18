@@ -36,7 +36,10 @@ pub fn lint(path: impl AsRef<Path>) -> Result<Vec<Diagnostic>> {
     }
 
     let cursor = output.create_tree_cursor();
-    let _ = find_items(cursor);
-
-    Ok(Vec::new())
+    let mut out = Vec::new();
+    for item in find_items(cursor) {
+        out.append(&mut item.validate(&path));
+    }
+    println!("{out:#?}");
+    Ok(out)
 }

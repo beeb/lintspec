@@ -48,7 +48,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
+    pub fn validate(&self, file_path: impl AsRef<Path>) -> Vec<Diagnostic> {
         let path = file_path.as_ref().to_path_buf();
         let mut res = Vec::new();
         match self {
