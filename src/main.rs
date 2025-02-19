@@ -1,9 +1,9 @@
-use std::env;
+use std::{env, fs::File};
 
 use anyhow::{bail, Result};
 use lintspec::{
-    config::read_config, definitions::ValidationOptions, files::find_sol_files, lint::lint,
-    print_reports,
+    config::read_config, definitions::ValidationOptions, error::Error, files::find_sol_files,
+    lint::lint, print_reports,
 };
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
@@ -28,24 +28,39 @@ fn main() -> Result<()> {
         })
         .collect::<Result<Vec<_>>>()?;
 
+    let mut output_file: Box<dyn std::io::Write> = match config.out {
+        Some(path) => Box::new(File::open(&path).map_err(|err| Error::IOError {
+            path: path.clone(),
+            err,
+        })?),
+        None => match diagnostics.is_empty() {
+            true => Box::new(std::io::stdout()),
+            false => Box::new(std::io::stderr()),
+        },
+    };
+
     if diagnostics.is_empty() {
         if config.json {
-            print!("[]");
+            write!(&mut output_file, "[]")?;
         } else {
-            println!("No issue found");
+            writeln!(&mut output_file, "No issue found")?;
         }
         return Ok(());
     }
     if config.json {
         if config.compact {
-            eprint!("{}", serde_json::to_string(&diagnostics)?);
+            write!(&mut output_file, "{}", serde_json::to_string(&diagnostics)?)?;
         } else {
-            eprint!("{}", serde_json::to_string_pretty(&diagnostics)?);
+            write!(
+                &mut output_file,
+                "{}",
+                serde_json::to_string_pretty(&diagnostics)?
+            )?;
         }
     } else {
         let cwd = dunce::canonicalize(env::current_dir()?)?;
         for file_diags in diagnostics {
-            print_reports(&cwd, file_diags, config.compact);
+            print_reports(&mut output_file, &cwd, file_diags, config.compact)?;
         }
     }
     std::process::exit(1);

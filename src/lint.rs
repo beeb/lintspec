@@ -1,5 +1,5 @@
 use std::{
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -35,24 +35,31 @@ pub struct ItemDiagnostics {
 }
 
 impl ItemDiagnostics {
-    pub fn print_compact(&self, path: impl AsRef<Path>, root_dir: impl AsRef<Path>) {
+    pub fn print_compact(
+        &self,
+        f: &mut impl io::Write,
+        path: impl AsRef<Path>,
+        root_dir: impl AsRef<Path>,
+    ) -> std::result::Result<(), io::Error> {
         let source_name = match path.as_ref().strip_prefix(root_dir.as_ref()) {
             Ok(relative_path) => relative_path.to_string_lossy(),
             Err(_) => path.as_ref().to_string_lossy(),
         };
-        eprintln!(
+        writeln!(
+            f,
             "{source_name}:{}:{}",
             self.span.start.line, self.span.start.column
-        );
+        )?;
         if let Some(parent) = &self.parent {
-            eprintln!("{} {}.{}", self.item_type, parent, self.name);
+            writeln!(f, "{} {}.{}", self.item_type, parent, self.name)?;
         } else {
-            eprintln!("{} {}", self.item_type, self.name);
+            writeln!(f, "{} {}", self.item_type, self.name)?;
         }
         for diag in &self.diags {
-            eprintln!("  {}", diag.message);
+            writeln!(f, "  {}", diag.message)?;
         }
-        eprintln!();
+        writeln!(f)?;
+        Ok(())
     }
 }
 

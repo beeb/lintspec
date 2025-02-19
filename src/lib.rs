@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{io, path::Path, sync::Arc};
 
 use lint::{FileDiagnostics, ItemDiagnostics};
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
@@ -11,10 +11,19 @@ pub mod files;
 pub mod lint;
 pub mod utils;
 
-pub fn print_reports(root_path: impl AsRef<Path>, file_diags: FileDiagnostics, compact: bool) {
+/// Print the reports for a given file, either as pretty or compact text output.
+///
+/// The root path is the current working directory used to compute relative paths if possible. If the file path is
+/// not a child of the root path, then the full canonical path of the file is used instead.
+pub fn print_reports(
+    f: &mut impl io::Write,
+    root_path: impl AsRef<Path>,
+    file_diags: FileDiagnostics,
+    compact: bool,
+) -> std::result::Result<(), io::Error> {
     if compact {
         for item_diags in file_diags.items {
-            item_diags.print_compact(&file_diags.path, &root_path);
+            item_diags.print_compact(f, &file_diags.path, &root_path)?;
         }
     } else {
         let source_name = match file_diags.path.strip_prefix(root_path.as_ref()) {
@@ -23,12 +32,17 @@ pub fn print_reports(root_path: impl AsRef<Path>, file_diags: FileDiagnostics, c
         };
         let source = Arc::new(NamedSource::new(source_name, file_diags.contents));
         for item_diags in file_diags.items {
-            print_report(Arc::clone(&source), item_diags);
+            print_report(f, Arc::clone(&source), item_diags)?;
         }
     }
+    Ok(())
 }
 
-fn print_report(source: Arc<NamedSource<String>>, item: ItemDiagnostics) {
+fn print_report(
+    f: &mut impl io::Write,
+    source: Arc<NamedSource<String>>,
+    item: ItemDiagnostics,
+) -> std::result::Result<(), io::Error> {
     let msg = if let Some(parent) = &item.parent {
         format!("{} {}.{}", item.item_type, parent, item.name)
     } else {
@@ -46,5 +60,5 @@ fn print_report(source: Arc<NamedSource<String>>, item: ItemDiagnostics) {
         })
         .collect();
     let report: miette::Report = MietteDiagnostic::new(msg).with_labels(labels).into();
-    eprintln!("{:?}", report.with_source_code(source));
+    write!(f, "{:?}", report.with_source_code(source))
 }
