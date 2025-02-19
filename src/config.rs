@@ -97,6 +97,7 @@ pub fn read_config() -> Result<Config> {
         .admerge(Env::prefixed("LINTSPEC_"))
         .admerge(("paths", args.paths))
         .admerge(("exclude", args.exclude))
+        .admerge(("out", args.out))
         .extract()?;
     if let Some(inheritdoc) = args.inheritdoc {
         temp.inheritdoc = Some(inheritdoc);
