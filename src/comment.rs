@@ -9,16 +9,19 @@ use winnow::{
 
 use crate::definitions::Identifier;
 
+/// A collection of NatSpec items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NatSpec {
     pub items: Vec<NatSpecItem>,
 }
 
 impl NatSpec {
+    /// Append the items of another [`NatSpec`] to this one's items
     pub fn append(&mut self, other: &mut Self) {
         self.items.append(&mut other.items);
     }
 
+    /// Populate the return NatSpec items with their identifiers (which could be named `None` for unnamed returns)
     pub fn populate_returns(mut self, returns: &[Identifier]) -> Self {
         for i in self.items.iter_mut() {
             i.populate_return(returns);
@@ -26,6 +29,7 @@ impl NatSpec {
         self
     }
 
+    /// Count the number of NatSpec items corresponding to a given param identifier
     pub fn count_param(&self, ident: &Identifier) -> usize {
         let Some(ident_name) = &ident.name else {
             return 0;
@@ -39,6 +43,7 @@ impl NatSpec {
             .count()
     }
 
+    /// Count the number of NatSpec items corresponding to a given return identifier
     pub fn count_return(&self, ident: &Identifier) -> usize {
         let Some(ident_name) = &ident.name else {
             return 0;
@@ -52,6 +57,7 @@ impl NatSpec {
             .count()
     }
 
+    /// Count all the return NatSpec entries for this source item
     pub fn count_all_returns(&self) -> usize {
         self.items
             .iter()
@@ -60,13 +66,20 @@ impl NatSpec {
     }
 }
 
+/// A single NatSpec item
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NatSpecItem {
+    /// The kind of NatSpec (notice, dev, param, etc.)
     pub kind: NatSpecKind,
+
+    /// The comment associated with this NatSpec item
     pub comment: String,
 }
 
 impl NatSpecItem {
+    /// Populate a return NatSpec item with its name if available
+    ///
+    /// For non-return items, this function has no effect.
     pub fn populate_return(&mut self, returns: &[Identifier]) {
         if !matches!(self.kind, NatSpecKind::Return { name: _ }) {
             return;
@@ -86,21 +99,32 @@ impl NatSpecItem {
         }
     }
 
+    /// Check if the item is empty (type is `@notice` - the default - and comment is empty)
     pub fn is_empty(&self) -> bool {
         self.kind == NatSpecKind::Notice && self.comment.is_empty()
     }
 }
 
+/// The kind of a NatSpec item
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NatSpecKind {
     Title,
     Author,
     Notice,
     Dev,
-    Param { name: String },
-    Return { name: Option<String> },
-    Inheritdoc { parent: String },
-    Custom { tag: String },
+    Param {
+        name: String,
+    },
+    /// For return items, [`parse_comment`] does not include the return name automatically. The [`NatSpecItem::populate_return`] must be called to retrieve the name, if any.
+    Return {
+        name: Option<String>,
+    },
+    Inheritdoc {
+        parent: String,
+    },
+    Custom {
+        tag: String,
+    },
 }
 
 impl From<NatSpecItem> for NatSpec {
@@ -109,6 +133,7 @@ impl From<NatSpecItem> for NatSpec {
     }
 }
 
+/// Parse a Solidity doc-comment to extract the NatSpec information
 pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
     alt((
         parse_single_line_comment,
