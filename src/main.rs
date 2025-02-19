@@ -11,7 +11,6 @@ fn main() -> Result<()> {
     dotenvy::dotenv().ok(); // load .env file if present
 
     let config = read_config()?;
-    println!("{config:#?}");
 
     let paths = find_sol_files(&config.paths, &config.exclude)?;
     if paths.is_empty() {
