@@ -31,6 +31,8 @@ pub struct Args {
     /// Enforce that all public and external items have `@inheritdoc`
     ///
     /// Functions which override a parent function also must have `@inheritdoc`.
+    ///
+    /// Can be set with `--inheritdoc` (means true), `--inheritdoc true` or `--inheritdoc false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub inheritdoc: Option<bool>,
 
