@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use figment::{
-    providers::{Env, Format as _, Serialized, Toml},
+    providers::{Env, Format as _, Toml},
     Figment,
 };
 use serde::{Deserialize, Serialize};
