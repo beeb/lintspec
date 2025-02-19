@@ -10,13 +10,16 @@ use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 fn main() -> Result<()> {
     dotenvy::dotenv().ok(); // load .env file if present
 
+    // parse config from CLI args, environment variables and the `.lintspec.toml` file.
     let config = read_config()?;
 
+    // identify Solidity files to parse
     let paths = find_sol_files(&config.paths, &config.exclude)?;
     if paths.is_empty() {
         bail!("no Solidity file found, nothing to analyze");
     }
 
+    // lint all the requested Solidity files
     let options: ValidationOptions = (&config).into();
     let diagnostics = paths
         .par_iter()
@@ -27,6 +30,7 @@ fn main() -> Result<()> {
         })
         .collect::<Result<Vec<_>>>()?;
 
+    // check if we should output to file or to stderr/stdout
     let mut output_file: Box<dyn std::io::Write> = match config.out {
         Some(path) => {
             let _ = miette::set_hook(Box::new(|_| {
@@ -56,6 +60,7 @@ fn main() -> Result<()> {
         },
     };
 
+    // no issue was found
     if diagnostics.is_empty() {
         if config.json {
             write!(&mut output_file, "[]")?;
@@ -64,6 +69,8 @@ fn main() -> Result<()> {
         }
         return Ok(());
     }
+
+    // some issues were found, output according to the desired format (json/text, pretty/compact)
     if config.json {
         if config.compact {
             write!(&mut output_file, "{}", serde_json::to_string(&diagnostics)?)?;
@@ -80,5 +87,5 @@ fn main() -> Result<()> {
             print_reports(&mut output_file, &cwd, file_diags, config.compact)?;
         }
     }
-    std::process::exit(1);
+    std::process::exit(1); // indicate that there were diagnostics (errors)
 }
