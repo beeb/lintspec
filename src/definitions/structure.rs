@@ -11,6 +11,7 @@ use super::{
     Validate, ValidationOptions,
 };
 
+/// A struct definition
 #[derive(Debug, Clone)]
 pub struct StructDefinition {
     pub parent: Option<Parent>,

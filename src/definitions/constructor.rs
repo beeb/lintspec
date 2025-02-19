@@ -11,6 +11,7 @@ use super::{
     Identifier, Parent, Validate, ValidationOptions,
 };
 
+/// A constructor definition
 #[derive(Debug, Clone)]
 pub struct ConstructorDefinition {
     pub parent: Option<Parent>,

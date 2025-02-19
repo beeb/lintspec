@@ -11,6 +11,7 @@ use super::{
     Identifier, Parent, Validate, ValidationOptions,
 };
 
+/// An event definition
 #[derive(Debug, Clone)]
 pub struct EventDefinition {
     pub parent: Option<Parent>,

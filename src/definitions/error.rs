@@ -11,6 +11,7 @@ use super::{
     Identifier, Parent, Validate, ValidationOptions,
 };
 
+/// An error definition
 #[derive(Debug, Clone)]
 pub struct ErrorDefinition {
     pub parent: Option<Parent>,

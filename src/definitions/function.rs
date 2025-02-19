@@ -12,6 +12,7 @@ use super::{
     Visibility,
 };
 
+/// A function definition
 #[derive(Debug, Clone)]
 pub struct FunctionDefinition {
     pub parent: Option<Parent>,

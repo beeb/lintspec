@@ -11,6 +11,7 @@ use super::{
     Parent, Validate, ValidationOptions, Visibility,
 };
 
+/// A state variable declaration
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
     pub parent: Option<Parent>,

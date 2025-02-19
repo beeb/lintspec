@@ -11,6 +11,7 @@ use super::{
     Validate, ValidationOptions,
 };
 
+/// An enum definition
 #[derive(Debug, Clone)]
 pub struct EnumDefinition {
     pub parent: Option<Parent>,

@@ -11,6 +11,7 @@ use super::{
     Identifier, Parent, Validate, ValidationOptions,
 };
 
+/// A modifier definition
 #[derive(Debug, Clone)]
 pub struct ModifierDefinition {
     pub parent: Option<Parent>,
