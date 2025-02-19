@@ -3,12 +3,12 @@ use std::{io, path::Path, sync::Arc};
 use lint::{FileDiagnostics, ItemDiagnostics};
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 
-pub mod natspec;
 pub mod config;
 pub mod definitions;
 pub mod error;
 pub mod files;
 pub mod lint;
+pub mod natspec;
 pub mod utils;
 
 /// Print the reports for a given file, either as pretty or compact text output.
