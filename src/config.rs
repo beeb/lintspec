@@ -24,6 +24,10 @@ pub struct Args {
     #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
 
+    /// Write output to a file instead of stderr
+    #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
+    pub out: Option<PathBuf>,
+
     /// Enforce that all public and external items have `@inheritdoc`
     ///
     /// Functions which override a parent function also must have `@inheritdoc`.
@@ -53,6 +57,7 @@ pub struct Args {
 pub struct Config {
     pub paths: Vec<PathBuf>,
     pub exclude: Vec<PathBuf>,
+    pub out: Option<PathBuf>,
     pub inheritdoc: bool,
     pub constructor: bool,
     pub enum_params: bool,
@@ -65,6 +70,7 @@ impl From<Args> for Config {
         Self {
             paths: value.paths,
             exclude: value.exclude,
+            out: value.out,
             inheritdoc: value.inheritdoc.unwrap_or(true),
             constructor: value.constructor,
             enum_params: value.enum_params,
