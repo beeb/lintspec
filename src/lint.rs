@@ -48,7 +48,8 @@ impl ItemDiagnostics {
         writeln!(
             f,
             "{source_name}:{}:{}",
-            self.span.start.line, self.span.start.column
+            self.span.start.line + 1, // lines start at zero in the span
+            self.span.start.column
         )?;
         if let Some(parent) = &self.parent {
             writeln!(f, "{} {}.{}", self.item_type, parent, self.name)?;
