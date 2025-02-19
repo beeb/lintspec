@@ -1,7 +1,7 @@
-paths = []
-exclude = []
-inheritdoc = false
-constructor = false
-enum_params = false
-json = false
-compact = false
+paths = []          # paths to files and folders to analyze
+exclude = []        # paths to files or folders to exclude
+inheritdoc = true   # enforce that all overridden, public and external items have `@inheritdoc`
+constructor = false # enforce that constructors have natspec
+enum_params = false # enforce that enums have `@param` for each variant
+json = false        # output diagnostics as JSON
+compact = false     # compact output (minified JSON or compact text)
