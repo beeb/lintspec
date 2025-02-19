@@ -86,7 +86,7 @@ them for inspiring this project!
 
 On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
 [Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec is about 214x faster, or
-0.46% of the execution time (99.5% improvement):
+0.46% of the execution time:
 
 ```
 Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
