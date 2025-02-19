@@ -51,3 +51,9 @@ Options:
 The tool can be configured with a `.lintspec.toml` file ([see example](./.lintspec.toml)), environment variables
 ([see example](./.env.example)) or CLI arguments (see above). CLI arguments take precedence over environment variables,
 which take precedence over the config file.
+
+## Credits
+
+This tool walks in the footsteps of [natspec-smells](https://github.com/defi-wonderland/natspec-smells), thanks to
+them for inspiring this project!
+
