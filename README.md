@@ -8,7 +8,7 @@
       src="https://img.shields.io/badge/github-beeb%2Flintspec-228b22?style=flat&logo=github"
       height="20"
   /></a>
-  <a href="https://crates.io/crates/bon"><img
+  <a href="https://crates.io/crates/lintspec"><img
       alt="crates.io"
       src="https://img.shields.io/crates/v/lintspec.svg?style=flat&color=e37602&logo=rust"
       height="20"
@@ -18,7 +18,7 @@
       src="https://img.shields.io/badge/docs.rs-lintspec-3b74d1?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
-      <a href="https://docs.rs/bon/latest/bon/"><img
+      <a href="https://docs.rs/lintspec/latest/lintspec/"><img
       alt="docs.rs"
       src="https://img.shields.io/badge/MSRV-1.80.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
