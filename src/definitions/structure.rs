@@ -1,9 +1,9 @@
 use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 
 use crate::{
-    natspec::NatSpec,
     error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
+    natspec::NatSpec,
 };
 
 use super::{

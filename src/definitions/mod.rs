@@ -12,10 +12,10 @@ use variable::VariableDeclaration;
 use winnow::Parser as _;
 
 use crate::{
-    natspec::{parse_comment, NatSpec},
     config::Config,
     error::{Error, Result},
     lint::{Diagnostic, ItemDiagnostics, ItemType},
+    natspec::{parse_comment, NatSpec},
 };
 
 pub mod constructor;
