@@ -2,6 +2,29 @@
 
 ![lintspec screenshot](./screenshot.png)
 
+<div align="center">
+  <a href="https://github.com/beeb/lintspec"><img
+      alt="github"
+      src="https://img.shields.io/badge/github-beeb%2Flintspec-228b22?style=flat&logo=github"
+      height="20"
+  /></a>
+  <a href="https://crates.io/crates/bon"><img
+      alt="crates.io"
+      src="https://img.shields.io/crates/v/lintspec.svg?style=flat&color=e37602&logo=rust"
+      height="20"
+  /></a>
+  <a href="https://docs.rs/lintspec/latest/lintspec/"><img
+      alt="docs.rs"
+      src="https://img.shields.io/badge/docs.rs-lintspec-3b74d1?style=flat&labelColor=555555&logo=docs.rs"
+      height="20"
+  /></a>
+      <a href="https://docs.rs/bon/latest/bon/"><img
+      alt="docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.80.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      height="20"
+  /></a>
+</div>
+
 Lintspec is a command-line utility (linter) that checks the completeness and validity of
 [NatSpec](https://docs.soliditylang.org/en/latest/natspec-format.html) doc-comments in Solidity code. It is focused on
 speed and ergonomics. By default, lintspec will respect gitignore rules when looking for Solidity source files.
