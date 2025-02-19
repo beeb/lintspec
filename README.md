@@ -35,15 +35,15 @@ Arguments:
   [PATH]...  One or more paths to files and folders to analyze
 
 Options:
-  -e, --exclude <EXCLUDE>          Path to a file or folder to exclude (can be used more than once)
-  -o, --out <OUT>                  Write output to a file instead of stderr
-      --inheritdoc [<INHERITDOC>]  Enforce that all public and external items have `@inheritdoc` [possible values: true, false]
-      --constructor                Enforce that constructors have NatSpec
-      --enum-params                Enforce that enums have `@param` for each variant
-      --json                       Output diagnostics in JSON format
-      --compact                    Compact output
-  -h, --help                       Print help (see more with '--help')
-  -V, --version                    Print version
+  -e, --exclude <EXCLUDE>            Path to a file or folder to exclude (can be used more than once)
+  -o, --out <OUT>                    Write output to a file instead of stderr
+      --inheritdoc                   Enforce that all public and external items have `@inheritdoc`
+      --constructor                  Enforce that constructors have NatSpec
+      --enum-params                  Enforce that enums have `@param` for each variant
+      --json                         Output diagnostics in JSON format
+      --compact                      Compact output
+  -h, --help                         Print help (see more with '--help')
+  -V, --version                      Print version
 ```
 
 ## Configuration
