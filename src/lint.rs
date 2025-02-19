@@ -67,14 +67,23 @@ impl ItemDiagnostics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Display)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
+    #[display("constructor")]
     Constructor,
+    #[display("enum")]
     Enum,
+    #[display("error")]
     Error,
+    #[display("event")]
     Event,
+    #[display("function")]
     Function,
+    #[display("modifier")]
     Modifier,
+
     ParsingError,
+    #[display("struct")]
     Struct,
+    #[display("variable")]
     Variable,
 }
 
