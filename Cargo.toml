@@ -1,7 +1,7 @@
 [package]
 authors = ["Valentin Bersier <hi@beeb.li>"]
 categories = ["development-tools", "command-line-utilities"]
-description = "Identify missing or incomplete natspec in Solidity code"
+description = "A blazingly fast linter for NatSpec comments in Solidity code"
 edition = "2021"
 keywords = [
     "natspec",
