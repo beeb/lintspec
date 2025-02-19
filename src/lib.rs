@@ -34,7 +34,7 @@ fn print_report(source: Arc<NamedSource<String>>, diags: impl Iterator<Item = Di
         .peek()
         .expect("there should be at least one diagnostic");
     let msg = if let Some(parent) = &first.parent {
-        format!("{} {}:{}", first.item_type, parent, first.item_name)
+        format!("{} {}.{}", first.item_type, parent, first.item_name)
     } else {
         format!("{} {}", first.item_type, first.item_name)
     };
