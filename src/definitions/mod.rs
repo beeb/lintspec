@@ -27,6 +27,7 @@ pub mod modifier;
 pub mod structure;
 pub mod variable;
 
+/// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 macro_rules! capture {
     ($m:ident, $name:expr) => {
         match $m.capture($name).map(|(_, mut captures)| captures.next()) {
@@ -40,14 +41,24 @@ macro_rules! capture {
 
 pub(crate) use capture;
 
+/// Validation options to control which lints generate a diagnostic
 #[derive(Debug, Clone)]
 pub struct ValidationOptions {
+    /// Whether overridden, public and external functions should have an `@inheritdoc`
     pub inheritdoc: bool,
+
+    /// Whether to check that constructors have documented params
     pub constructor: bool,
+
+    /// Whether to check that each variant of enums is documented with `@param`
+    ///
+    /// Not standard practice, the Solidity spec does not consider `@param` for enums or provide any other way to
+    /// document each variant.
     pub enum_params: bool,
 }
 
 impl Default for ValidationOptions {
+    /// Get default validation options (`inheritdoc` is true, the others are false)
     fn default() -> Self {
         Self {
             inheritdoc: true,
@@ -67,21 +78,39 @@ impl From<&Config> for ValidationOptions {
     }
 }
 
+/// A trait implemented by the various source item definitions
 pub trait Validate {
+    /// Return a [`slang_solidity`] [`Query`] used to extract information about the source item
     fn query() -> Query;
+
+    /// Extract information from the query matches
     fn extract(m: QueryMatch) -> Result<Definition>;
+
+    /// Validate the definition and extract the relevant diagnostics
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
+
+    /// Retrieve the parent contract, interface or library's name
     fn parent(&self) -> Option<Parent>;
+
+    /// Retrieve the name of the source item
     fn name(&self) -> String;
+
+    /// Retrieve the span of the source item
     fn span(&self) -> TextRange;
 }
 
+/// An identifier (named or unnamed) and its span
+///
+/// Unnamed identifiers are used for unnamed return params.
 #[derive(Debug, Clone)]
 pub struct Identifier {
     pub name: Option<String>,
     pub span: TextRange,
 }
 
+/// The visibility modifier for a function-like item
+///
+/// If no modifier is present, the default is `Internal`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Visibility {
     External,
@@ -91,12 +120,14 @@ pub enum Visibility {
     Public,
 }
 
+/// Attributes for a function or state variable (visibility and override)
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Attributes {
     pub visibility: Visibility,
     pub r#override: bool,
 }
 
+/// The name and type of a source item's parent
 #[derive(Debug, Clone, Display, Serialize)]
 #[serde(untagged)]
 pub enum Parent {
@@ -105,6 +136,7 @@ pub enum Parent {
     Library(String),
 }
 
+/// A source item's definition
 #[derive(Debug, From)]
 pub enum Definition {
     Constructor(ConstructorDefinition),
@@ -119,8 +151,10 @@ pub enum Definition {
 }
 
 impl Definition {
+    /// Validate a definition and generate [`Diagnostic`]s for errors
     pub fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         match self {
+            // if there was an error while parsing the NatSpec comments, a special diagnostic is generated
             Definition::NatspecParsingError(error) => {
                 let (parent, span, message) = match error {
                     Error::NatspecParsingError {
@@ -150,6 +184,7 @@ impl Definition {
     }
 }
 
+/// Find source item definitions from a root CST cursor
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let mut out = Vec::new();
     for m in cursor.query(vec![
@@ -179,6 +214,9 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     out
 }
 
+/// Extract parameters from a function-like source item.
+///
+/// The node kind that holds the `Identifier` (`Parameter`, `EventParameter`) is provided as `kind`.
 pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> {
     let mut cursor = cursor.spawn();
     let mut out = Vec::new();
@@ -207,6 +245,7 @@ pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> 
     out
 }
 
+/// Extract and parse the NatSpec comment information, if any
 pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
     let mut cursor = cursor.spawn();
     let mut items = Vec::new();
@@ -219,7 +258,7 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
             parse_comment
                 .parse(comment)
                 .map_err(|e| Error::NatspecParsingError {
-                    parent: parent_contract_name(cursor.clone()),
+                    parent: extract_parent_name(cursor.clone()),
                     span: cursor.text_range(),
                     message: e.to_string(),
                 })?
@@ -233,6 +272,7 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
     Ok(items)
 }
 
+/// Extract identifiers from a CST node, filtered by label equal to `name`
 pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();
@@ -250,6 +290,8 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     out
 }
 
+/// Check a list of params to see if they are documented with a corresponding item in the NatSpec, and generate a
+/// diagnostic for each missing one or if there are more than 1 entry per param.
 pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
@@ -272,6 +314,8 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
     res
 }
 
+/// Check a list of returns to see if they are documented with a corresponding item in the NatSpec, and generate a
+/// diagnostic for each missing one or if there are more than 1 entry per param.
 pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     let returns_count = natspec.count_all_returns() as isize;
@@ -300,30 +344,8 @@ pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnosti
     res
 }
 
-pub fn parent_contract_name(mut cursor: Cursor) -> Option<Parent> {
-    while cursor.go_to_parent() {
-        if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
-            NonterminalKind::ContractDefinition,
-            NonterminalKind::InterfaceDefinition,
-            NonterminalKind::LibraryDefinition,
-        ]) {
-            for child in &parent.children {
-                if child.is_terminal_with_kind(TerminalKind::Identifier) {
-                    let name = child.node.unparse().trim().to_string();
-                    return Some(match parent.kind {
-                        NonterminalKind::ContractDefinition => Parent::Contract(name),
-                        NonterminalKind::InterfaceDefinition => Parent::Interface(name),
-                        NonterminalKind::LibraryDefinition => Parent::Library(name),
-                        _ => unreachable!(),
-                    });
-                }
-            }
-        }
-    }
-    None
-}
-
-pub fn get_attributes(cursor: Cursor) -> Attributes {
+/// Extract the attributes (visibility and override) from a function-like item or state variable
+pub fn extract_attributes(cursor: Cursor) -> Attributes {
     let mut cursor = cursor.spawn();
     let mut out = Attributes::default();
     while cursor.go_to_next_terminal_with_kinds(&[
@@ -348,4 +370,28 @@ pub fn get_attributes(cursor: Cursor) -> Attributes {
         }
     }
     out
+}
+
+/// Find the parent's name (contract, interface, library), if any
+pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
+    while cursor.go_to_parent() {
+        if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
+            NonterminalKind::ContractDefinition,
+            NonterminalKind::InterfaceDefinition,
+            NonterminalKind::LibraryDefinition,
+        ]) {
+            for child in &parent.children {
+                if child.is_terminal_with_kind(TerminalKind::Identifier) {
+                    let name = child.node.unparse().trim().to_string();
+                    return Some(match parent.kind {
+                        NonterminalKind::ContractDefinition => Parent::Contract(name),
+                        NonterminalKind::InterfaceDefinition => Parent::Interface(name),
+                        NonterminalKind::LibraryDefinition => Parent::Library(name),
+                        _ => unreachable!(),
+                    });
+                }
+            }
+        }
+    }
+    None
 }

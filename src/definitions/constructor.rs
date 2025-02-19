@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, extract_params, parent_contract_name, Definition,
+    capture, check_params, extract_comment, extract_params, extract_parent_name, Definition,
     Identifier, Parent, Validate, ValidationOptions,
 };
 
@@ -50,7 +50,7 @@ impl Validate for ConstructorDefinition {
         let span = params.text_range();
         let params = extract_params(params, NonterminalKind::Parameter);
         let natspec = extract_comment(constructor.clone(), &[])?;
-        let parent = parent_contract_name(constructor);
+        let parent = extract_parent_name(constructor);
 
         Ok(ConstructorDefinition {
             parent,

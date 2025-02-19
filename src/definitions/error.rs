@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, extract_identifiers, parent_contract_name, Definition,
+    capture, check_params, extract_comment, extract_identifiers, extract_parent_name, Definition,
     Identifier, Parent, Validate, ValidationOptions,
 };
 
@@ -52,7 +52,7 @@ impl Validate for ErrorDefinition {
         let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(params);
         let natspec = extract_comment(err.clone(), &[])?;
-        let parent = parent_contract_name(err);
+        let parent = extract_parent_name(err);
 
         Ok(ErrorDefinition {
             parent,

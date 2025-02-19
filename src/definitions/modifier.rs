@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, extract_params, parent_contract_name, Definition,
+    capture, check_params, extract_comment, extract_params, extract_parent_name, Definition,
     Identifier, Parent, Validate, ValidationOptions,
 };
 
@@ -54,7 +54,7 @@ impl Validate for ModifierDefinition {
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
         let natspec = extract_comment(modifier.clone(), &[])?;
-        let parent = parent_contract_name(modifier);
+        let parent = extract_parent_name(modifier);
 
         Ok(ModifierDefinition {
             parent,

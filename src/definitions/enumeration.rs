@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Parent,
+    capture, check_params, extract_comment, extract_parent_name, Definition, Identifier, Parent,
     Validate, ValidationOptions,
 };
 
@@ -52,7 +52,7 @@ impl Validate for EnumDefinition {
         let name = name.node().unparse().trim().to_string();
         let members = extract_enum_members(members);
         let natspec = extract_comment(enumeration.clone(), &[])?;
-        let parent = parent_contract_name(enumeration);
+        let parent = extract_parent_name(enumeration);
 
         Ok(EnumDefinition {
             parent,

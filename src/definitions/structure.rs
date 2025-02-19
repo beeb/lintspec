@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, extract_comment, parent_contract_name, Definition, Identifier, Parent,
+    capture, check_params, extract_comment, extract_parent_name, Definition, Identifier, Parent,
     Validate, ValidationOptions,
 };
 
@@ -52,7 +52,7 @@ impl Validate for StructDefinition {
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(members)?;
         let natspec = extract_comment(structure.clone(), &[])?;
-        let parent = parent_contract_name(structure);
+        let parent = extract_parent_name(structure);
 
         Ok(StructDefinition {
             parent,

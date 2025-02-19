@@ -7,8 +7,8 @@ use crate::{
 };
 
 use super::{
-    capture, check_params, check_returns, extract_comment, extract_params, get_attributes,
-    parent_contract_name, Attributes, Definition, Identifier, Parent, Validate, ValidationOptions,
+    capture, check_params, check_returns, extract_attributes, extract_comment, extract_params,
+    extract_parent_name, Attributes, Definition, Identifier, Parent, Validate, ValidationOptions,
     Visibility,
 };
 
@@ -81,7 +81,7 @@ impl Validate for FunctionDefinition {
         let params = extract_params(params, NonterminalKind::Parameter);
         let returns = extract_params(returns, NonterminalKind::Parameter);
         let natspec = extract_comment(func.clone(), &returns)?;
-        let parent = parent_contract_name(func);
+        let parent = extract_parent_name(func);
 
         Ok(FunctionDefinition {
             parent,
@@ -90,7 +90,7 @@ impl Validate for FunctionDefinition {
             params,
             returns,
             natspec,
-            attributes: get_attributes(attributes),
+            attributes: extract_attributes(attributes),
         }
         .into())
     }

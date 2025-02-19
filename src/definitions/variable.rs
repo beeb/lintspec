@@ -7,8 +7,8 @@ use crate::{
 };
 
 use super::{
-    capture, extract_comment, get_attributes, parent_contract_name, Attributes, Definition, Parent,
-    Validate, ValidationOptions, Visibility,
+    capture, extract_attributes, extract_comment, extract_parent_name, Attributes, Definition,
+    Parent, Validate, ValidationOptions, Visibility,
 };
 
 #[derive(Debug, Clone)]
@@ -59,14 +59,14 @@ impl Validate for VariableDeclaration {
         let span = variable.text_range();
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(variable.clone(), &[])?;
-        let parent = parent_contract_name(variable);
+        let parent = extract_parent_name(variable);
 
         Ok(VariableDeclaration {
             parent,
             name,
             span,
             natspec,
-            attributes: get_attributes(attributes),
+            attributes: extract_attributes(attributes),
         }
         .into())
     }
