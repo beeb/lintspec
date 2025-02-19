@@ -28,10 +28,17 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     let mut output_file: Box<dyn std::io::Write> = match config.out {
-        Some(path) => Box::new(File::open(&path).map_err(|err| Error::IOError {
-            path: path.clone(),
-            err,
-        })?),
+        Some(path) => Box::new(
+            File::options()
+                .truncate(true)
+                .create(true)
+                .write(true)
+                .open(&path)
+                .map_err(|err| Error::IOError {
+                    path: path.clone(),
+                    err,
+                })?,
+        ),
         None => match diagnostics.is_empty() {
             true => Box::new(std::io::stdout()),
             false => Box::new(std::io::stderr()),
