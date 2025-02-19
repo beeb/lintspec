@@ -16,7 +16,7 @@ Via `cargo`:
 cargo install --locked lintspec
 ```
 
-Via `nix`:
+Via `nix` (coming soon):
 
 ```bash
 nix-env -iA nixpkgs.lintspec
