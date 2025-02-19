@@ -37,22 +37,30 @@ pub struct Args {
     pub inheritdoc: Option<bool>,
 
     /// Enforce that constructors have NatSpec
-    #[arg(long)]
-    pub constructor: bool,
+    ///
+    /// Can be set with `--constructor` (means true), `--constructor true` or `--constructor false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub constructor: Option<bool>,
 
     /// Enforce that enums have `@param` for each variant
-    #[arg(long)]
-    pub enum_params: bool,
+    ///
+    /// Can be set with `--enum_params` (means true), `--enum_params true` or `--enum_params false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub enum_params: Option<bool>,
 
     /// Output diagnostics in JSON format
-    #[arg(long)]
-    pub json: bool,
+    ///
+    /// Can be set with `--json` (means true), `--json true` or `--json false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub json: Option<bool>,
 
     /// Compact output
     ///
     /// If combined with `--json`, the output is minified.
-    #[arg(long)]
-    pub compact: bool,
+    ///
+    /// Can be set with `--compact` (means true), `--compact true` or `--compact false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub compact: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,19 +82,36 @@ impl From<Args> for Config {
             exclude: value.exclude,
             out: value.out,
             inheritdoc: value.inheritdoc.unwrap_or(true),
-            constructor: value.constructor,
-            enum_params: value.enum_params,
-            json: value.json,
-            compact: value.compact,
+            constructor: value.constructor.unwrap_or_default(),
+            enum_params: value.enum_params.unwrap_or_default(),
+            json: value.json.unwrap_or_default(),
+            compact: value.compact.unwrap_or_default(),
         }
     }
 }
 
 pub fn read_config() -> Result<Config> {
-    let temp: Args = Figment::new()
+    let args = Args::parse();
+    let mut temp: Args = Figment::new()
         .admerge(Toml::file(".lintspec.toml"))
         .admerge(Env::prefixed("LINTSPEC_"))
-        .admerge(Serialized::defaults(Args::parse())) // FIXME: None should not override any value from the TOML
+        .admerge(("paths", args.paths))
+        .admerge(("exclude", args.exclude))
         .extract()?;
+    if let Some(inheritdoc) = args.inheritdoc {
+        temp.inheritdoc = Some(inheritdoc);
+    }
+    if let Some(constructor) = args.constructor {
+        temp.constructor = Some(constructor);
+    }
+    if let Some(enum_params) = args.enum_params {
+        temp.enum_params = Some(enum_params);
+    }
+    if let Some(json) = args.json {
+        temp.json = Some(json);
+    }
+    if let Some(compact) = args.compact {
+        temp.compact = Some(compact);
+    }
     Ok(temp.into())
 }
