@@ -1,4 +1,4 @@
-# lintspec
+# 🔎 lintspec
 
 ![lintspec screenshot](./screenshot.png)
 
