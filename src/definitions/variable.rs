@@ -3,7 +3,7 @@ use slang_solidity::cst::{Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -71,17 +71,21 @@ impl Validate for VariableDeclaration {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Variable,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Variable,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
         // if there is `inheritdoc`, no further validation is required
         if natspec
@@ -89,31 +93,24 @@ impl Validate for VariableDeclaration {
             .iter()
             .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
         {
-            return vec![];
+            return out;
         } else if options.inheritdoc && self.requires_inheritdoc() {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Variable,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "@inheritdoc is missing".to_string(),
-            }];
+            });
+            return out;
         }
         if !natspec
             .items
             .iter()
             .any(|n| matches!(n.kind, NatSpecKind::Notice | NatSpecKind::Dev))
         {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Variable,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing @notice or @dev".to_string(),
-            }];
+            });
         }
-        vec![]
+        out
     }
 }

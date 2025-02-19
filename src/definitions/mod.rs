@@ -15,7 +15,7 @@ use crate::{
     comment::{parse_comment, NatSpec},
     config::Config,
     error::{Error, Result},
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 pub mod constructor;
@@ -70,7 +70,7 @@ impl From<&Config> for ValidationOptions {
 pub trait Validate {
     fn query() -> Query;
     fn extract(m: QueryMatch) -> Result<Definition>;
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic>;
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
     fn parent(&self) -> Option<Parent>;
     fn name(&self) -> String;
     fn span(&self) -> TextRange;
@@ -119,8 +119,7 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn validate(&mut self, options: &ValidationOptions) -> Vec<Diagnostic> {
-        let mut res = Vec::new();
+    pub fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         match self {
             Definition::NatspecParsingError(error) => {
                 let (parent, span, message) = match error {
@@ -131,25 +130,23 @@ impl Definition {
                     } => (parent.clone(), span.clone(), message.clone()),
                     _ => (None, TextRange::default(), error.to_string()),
                 };
-                return vec![Diagnostic {
+                ItemDiagnostics {
                     parent,
                     item_type: ItemType::ParsingError,
-                    item_name: String::new(),
-                    item_span: span.clone(),
-                    span,
-                    message,
-                }];
+                    name: String::new(),
+                    span: span.clone(),
+                    diags: vec![Diagnostic { span, message }],
+                }
             }
-            Definition::Constructor(def) => res.append(&mut def.validate(options)),
-            Definition::Enumeration(def) => res.append(&mut def.validate(options)),
-            Definition::Error(def) => res.append(&mut def.validate(options)),
-            Definition::Event(def) => res.append(&mut def.validate(options)),
-            Definition::Function(def) => res.append(&mut def.validate(options)),
-            Definition::Modifier(def) => res.append(&mut def.validate(options)),
-            Definition::Struct(def) => res.append(&mut def.validate(options)),
-            Definition::Variable(def) => res.append(&mut def.validate(options)),
+            Definition::Constructor(def) => def.validate(options),
+            Definition::Enumeration(def) => def.validate(options),
+            Definition::Error(def) => def.validate(options),
+            Definition::Event(def) => def.validate(options),
+            Definition::Function(def) => def.validate(options),
+            Definition::Modifier(def) => def.validate(options),
+            Definition::Struct(def) => def.validate(options),
+            Definition::Variable(def) => def.validate(options),
         }
-        res
     }
 }
 
@@ -253,12 +250,7 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
     out
 }
 
-pub fn check_params(
-    item: &impl Validate,
-    natspec: &NatSpec,
-    params: &[Identifier],
-    check_type: ItemType,
-) -> Vec<Diagnostic> {
+pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
         let Some(name) = &param.name else {
@@ -273,10 +265,6 @@ pub fn check_params(
             }
         };
         res.push(Diagnostic {
-            parent: item.parent(),
-            item_type: check_type,
-            item_name: item.name(),
-            item_span: item.span(),
             span: param.span.clone(),
             message,
         })
@@ -284,12 +272,7 @@ pub fn check_params(
     res
 }
 
-pub fn check_returns(
-    item: &impl Validate,
-    natspec: &NatSpec,
-    returns: &[Identifier],
-    check_type: ItemType,
-) -> Vec<Diagnostic> {
+pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     let returns_count = returns.len();
     for (idx, ret) in returns.iter().enumerate() {
@@ -310,10 +293,6 @@ pub fn check_returns(
             }
         };
         res.push(Diagnostic {
-            parent: item.parent(),
-            item_type: check_type,
-            item_name: item.name(),
-            item_span: item.span(),
             span: ret.span.clone(),
             message,
         })

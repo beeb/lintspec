@@ -3,7 +3,7 @@ use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 use crate::{
     comment::NatSpec,
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -64,19 +64,24 @@ impl Validate for StructDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Struct,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Struct,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
-        check_params(self, natspec, &self.members, ItemType::Struct)
+        out.diags.append(&mut check_params(natspec, &self.members));
+        out
     }
 }
 

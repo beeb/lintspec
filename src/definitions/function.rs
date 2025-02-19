@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -93,21 +93,25 @@ impl Validate for FunctionDefinition {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Function,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // fallback and receive do not require NatSpec
         if self.name == "receive" || self.name == "fallback" {
-            return vec![];
+            return out;
         }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Function,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
         // if there is `inheritdoc`, no further validation is required
         if natspec
@@ -115,31 +119,17 @@ impl Validate for FunctionDefinition {
             .iter()
             .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
         {
-            return vec![];
+            return out;
         } else if options.inheritdoc && self.requires_inheritdoc() {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Function,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "@inheritdoc is missing".to_string(),
-            }];
+            });
+            return out;
         }
         // check params and returns
-        let mut res = Vec::new();
-        res.append(&mut check_params(
-            self,
-            natspec,
-            &self.params,
-            ItemType::Function,
-        ));
-        res.append(&mut check_returns(
-            self,
-            natspec,
-            &self.returns,
-            ItemType::Function,
-        ));
-        res
+        out.diags.append(&mut check_params(natspec, &self.params));
+        out.diags.append(&mut check_returns(natspec, &self.returns));
+        out
     }
 }

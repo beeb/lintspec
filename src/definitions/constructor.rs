@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -61,21 +61,24 @@ impl Validate for ConstructorDefinition {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Constructor,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         if !options.constructor {
-            return vec![];
+            return out;
         }
-        let mut res = Vec::new();
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Constructor,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
         // if there is `inheritdoc`, no further validation is required
         if natspec
@@ -83,15 +86,10 @@ impl Validate for ConstructorDefinition {
             .iter()
             .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
         {
-            return vec![];
+            return out;
         }
         // check params
-        res.append(&mut check_params(
-            self,
-            natspec,
-            &self.params,
-            ItemType::Function,
-        ));
-        res
+        out.diags.append(&mut check_params(natspec, &self.params));
+        out
     }
 }

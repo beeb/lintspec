@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     comment::{NatSpec, NatSpecKind},
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -66,18 +66,21 @@ impl Validate for ModifierDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> Vec<Diagnostic> {
-        let mut res = Vec::new();
+    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Modifier,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Modifier,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
         // if there is `inheritdoc`, no further validation is required
         if natspec
@@ -85,15 +88,10 @@ impl Validate for ModifierDefinition {
             .iter()
             .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
         {
-            return vec![];
+            return out;
         }
         // check params
-        res.append(&mut check_params(
-            self,
-            natspec,
-            &self.params,
-            ItemType::Modifier,
-        ));
-        res
+        out.diags.append(&mut check_params(natspec, &self.params));
+        out
     }
 }

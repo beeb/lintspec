@@ -3,7 +3,7 @@ use slang_solidity::cst::{Cursor, Query, QueryMatch, TerminalKind, TextRange};
 use crate::{
     comment::NatSpec,
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -64,23 +64,26 @@ impl Validate for EnumDefinition {
         .into())
     }
 
-    fn validate(&self, options: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Enum,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent(),
-                item_type: ItemType::Enum,
-                item_name: self.name(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
         if options.enum_params {
-            check_params(self, natspec, &self.members, ItemType::Enum)
-        } else {
-            vec![]
+            out.diags = check_params(natspec, &self.members);
         }
+        out
     }
 }
 

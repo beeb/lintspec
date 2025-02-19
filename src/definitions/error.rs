@@ -3,7 +3,7 @@ use slang_solidity::cst::{Query, QueryMatch, TextRange};
 use crate::{
     comment::NatSpec,
     error::Result,
-    lint::{Diagnostic, ItemType},
+    lint::{Diagnostic, ItemDiagnostics, ItemType},
 };
 
 use super::{
@@ -64,18 +64,23 @@ impl Validate for ErrorDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> Vec<Diagnostic> {
+    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+        let mut out = ItemDiagnostics {
+            parent: self.parent(),
+            item_type: ItemType::Error,
+            name: self.name(),
+            span: self.span(),
+            diags: vec![],
+        };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            return vec![Diagnostic {
-                parent: self.parent.clone(),
-                item_type: ItemType::Error,
-                item_name: self.name.clone(),
-                item_span: self.span(),
+            out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
-            }];
+            });
+            return out;
         };
-        check_params(self, natspec, &self.params, ItemType::Error)
+        out.diags = check_params(natspec, &self.params);
+        out
     }
 }

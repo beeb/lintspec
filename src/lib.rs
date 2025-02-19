@@ -1,8 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use itertools::Itertools as _;
-
-use lint::{Diagnostic, FileDiagnostics};
+use lint::{FileDiagnostics, ItemDiagnostics};
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 
 pub mod comment;
@@ -16,29 +14,23 @@ pub mod utils;
 pub fn print_reports(root_path: impl AsRef<Path>, file_diags: FileDiagnostics) {
     let source_name = match file_diags.path.strip_prefix(root_path.as_ref()) {
         Ok(relative_path) => relative_path.to_string_lossy(),
-        Err(_) => file_diags
-            .path
-            .file_name()
-            .expect("path should have a filename")
-            .to_string_lossy(),
+        Err(_) => file_diags.path.to_string_lossy(),
     };
     let source = Arc::new(NamedSource::new(source_name, file_diags.contents));
-    for (_, chunk) in &file_diags.diags.into_iter().chunk_by(|d| d.item_span.start) {
-        print_report(Arc::clone(&source), chunk);
+    for item_diags in file_diags.items {
+        print_report(Arc::clone(&source), item_diags);
     }
 }
 
-fn print_report(source: Arc<NamedSource<String>>, diags: impl Iterator<Item = Diagnostic>) {
-    let mut diags = diags.peekable();
-    let first = diags
-        .peek()
-        .expect("there should be at least one diagnostic");
-    let msg = if let Some(parent) = &first.parent {
-        format!("{} {}.{}", first.item_type, parent, first.item_name)
+fn print_report(source: Arc<NamedSource<String>>, item: ItemDiagnostics) {
+    let msg = if let Some(parent) = &item.parent {
+        format!("{} {}.{}", item.item_type, parent, item.name)
     } else {
-        format!("{} {}", first.item_type, first.item_name)
+        format!("{} {}", item.item_type, item.name)
     };
-    let labels: Vec<_> = diags
+    let labels: Vec<_> = item
+        .diags
+        .into_iter()
         .map(|d| {
             LabeledSpan::new(
                 Some(d.message),

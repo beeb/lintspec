@@ -22,6 +22,15 @@ pub struct FileDiagnostics {
     pub path: PathBuf,
     #[serde(skip_serializing)]
     pub contents: String,
+    pub items: Vec<ItemDiagnostics>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ItemDiagnostics {
+    pub parent: Option<Parent>,
+    pub item_type: ItemType,
+    pub name: String,
+    pub span: TextRange,
     pub diags: Vec<Diagnostic>,
 }
 
@@ -41,10 +50,6 @@ pub enum ItemType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
-    pub parent: Option<Parent>,
-    pub item_type: ItemType,
-    pub item_name: String,
-    pub item_span: TextRange,
     pub span: TextRange,
     pub message: String,
 }
@@ -75,17 +80,25 @@ pub fn lint(
     }
 
     let cursor = output.create_tree_cursor();
-    let mut diags = Vec::new();
-    for mut item in find_items(cursor) {
-        diags.append(&mut item.validate(options));
-    }
-    if diags.is_empty() {
+    let mut items: Vec<_> = find_items(cursor)
+        .into_iter()
+        .filter_map(|item| {
+            let mut item_diags = item.validate(options);
+            if item_diags.diags.is_empty() {
+                None
+            } else {
+                item_diags.diags.sort_unstable_by_key(|d| d.span.start);
+                Some(item_diags)
+            }
+        })
+        .collect();
+    if items.is_empty() {
         return Ok(None);
     }
-    diags.sort_unstable_by_key(|d| d.span.start);
+    items.sort_unstable_by_key(|i| i.span.start);
     Ok(Some(FileDiagnostics {
         path: path.as_ref().to_path_buf(),
         contents,
-        diags,
+        items,
     }))
 }
