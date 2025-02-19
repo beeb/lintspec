@@ -1,1 +1,3 @@
+# Use this file to specifically exclude some files and folders
+# This uses the same syntax as .gitignore
 /src
