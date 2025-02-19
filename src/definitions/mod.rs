@@ -274,7 +274,7 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
 
 pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    let returns_count = returns.len();
+    let returns_count = natspec.count_all_returns() as isize;
     for (idx, ret) in returns.iter().enumerate() {
         let message = match &ret.name {
             Some(name) => match natspec.count_return(ret) {
@@ -285,7 +285,7 @@ pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnosti
                 }
             },
             None => {
-                if idx > returns_count - 1 {
+                if idx as isize > returns_count - 1 {
                     format!("@return missing for unnamed return #{}", idx + 1)
                 } else {
                     continue;
