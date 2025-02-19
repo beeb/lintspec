@@ -4,7 +4,7 @@
 
 Lintspec is a command-line utility (linter) that checks the completeness and validity of
 [NatSpec](https://docs.soliditylang.org/en/latest/natspec-format.html) doc-comments in Solidity code. It is focused on
-speed and ergonomics. By default, lintspec will respect gitignore rules when looking for Solidity source files.. By default, lintspec will respect gitignore rules when looking for Solidity source files.
+speed and ergonomics. By default, lintspec will respect gitignore rules when looking for Solidity source files.
 
 Dual-licensed under MIT or Apache 2.0.
 
