@@ -1,6 +1,7 @@
 paths = []
 exclude = []
-inheritdoc = false
+inheritdoc = true
 constructor = false
 enum_params = false
 json = false
+compact = false

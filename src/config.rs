@@ -39,6 +39,12 @@ pub struct Config {
     /// Output diagnostics in JSON format
     #[arg(short, long, default_value_t = false)]
     pub json: bool,
+
+    /// Compact output
+    ///
+    /// If combined with `-j/--json`, the output is minified.
+    #[arg(short, long, default_value_t = false)]
+    pub compact: bool,
 }
 
 pub fn read_config() -> Result<Config> {

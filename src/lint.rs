@@ -52,8 +52,9 @@ pub struct Diagnostic {
 pub fn lint(
     path: impl AsRef<Path>,
     options: &ValidationOptions,
+    drop_contents: bool,
 ) -> Result<Option<FileDiagnostics>> {
-    let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
+    let mut contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
         path: path.as_ref().to_path_buf(),
         err,
     })?;
@@ -62,6 +63,10 @@ pub fn lint(
     let parser = Parser::create(solidity_version).expect("parser should initialize");
 
     let output = parser.parse(NonterminalKind::SourceUnit, &contents);
+    if drop_contents {
+        // free memory
+        contents = String::new();
+    }
     if !output.is_valid() {
         let Some(error) = output.errors().first() else {
             return Err(Error::UnknownError);

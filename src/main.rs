@@ -20,7 +20,11 @@ fn main() -> Result<()> {
     let options: ValidationOptions = (&config).into();
     let diagnostics = paths
         .par_iter()
-        .filter_map(|p| lint(p, &options).map_err(Into::into).transpose())
+        .filter_map(|p| {
+            lint(p, &options, config.compact || config.json)
+                .map_err(Into::into)
+                .transpose()
+        })
         .collect::<Result<Vec<_>>>()?;
 
     if diagnostics.is_empty() {
@@ -32,7 +36,11 @@ fn main() -> Result<()> {
         return Ok(());
     }
     if config.json {
-        eprint!("{}", serde_json::to_string_pretty(&diagnostics)?);
+        if config.compact {
+            eprint!("{}", serde_json::to_string(&diagnostics)?);
+        } else {
+            eprint!("{}", serde_json::to_string_pretty(&diagnostics)?);
+        }
     } else {
         let cwd = dunce::canonicalize(env::current_dir()?)?;
         for file_diags in diagnostics {
