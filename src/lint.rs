@@ -34,6 +34,28 @@ pub struct ItemDiagnostics {
     pub diags: Vec<Diagnostic>,
 }
 
+impl ItemDiagnostics {
+    pub fn print_compact(&self, path: impl AsRef<Path>, root_dir: impl AsRef<Path>) {
+        let source_name = match path.as_ref().strip_prefix(root_dir.as_ref()) {
+            Ok(relative_path) => relative_path.to_string_lossy(),
+            Err(_) => path.as_ref().to_string_lossy(),
+        };
+        eprintln!(
+            "{source_name}:{}:{}",
+            self.span.start.line, self.span.start.column
+        );
+        if let Some(parent) = &self.parent {
+            eprintln!("{} {}.{}", self.item_type, parent, self.name);
+        } else {
+            eprintln!("{} {}", self.item_type, self.name);
+        }
+        for diag in &self.diags {
+            eprintln!("  {}", diag.message);
+        }
+        eprintln!();
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Display)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {

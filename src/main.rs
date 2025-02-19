@@ -45,7 +45,7 @@ fn main() -> Result<()> {
     } else {
         let cwd = dunce::canonicalize(env::current_dir()?)?;
         for file_diags in diagnostics {
-            print_reports(&cwd, file_diags);
+            print_reports(&cwd, file_diags, config.compact);
         }
     }
     std::process::exit(1);
