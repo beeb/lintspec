@@ -3,7 +3,7 @@ use std::{io, path::Path, sync::Arc};
 use lint::{FileDiagnostics, ItemDiagnostics};
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 
-pub mod comment;
+pub mod natspec;
 pub mod config;
 pub mod definitions;
 pub mod error;

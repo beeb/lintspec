@@ -1,9 +1,9 @@
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
-    comment::{NatSpec, NatSpecKind},
     error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
+    natspec::{NatSpec, NatSpecKind},
 };
 
 use super::{

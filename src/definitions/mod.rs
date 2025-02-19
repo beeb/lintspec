@@ -12,7 +12,7 @@ use variable::VariableDeclaration;
 use winnow::Parser as _;
 
 use crate::{
-    comment::{parse_comment, NatSpec},
+    natspec::{parse_comment, NatSpec},
     config::Config,
     error::{Error, Result},
     lint::{Diagnostic, ItemDiagnostics, ItemType},
