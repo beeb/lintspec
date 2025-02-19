@@ -11,6 +11,7 @@ use slang_solidity::{
 
 use crate::error::{Error, Result};
 
+/// A regex to identify version pragma statements so that the whole file does not need to be parsed.
 static REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"pragma\s+solidity[^;]+;").expect("the version pragma regex should compile")
 });
