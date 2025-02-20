@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2025-02-20
+
+### Added
+
+- Add github action (#15) - ([05431f6](https://github.com/beeb/awsbck/commit/05431f6ca93fa59333a927a7ccb0dc6aeb5ccb4a))
+- Add tests (#21) - ([bf7e4fc](https://github.com/beeb/awsbck/commit/bf7e4fc15eff6ca32ea007fde5a0e85351b38d9f))
+
+### Fixed
+
+- Parent ignore files must be enabled (#17) - ([6d9663e](https://github.com/beeb/awsbck/commit/6d9663e68d00a4cbe3a734e71e87a8f140613e90))
+- Return comment should not include return name (#19) - ([8be4150](https://github.com/beeb/awsbck/commit/8be4150d45039a7eda95f135ee4d34eb73bbe0a9))
+- Process functions without returns (#20) - ([7fdfbda](https://github.com/beeb/awsbck/commit/7fdfbda4856eeb94ac29cca9cb4cd6b2332842d5))
+
 ## [0.1.5] - 2025-02-20
 
 ### Fixed
