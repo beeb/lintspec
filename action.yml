@@ -78,22 +78,22 @@ runs:
     shell: bash
     run: |
       echo "github-token=$(echo $GITHUB_TOKEN)" >> $GITHUB_OUTPUT
-      message=$(if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then "❌ Lintspec found ${{ steps.command-run.outputs.total-diags }} problems in ${{ steps.command-run.outputs.total-files }} files." else "✅ No problem found" fi)
+      message=$(if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then echo "❌ Lintspec found ${{ steps.command-run.outputs.total-diags }} problems in ${{ steps.command-run.outputs.total-files }} files." else echo "✅ No problem found"; fi)
       cat > lintspec-pr-commenter.yml <<- EOF
       comment:
         on-update: ${{ inputs.comment-update }}
-        header: \|
+        header: |
           Lintspec findings
 
-        footer: \|
+        footer: |
           ---
-          Automated comment created by [lintspec]\(https://github.com/beeb/lintspec\) :robot:
+          Automated comment created by [lintspec](https://github.com/beeb/lintspec) :robot:
 
         snippets:
           - id: any-source-file-changed-{{ filesHash }}
             files:
               - '**/*.sol'
-            body: \|
+            body: |
               $message
       EOF
 
