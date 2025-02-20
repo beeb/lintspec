@@ -33,19 +33,19 @@ Dual-licensed under MIT or Apache 2.0.
 
 ## Installation
 
-Via `cargo`:
+#### Via `cargo`
 
 ```bash
 cargo install lintspec
 ```
 
-Via [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall)
+#### Via [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall)
 
 ```bash
 cargo binstall lintspec
 ```
 
-Via `nix` (coming soon):
+#### Via `nix` (coming soon)
 
 ```bash
 nix-env -iA nixpkgs.lintspec
@@ -54,6 +54,10 @@ nix-shell -p lintspec
 # or
 nix run nixpkgs#lintspec
 ```
+
+#### Pre-built binaries
+
+Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
 ## Usage
 
