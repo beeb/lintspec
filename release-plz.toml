@@ -1,3 +1,4 @@
 [workspace]
 changelog_config = "cliff.toml"
 dependencies_update = true
+git_release_enable = false      # will use cargo-dist for that
