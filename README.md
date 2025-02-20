@@ -55,7 +55,7 @@ nix-shell -p lintspec
 nix run nixpkgs#lintspec
 ```
 
-#### Pre-built binaries
+#### Pre-built binaries and install script
 
 Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
