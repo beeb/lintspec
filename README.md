@@ -107,7 +107,7 @@ The following options are available for the action (all are optional):
 | `version` | `"latest"` | Version of lintspec to use. For enhanced security, you can pin this to a fixed version | `"0.1.5"` |
 | `fail-on-problem` | `"true"` | Whether the action should fail when NatSpec problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
 
-### Example
+### Example Workflow
 
 ```yaml
 name: Lintspec
