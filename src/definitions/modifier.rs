@@ -1,7 +1,7 @@
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     lint::{Diagnostic, ItemDiagnostics, ItemType},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -40,7 +40,8 @@ impl Validate for ModifierDefinition {
             @modifier_name name:[Identifier]
             parameters:[ParametersDeclaration
                 @modifier_params parameters:[Parameters]
-            ]
+            ]?
+            @modifier_attr attributes:[ModifierAttributes]
         ]",
         )
         .expect("query should compile")
@@ -49,11 +50,26 @@ impl Validate for ModifierDefinition {
     fn extract(m: QueryMatch) -> Result<Definition> {
         let modifier = capture!(m, "modifier");
         let name = capture!(m, "modifier_name");
-        let params = capture!(m, "modifier_params");
+        let params = match m
+            .capture("modifier_params")
+            .map(|(_, mut captures)| captures.next())
+        {
+            Some(Some(ret)) => Some(ret),
+            Some(None) => None,
+            _ => return Err(Error::UnknownError),
+        };
+        let attr = capture!(m, "modifier_attr");
 
-        let span = name.text_range().start..params.text_range().end;
+        let span = if let Some(params) = &params {
+            name.text_range().start..params.text_range().end
+        } else {
+            name.text_range().start..attr.text_range().end
+        };
         let name = name.node().unparse().trim().to_string();
-        let params = extract_params(params, NonterminalKind::Parameter);
+        let params = params
+            .map(|p| extract_params(p, NonterminalKind::Parameter))
+            .unwrap_or_default();
+
         let natspec = extract_comment(modifier.clone(), &[])?;
         let parent = extract_parent_name(modifier);
 
