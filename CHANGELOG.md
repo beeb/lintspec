@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2025-02-20
+
+### Documentation
+
+- Fix help text (#9) - ([6f3025e](https://github.com/beeb/awsbck/commit/6f3025e95fc2f377ac5a7d66f157584ac9040125))
+- Update readme (#11) - ([a123795](https://github.com/beeb/awsbck/commit/a12379584155c2822168962d7f64ed7af8f03048))
+
 ## [0.1.3] - 2025-02-20
 
 ### Added
