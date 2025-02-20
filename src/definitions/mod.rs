@@ -536,6 +536,24 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_modifier_no_param() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_modifier(
+            "modifierWithoutParam",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "The description of the modifier".to_string()
+            },]
+        );
+    }
+
+    #[test]
     fn test_parse_private_function() {
         let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
         let items = find_items(cursor);

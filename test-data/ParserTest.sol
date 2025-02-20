@@ -68,6 +68,11 @@ contract ParserTest is IParserTest {
     _;
   }
 
+  /// @notice The description of the modifier
+  modifier modifierWithoutParam {
+    _;
+  }
+
   // TODO: Fallback and receive functions
   // fallback() {}
   // receive () {}
