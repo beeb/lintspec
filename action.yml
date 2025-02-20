@@ -7,10 +7,6 @@ branding:
   color: "orange"
 
 inputs:
-  github-token:
-    description: Github token used to comment on pull requests. Optional. Defaults to `${{ secrets.GITHUB_TOKEN }}`
-    required: false
-    default: ${{ secrets.GITHUB_TOKEN }}
   working-directory:
     description: Working directory path. Optional. Defaults to "./".
     required: false
@@ -76,10 +72,12 @@ runs:
       total_files="$command_output" | jq 'length'
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
       
-  - name: prepare PR comment config
+  - id: prepare-comment
+    name: prepare PR comment config
     if: inputs.comment-pr == 'true'
     shell: bash
     run: |
+      echo "github-token=$(echo $GITHUB_TOKEN)" >> $GITHUB_OUTPUT
       message=$(if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then "❌ Lintspec found ${{ steps.command-run.outputs.total-diags }} problems in ${{ steps.command-run.outputs.total-files }} files." else; "✅ No problem found" fi)
       cat > lintspec-pr-commenter.yml <<- EOF
       comment:
@@ -103,7 +101,7 @@ runs:
     if: inputs.comment-pr == 'true'
     uses: exercism/pr-commenter-action@v1.5.1
     with:
-        github-token: ${{ inputs.github-token }}
+        github-token: ${{ steps.prepare-comment.outputs.github-token }}
         config-file: "lintspec-pr-commenter.yml"
         template-variables: |
           {
