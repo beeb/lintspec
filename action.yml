@@ -30,14 +30,6 @@ inputs:
     description: Whether the action should fail when NatSpec problems have been found. Optional. Defaults to "true".
     required: false
     default: "true"
-  comment-pr:
-    description: Whether to create a comment on PRs with a message reporting the number of found problems. Optional. Defauls to "false".
-    required: false
-    default: "false"
-  comment-update:
-    description: Dictates what should happen if a comment was already created on the PR, but more changes were pushed to the PR and the comment needs to change. Optional. Defaults to "edit". One of "recreate", "edit" or "nothing"
-    required: false
-    default: "edit"
 
 outputs:
   total-diags:
@@ -69,54 +61,13 @@ runs:
 
       # run lintspec
       command_output=$(/home/runner/.cargo/bin/lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output can be stderr in case of diags
-      echo "$command_output" # for debugging
+      # run command again with text output for debugging
+      /home/runner/.cargo/bin/lintspec --compact=true $EXTRA_ARGS 2>&1
       total_diags=$(echo "$command_output" | jq '[.[].items[].diags | length] | add')
       echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
       total_files=$(echo "$command_output" | jq 'length')
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
       
-  - id: prepare-comment
-    name: prepare PR comment config
-    if: inputs.comment-pr == 'true'
-    shell: bash
-    run: |
-      echo "github-token=$(echo $GITHUB_TOKEN)" >> $GITHUB_OUTPUT
-      message=$(if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then echo "❌ Lintspec found ${{ steps.command-run.outputs.total-diags }} problems in ${{ steps.command-run.outputs.total-files }} files."; else echo "✅ No problem found"; fi)
-      cat > lintspec-pr-commenter.yml <<- EOF
-      comment:
-        on-update: ${{ inputs.comment-update }}
-        header: |
-          Lintspec findings
-
-        footer: |
-          ---
-          Automated comment created by [lintspec](https://github.com/beeb/lintspec) :robot:
-
-        snippets:
-          - id: any-sol-file-changed
-            files:
-              - '**/*.sol'
-            body: |
-              $message
-      EOF
-
-  - name: comment on PR
-    if: inputs.comment-pr == 'true'
-    uses: exercism/pr-commenter-action@v1.5.1
-    with:
-        github-token: ${{ steps.prepare-comment.outputs.github-token }}
-        config-file: "lintspec-pr-commenter.yml"
-        template-variables: |
-          {
-            "total_diags": ${{ toJSON(steps.command-run.outputs.total-diags) }},
-            "total_files": ${{ toJSON(steps.command-run.outputs.total-files) }}
-          }
-
-  - name: remove config file
-    shell: bash
-    if: inputs.comment-pr == 'true'
-    run: rm lintspec-pr-commenter.yml
-
   - name: fail on non-null diags count
     if: inputs.fail-on-problem == 'true'
     shell: bash
