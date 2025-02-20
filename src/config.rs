@@ -20,7 +20,7 @@ pub struct Args {
 
     /// Path to a file or folder to exclude (can be used more than once)
     ///
-    /// To exclude paths based on a pattern, use a `.lsignore` file (same syntax as `.gitignore`).
+    /// To exclude paths based on a pattern, use a `.nsignore` file (same syntax as `.gitignore`).
     #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
 
