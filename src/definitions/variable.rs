@@ -45,6 +45,7 @@ impl Validate for VariableDeclaration {
     fn query() -> Query {
         Query::parse(
             "@variable [StateVariableDefinition
+            @variable_type type_name:[TypeName]
             @variable_attr attributes:[StateVariableAttributes]
             @variable_name name:[Identifier]
         ]",
@@ -54,10 +55,11 @@ impl Validate for VariableDeclaration {
 
     fn extract(m: QueryMatch) -> Result<Definition> {
         let variable = capture!(m, "variable");
+        let var_type = capture!(m, "variable_type");
         let attributes = capture!(m, "variable_attr");
         let name = capture!(m, "variable_name");
 
-        let span = variable.text_range();
+        let span = var_type.text_range().start..variable.text_range().end;
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(variable.clone(), &[])?;
         let parent = extract_parent_name(variable);
