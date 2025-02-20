@@ -115,3 +115,20 @@ Summary
   lintspec src --compact=true ran
   214.55 ± 5.61 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
 ```
+
+### Features
+
+| Feature                         | `lintspec` | `natspec-smells` |
+|---------------------------------|------------|------------------|
+| Identify missing NatSpec        | ✅          | ✅                |
+| Identify duplicate NatSpec      | ✅          | ✅                |
+| Include files/folders           | ✅          | ✅                |
+| Exclude files/folders           | ✅          | ✅                |
+| Enforce usage of `@inheritdoc`  | ✅          | ✅                |
+| Enforce NatSpec on constructors | ✅          | ✅                |
+| Enforce NatSpec on enums        | ✅          | ❌                |
+| Respects gitignore files        | ✅          | ❌                |
+| JSON output                     | ✅          | ❌                |
+| Pretty output with code excerpt | ✅          | ❌                |
+| Output to file                  | ✅          | ❌                |
+| Multithreaded                   | ✅          | ❌                |
