@@ -87,7 +87,7 @@ runs:
 
         footer: \|
           ---
-          Automated comment created by [lintspec](https://github.com/beeb/lintspec) :robot:
+          Automated comment created by [lintspec]\(https://github.com/beeb/lintspec\) :robot:
 
         snippets:
           - id: any-source-file-changed-{{ filesHash }}
