@@ -128,7 +128,7 @@ pub struct Attributes {
 }
 
 /// The name and type of a source item's parent
-#[derive(Debug, Clone, Display, Serialize)]
+#[derive(Debug, Clone, Display, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Parent {
     Contract(String),
@@ -394,4 +394,196 @@ pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use slang_solidity::parser::Parser;
+
+    use crate::{
+        natspec::{NatSpecItem, NatSpecKind},
+        utils::detect_solidity_version,
+    };
+
+    use super::*;
+
+    fn parse_file(contents: &str) -> Cursor {
+        let solidity_version = detect_solidity_version(contents).unwrap();
+        let parser = Parser::create(solidity_version).unwrap();
+        let output = parser.parse(NonterminalKind::SourceUnit, contents);
+        assert!(output.is_valid(), "{:?}", output.errors());
+        output.create_tree_cursor()
+    }
+
+    macro_rules! impl_find_item {
+        ($fn_name:ident, $item_variant:path, $item_type:ty) => {
+            fn $fn_name<'a>(
+                name: &str,
+                parent: Option<Parent>,
+                items: &'a [Definition],
+            ) -> &'a $item_type {
+                items
+                    .iter()
+                    .find_map(|d| match d {
+                        $item_variant(ref def) if def.name == name && def.parent == parent => {
+                            Some(def)
+                        }
+                        _ => None,
+                    })
+                    .unwrap()
+            }
+        };
+    }
+
+    impl_find_item!(find_function, Definition::Function, FunctionDefinition);
+    impl_find_item!(find_variable, Definition::Variable, VariableDeclaration);
+    impl_find_item!(find_modifier, Definition::Modifier, ModifierDefinition);
+
+    #[test]
+    fn test_parse_external_function() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_function(
+            "viewFunctionNoParams",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![
+                NatSpecItem {
+                    kind: NatSpecKind::Inheritdoc {
+                        parent: "IParserTest".to_string()
+                    },
+                    comment: "".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Dev,
+                    comment: "Dev comment for the function".to_string()
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_constant() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_variable(
+            "SOME_CONSTANT",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Inheritdoc {
+                    parent: "IParserTest".to_string()
+                },
+                comment: "".to_string()
+            },]
+        );
+    }
+
+    #[test]
+    fn test_parse_variable() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_variable(
+            "someVariable",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Inheritdoc {
+                    parent: "IParserTest".to_string()
+                },
+                comment: "".to_string()
+            },]
+        );
+    }
+
+    #[test]
+    fn test_parse_modifier() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_modifier(
+            "someModifier",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "The description of the modifier".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Param {
+                        name: "_param1".to_string()
+                    },
+                    comment: "The only parameter".to_string()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_private_function() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_function(
+            "_viewPrivate",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Some private stuff".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Dev,
+                    comment: "Dev comment for the private function".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Param {
+                        name: "_paramName".to_string()
+                    },
+                    comment: "The parameter name".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Return {
+                        name: Some("_returned".to_string())
+                    },
+                    comment: "The returned value".to_string()
+                }
+            ]
+        );
+    }
+
+    #[ignore]
+    #[test]
+    fn test_parse_multiline_descriptions() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        println!("{items:#?}");
+        let item = find_function(
+            "_viewMultiline",
+            Some(Parent::Contract("ParserTest".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "Some internal stuff".to_string()
+            },]
+        );
+    }
 }
