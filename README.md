@@ -33,13 +33,19 @@ Dual-licensed under MIT or Apache 2.0.
 
 ## Installation
 
-Via `cargo`:
+#### Via `cargo`
 
 ```bash
-cargo install --locked lintspec
+cargo install lintspec
 ```
 
-Via `nix` (coming soon):
+#### Via [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall)
+
+```bash
+cargo binstall lintspec
+```
+
+#### Via `nix` (coming soon)
 
 ```bash
 nix-env -iA nixpkgs.lintspec
@@ -48,6 +54,10 @@ nix-shell -p lintspec
 # or
 nix run nixpkgs#lintspec
 ```
+
+#### Pre-built binaries and install script
+
+Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
 ## Usage
 
@@ -105,3 +115,21 @@ Summary
   lintspec src --compact=true ran
   214.55 ± 5.61 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
 ```
+
+### Features
+
+| Feature                         | `lintspec` | `natspec-smells` |
+|---------------------------------|------------|------------------|
+| Identify missing NatSpec        | ✅          | ✅                |
+| Identify duplicate NatSpec      | ✅          | ✅                |
+| Include files/folders           | ✅          | ✅                |
+| Exclude files/folders           | ✅          | ✅                |
+| Enforce usage of `@inheritdoc`  | ✅          | ✅                |
+| Enforce NatSpec on constructors | ✅          | ✅                |
+| Enforce NatSpec on enums        | ✅          | ❌                |
+| Respects gitignore files        | ✅          | ❌                |
+| JSON output                     | ✅          | ❌                |
+| Pretty output with code excerpt | ✅          | ❌                |
+| Output to file                  | ✅          | ❌                |
+| Multithreaded                   | ✅          | ❌                |
+| No pre-requisites (npm)         | ✅          | ❌                |
