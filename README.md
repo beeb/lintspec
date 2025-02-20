@@ -132,3 +132,4 @@ Summary
 | Pretty output with code excerpt | ✅          | ❌                |
 | Output to file                  | ✅          | ❌                |
 | Multithreaded                   | ✅          | ❌                |
+| No pre-requisites (npm)         | ✅          | ❌                |
