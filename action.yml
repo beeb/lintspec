@@ -12,10 +12,10 @@ inputs:
     required: false
     default: "./"
   paths:
-    description: Paths to scan, relative to the working directory, separated by commas. Optional.
+    description: "Paths to scan, relative to the working directory, in square brackets and separated by commas. Optional. Example: '[src/to/file.sol,test]'"
     required: false
   exclude:
-    description: Paths to exclude, relative to the working directory, separated by commas. Optional.
+    description: "Paths to exclude, relative to the working directory, in square brackets and separated by commas. Optional. Example: '[src/to/file.sol,test]'"
     required: false
   extra-args:
     description: Extra args to be passed to the lintspec command. Optional.
