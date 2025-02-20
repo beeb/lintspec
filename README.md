@@ -85,6 +85,47 @@ The tool can be configured with a `.lintspec.toml` file ([see example](./.lintsp
 ([see example](./.env.example)) or CLI arguments (see above). CLI arguments take precedence over environment variables,
 which take precedence over the config file.
 
+## Usage in GitHub Actions
+
+You can check your code in CI with the lintspec GitHub Action. Any `.lintspec.toml` or `.nsignore` file in
+repository's root will be used to configure the execution.
+
+The action generates
+[annotations](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#setting-a-warning-message)
+that are displayed in the source files when viewed (e.g. in a PR's "Files" tab).
+
+### Options
+
+The following options are available for the action (all are optional):
+
+| Input | Default Value | Description | Example |
+|---|---|---|---|
+| `working-directory` | `"./"` | Working directory path | `"./src"` |
+| `paths` | `"[]"` | Paths to scan, relative to the working directory, in square brackets and separated by commas. | `"[path/to/file.sol,test/test.sol]"` |
+| `exclude` | `"[]"` | Paths to exclude, relative to the working directory, in square brackets and separated by commas | `"[path/to/exclude,other/path.sol]"` | 
+| `extra-args` | | Extra arguments passed to the `lintspec` command | `"--constructor=true"` |
+| `version` | `"latest"` | Version of lintspec to use. For enhanced security, you can pin this to a fixed version | `"0.1.5"` |
+| `fail-on-problem` | `"true"` | Whether the action should fail when NatSpec problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
+
+### Example Workflow
+
+```yaml
+name: Lintspec
+
+on:
+  pull_request:
+
+jobs:
+  lintspec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: beeb/lintspec@main
+        with:
+          version: "latest"
+          fail-on-problem: "true"
+```
+
 ## Credits
 
 This tool walks in the footsteps of [natspec-smells](https://github.com/defi-wonderland/natspec-smells), thanks to

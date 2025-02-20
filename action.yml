@@ -1,0 +1,79 @@
+name: 'lintspec'
+description: 'Solidity NatSpec linter'
+author: Valentin Bersier <hi@beeb.li>
+
+branding:
+  icon: "search"
+  color: "orange"
+
+inputs:
+  working-directory:
+    description: Working directory path. Optional. Defaults to "./".
+    required: false
+    default: "./"
+  paths:
+    description: "Paths to scan, relative to the working directory, in square brackets and separated by commas. Optional. Example: '[src/to/file.sol,test]'"
+    required: false
+    default: "[]"
+  exclude:
+    description: "Paths to exclude, relative to the working directory, in square brackets and separated by commas. Optional. Example: '[src/to/file.sol,test]'"
+    required: false
+    default: "[]"
+  extra-args:
+    description: Extra args to be passed to the lintspec command. Optional.
+    required: false
+  version:
+    description: Version of lintspec to use. Optional. Defaults to "latest". Minimum supported version is `0.1.3`.
+    required: false
+    default: "latest"
+  fail-on-problem:
+    description: Whether the action should fail when NatSpec problems have been found. Optional. Defaults to "true".
+    required: false
+    default: "true"
+
+outputs:
+  total-diags:
+    description: The total number of diagnostics found by lintspec
+    value: ${{ steps.command-run.outputs.total-diags }}
+  total-files:
+    description: Total number of files where a diagnostic was found by lintspec
+    value: ${{ steps.command-run.outputs.total-files }}
+
+runs:
+  using: "composite"
+  steps:
+  - id: command-run
+    shell: bash {0} # default github config uses `-e` flag which fails the step on exit code != 0
+    working-directory: ${{ inputs.working-directory }}
+    env:
+      LINTSPEC_PATHS: ${{ inputs.paths }}
+      LINTSPEC_EXCLUDE: ${{ inputs.exclude }}
+      VERSION: ${{ inputs.version }}
+      EXTRA_ARGS: ${{ inputs.extra-args }}
+    run: |
+      if [[ "$VERSION" == "latest" ]]; then
+        installer_url=$(curl -s "https://api.github.com/repos/beeb/lintspec/releases/latest" | jq -r '.assets[] | select(.name == "lintspec-installer.sh") | .browser_download_url')
+      else
+        installer_url="https://github.com/beeb/lintspec/releases/download/v$VERSION/lintspec-installer.sh"
+      fi
+      # install lintspec
+      curl --proto '=https' --tlsv1.2 -LsSf "$installer_url" | sh
+
+      # run lintspec
+      command_output=$(/home/runner/.cargo/bin/lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output can be stderr in case of diags
+      # run command again with text output for debugging
+      /home/runner/.cargo/bin/lintspec --compact=true $EXTRA_ARGS 2>&1
+      total_diags=$(echo "$command_output" | jq '[.[].items[].diags | length] | add // 0')
+      echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
+      total_files=$(echo "$command_output" | jq 'length')
+      echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
+
+      # create annotations
+      if [[ $total_diags != "0" ]]; then
+        echo "$command_output" | jq '.[] | .path as $path | .items[] | .name as $name | [.diags] | flatten[] | "::warning file=\( $path ),col=\( .span.start.column + 1 ),endColumn=\( .span.end.column + 1 ),line=\( .span.start.line + 1 )\( if .span.start.line == .span.end.line then "" else ",endLine=" + "\( .span.end.line + 1 )" end )::\( $name ): \( .message )"' | xargs -n1 echo;
+      fi
+      
+  - name: fail on non-null diags count
+    if: inputs.fail-on-problem == 'true'
+    shell: bash
+    run: if [[ "${{ steps.command-run.outputs.total-diags }}" != "0" ]]; then exit 1; else exit 0; fi
