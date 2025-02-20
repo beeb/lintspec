@@ -7,6 +7,10 @@ branding:
   color: "orange"
 
 inputs:
+  github-token:
+    description: Github token used to comment on pull requests. Optional. Defaults to `${{ github.token }}`
+    required: false
+    default: ${{ github.token }}
   working-directory:
     description: Working directory path. Optional. Defaults to "./".
     required: false
@@ -24,6 +28,14 @@ inputs:
     description: Version of lintspec to use. Optional. Defaults to "latest". Minimum supported version is `0.1.3`.
     required: false
     default: "latest"
+  comment-pr:
+    description: Whether to create a comment on PRs with a message reporting the number of found problems. Optional. Defauls to "false".
+    required: false
+    default: "false"
+  comment-update:
+    description: Dictates what should happen if a comment was already created on the PR, but more changes were pushed to the PR and the comment needs to change. Optional. Defaults to "edit". One of "recreate", "edit" or "nothing"
+    required: false
+    default: "edit"
 
 outputs:
   total-diags:
@@ -37,7 +49,7 @@ runs:
   using: "composite"
   steps:
   - id: command-run
-    shell: bash
+    shell: bash {0} # default github config uses `-e` flag which fails the step on exit code != 0
     working-directory: ${{ inputs.working-directory }}
     env:
       LINTSPEC_PATHS: ${{ inputs.paths }}
@@ -60,3 +72,46 @@ runs:
       total_files="$command_output" | jq 'length'
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
       
+  - name: prepare PR comment config
+    if: inputs.comment-pr == 'true'
+    shell: bash
+    run: |
+      message=$(if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then "❌ Lintspec found ${{ steps.command-run.outputs.total-diags }} problems in ${{ steps.command-run.outputs.total-files }} files." else; "✅ No problem found" fi)
+      cat > lintspec-pr-commenter.yml <<- EOF
+      comment:
+        on-update: ${{ inputs.comment-update }}
+        header: \|
+          Lintspec findings
+
+        footer: \|
+          ---
+          Automated comment created by [lintspec](https://github.com/beeb/lintspec) :robot:
+
+        snippets:
+          - id: any-source-file-changed-{{ filesHash }}
+            files:
+              - '**/*.sol'
+            body: \|
+              $message
+      EOF
+
+  - name: comment on PR
+    if: inputs.comment-pr == 'true'
+    uses: exercism/pr-commenter-action@v1.5.1
+    with:
+        github-token: ${{ inputs.github-token }}
+        config-file: "lintspec-pr-commenter.yml"
+        template-variables: |
+          {
+            "total_diags": ${{ toJSON(steps.command-run.outputs.total-diags) }},
+            "total_files": ${{ toJSON(steps.command-run.outputs.total-files) }}
+          }
+
+  - name: remove config file
+    shell: bash
+    if: inputs.comment-pr == 'true'
+    run: rm lintspec-pr-commenter.yml
+
+  - name: fail on non-null diags count
+    shell: bash
+    run: if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then exit 1; else exit 0; fi
