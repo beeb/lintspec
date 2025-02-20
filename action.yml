@@ -28,6 +28,10 @@ inputs:
     description: Version of lintspec to use. Optional. Defaults to "latest". Minimum supported version is `0.1.3`.
     required: false
     default: "latest"
+  fail-on-problem:
+    description: Whether the action should fail when NatSpec problems have been found. Optional. Defaults to "true".
+    required: false
+    default: "true"
   comment-pr:
     description: Whether to create a comment on PRs with a message reporting the number of found problems. Optional. Defauls to "false".
     required: false
@@ -113,5 +117,6 @@ runs:
     run: rm lintspec-pr-commenter.yml
 
   - name: fail on non-null diags count
+    if: inputs.fail-on-problem == 'true'
     shell: bash
     run: if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then exit 1; else exit 0; fi
