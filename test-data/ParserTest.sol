@@ -36,8 +36,8 @@ interface IParserTest {
    function someVariable() external view returns (uint256);
 
   /// @notice A struct holding 2 variables of type uint256
-  /// @member a  The first variable
-  /// @member b  The second variable
+  /// @param a  The first variable
+  /// @param b  The second variable
   /// @dev This is definitely a struct
   struct SimplestStruct {
     uint256 a;
