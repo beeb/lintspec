@@ -70,7 +70,7 @@ runs:
 
       # create annotations
       if [[ $total_diags != "0" ]]; then
-        echo "$command_output" | jq '.[] | .path as $path | [.items[].diags] | flatten[] | "::warning file=\( $path ),col=\( .span.start.column + 1 ),endColumn=\( .span.end.column + 1 ),line=\( .span.start.line + 1 )\( if .span.start.line == .span.end.line then "" else ",endLine=" + "\( .span.end.line + 1 )" end )::\( .message )"' | xargs -n1 echo;
+        echo "$command_output" | jq '.[] | .path as $path | .items[] | .name as $name | [.diags] | flatten[] | "::warning file=\( $path ),col=\( .span.start.column + 1 ),endColumn=\( .span.end.column + 1 ),line=\( .span.start.line + 1 )\( if .span.start.line == .span.end.line then "" else ",endLine=" + "\( .span.end.line + 1 )" end )::\( $name ): \( .message )"' | xargs -n1 echo;
       fi
       
   - name: fail on non-null diags count
