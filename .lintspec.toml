@@ -1,5 +1,6 @@
 paths = []          # paths to files and folders to analyze
 exclude = []        # paths to files or folders to exclude, see also `.nsignore`
+out = ""            # if provided, redirects output to this file
 inheritdoc = true   # enforce that all overridden, public and external items have `@inheritdoc`
 constructor = false # enforce that constructors have natspec
 enum_params = false # enforce that enums have `@param` for each variant

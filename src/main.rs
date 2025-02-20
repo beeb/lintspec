@@ -63,7 +63,7 @@ fn main() -> Result<()> {
     // no issue was found
     if diagnostics.is_empty() {
         if config.json {
-            write!(&mut output_file, "[]")?;
+            writeln!(&mut output_file, "[]")?;
         } else {
             writeln!(&mut output_file, "No issue found")?;
         }
@@ -73,9 +73,9 @@ fn main() -> Result<()> {
     // some issues were found, output according to the desired format (json/text, pretty/compact)
     if config.json {
         if config.compact {
-            write!(&mut output_file, "{}", serde_json::to_string(&diagnostics)?)?;
+            writeln!(&mut output_file, "{}", serde_json::to_string(&diagnostics)?)?;
         } else {
-            write!(
+            writeln!(
                 &mut output_file,
                 "{}",
                 serde_json::to_string_pretty(&diagnostics)?

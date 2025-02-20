@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use figment::{
-    providers::{Env, Format as _, Toml},
+    providers::{Env, Format as _, Serialized, Toml},
     Figment,
 };
 use serde::{Deserialize, Serialize};
@@ -93,12 +93,22 @@ impl From<Args> for Config {
 pub fn read_config() -> Result<Config> {
     let args = Args::parse();
     let mut temp: Args = Figment::new()
+        .admerge(Serialized::defaults(Args {
+            paths: args.paths,
+            exclude: args.exclude,
+            out: None,
+            inheritdoc: None,
+            constructor: None,
+            enum_params: None,
+            json: None,
+            compact: None,
+        }))
         .admerge(Toml::file(".lintspec.toml"))
         .admerge(Env::prefixed("LINTSPEC_"))
-        .admerge(("paths", args.paths))
-        .admerge(("exclude", args.exclude))
-        .admerge(("out", args.out))
         .extract()?;
+    if let Some(out) = args.out {
+        temp.out = Some(out);
+    }
     if let Some(inheritdoc) = args.inheritdoc {
         temp.inheritdoc = Some(inheritdoc);
     }
