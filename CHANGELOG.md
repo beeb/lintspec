@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2025-02-20
+
+### Fixed
+
+- Output a line return after json output (#12) - ([89f616f](https://github.com/beeb/awsbck/commit/89f616ff029229ecc49a89ea443e0dfe9bdebcb7))
+- Merging of config from CLI and config file (#14) - ([bbef59a](https://github.com/beeb/awsbck/commit/bbef59ad3d68031d0258dca8ad47d11edc9c229d))
+
 ## [0.1.4] - 2025-02-20
 
 ### Documentation
