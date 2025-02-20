@@ -84,19 +84,23 @@ impl NatSpecItem {
         if !matches!(self.kind, NatSpecKind::Return { name: _ }) {
             return;
         }
-        self.kind = NatSpecKind::Return {
-            name: self
-                .comment
-                .split_whitespace()
-                .next()
-                .filter(|first_word| {
-                    returns.iter().any(|r| match &r.name {
-                        Some(name) => first_word == name,
-                        None => false,
-                    })
+        let name = self
+            .comment
+            .split_whitespace()
+            .next()
+            .filter(|first_word| {
+                returns.iter().any(|r| match &r.name {
+                    Some(name) => first_word == name,
+                    None => false,
                 })
-                .map(|first_word| first_word.to_owned()),
+            })
+            .map(|first_word| first_word.to_owned());
+        if let Some(name) = &name {
+            if let Some(comment) = self.comment.strip_prefix(name) {
+                self.comment = comment.trim_start().to_string();
+            }
         }
+        self.kind = NatSpecKind::Return { name }
     }
 
     /// Check if the item is empty (type is `@notice` - the default - and comment is empty)
