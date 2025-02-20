@@ -67,9 +67,9 @@ runs:
 
       # run lintspec
       command_output=$(/home/runner/.cargo/bin/lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output can be stderr in case of diags
-      total_diags=$(cat "$command_output" | jq '[.[].items[].diags | length] | add')
+      total_diags=$(echo "$command_output" | jq '[.[].items[].diags | length] | add')
       echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
-      total_files=$(cat "$command_output" | jq 'length')
+      total_files=$(echo "$command_output" | jq 'length')
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
       
   - id: prepare-comment
