@@ -1,7 +1,7 @@
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     lint::{Diagnostic, ItemDiagnostics, ItemType},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -59,11 +59,11 @@ impl Validate for FunctionDefinition {
                 @function_params parameters:[Parameters]
             ]
             @function_attr attributes:[FunctionAttributes]
-            returns:[
-                ReturnsDeclaration variables:[ParametersDeclaration
+            returns:[ReturnsDeclaration
+                variables:[ParametersDeclaration
                     @function_returns parameters:[Parameters]
                 ]
-            ]
+            ]?
         ]",
         )
         .expect("query should compile")
@@ -75,12 +75,25 @@ impl Validate for FunctionDefinition {
         let name = capture!(m, "function_name");
         let params = capture!(m, "function_params");
         let attributes = capture!(m, "function_attr");
-        let returns = capture!(m, "function_returns");
+        let returns = match m
+            .capture("function_returns")
+            .map(|(_, mut captures)| captures.next())
+        {
+            Some(Some(ret)) => Some(ret),
+            Some(None) => None,
+            _ => return Err(Error::UnknownError),
+        };
 
-        let span = keyword.text_range().start..returns.text_range().end;
+        let span = if let Some(returns) = &returns {
+            keyword.text_range().start..returns.text_range().end
+        } else {
+            keyword.text_range().start..attributes.text_range().end
+        };
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(params, NonterminalKind::Parameter);
-        let returns = extract_params(returns, NonterminalKind::Parameter);
+        let returns = returns
+            .map(|r| extract_params(r, NonterminalKind::Parameter))
+            .unwrap_or_default();
         let natspec = extract_comment(func.clone(), &returns)?;
         let parent = extract_parent_name(func);
 
