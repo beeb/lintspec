@@ -27,8 +27,11 @@ inputs:
 
 outputs:
   total-diags:
-    description: "The total number of diagnostics found by lintspec"
+    description: The total number of diagnostics found by lintspec
     value: ${{ steps.command-run.outputs.total-diags }}
+  total-files:
+    description: Total number of files where a diagnostic was found by lintspec
+    value: ${{ steps.command-run.outputs.total-files }}
 
 runs:
   using: "composite"
@@ -51,4 +54,9 @@ runs:
       curl --proto '=https' --tlsv1.2 -LsSf "$installer_url" | sh
 
       # run lintspec
-      command_output=$(lintspec --json=true --compact=true $EXTRA_ARGS)
+      command_output=$(lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output is to stderr
+      total_diags="$command_output" | jq '[.[].items[].diags | length] | add'
+      echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
+      total_files="$command_output" | jq 'length'
+      echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
+      
