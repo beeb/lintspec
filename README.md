@@ -36,7 +36,13 @@ Dual-licensed under MIT or Apache 2.0.
 Via `cargo`:
 
 ```bash
-cargo install --locked lintspec
+cargo install lintspec
+```
+
+Via [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall)
+
+```bash
+cargo binstall lintspec
 ```
 
 Via `nix` (coming soon):
