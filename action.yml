@@ -54,7 +54,7 @@ runs:
       curl --proto '=https' --tlsv1.2 -LsSf "$installer_url" | sh
 
       # run lintspec
-      command_output=$(lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output is to stderr
+      command_output=$(lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output can be stderr in case of diags
       total_diags="$command_output" | jq '[.[].items[].diags | length] | add'
       echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
       total_files="$command_output" | jq 'length'
