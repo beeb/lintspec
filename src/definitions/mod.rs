@@ -567,7 +567,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_parse_multiline_descriptions() {
         let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
@@ -580,10 +579,20 @@ mod tests {
         );
         assert_eq!(
             item.natspec.as_ref().unwrap().items,
-            vec![NatSpecItem {
-                kind: NatSpecKind::Notice,
-                comment: "Some internal stuff".to_string()
-            },]
+            vec![
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Some internal stuff".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Separate line".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Third one".to_string()
+                },
+            ]
         );
     }
 }
