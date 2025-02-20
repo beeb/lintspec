@@ -8,9 +8,9 @@ branding:
 
 inputs:
   github-token:
-    description: Github token used to comment on pull requests. Optional. Defaults to `${{ github.token }}`
+    description: Github token used to comment on pull requests. Optional. Defaults to `${{ secrets.GITHUB_TOKEN }}`
     required: false
-    default: ${{ github.token }}
+    default: ${{ secrets.GITHUB_TOKEN }}
   working-directory:
     description: Working directory path. Optional. Defaults to "./".
     required: false
