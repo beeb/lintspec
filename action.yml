@@ -63,7 +63,7 @@ runs:
       command_output=$(/home/runner/.cargo/bin/lintspec --json=true --compact=true $EXTRA_ARGS 2>&1) # output can be stderr in case of diags
       # run command again with text output for debugging
       /home/runner/.cargo/bin/lintspec --compact=true $EXTRA_ARGS 2>&1
-      total_diags=$(echo "$command_output" | jq '[.[].items[].diags | length] | add')
+      total_diags=$(echo "$command_output" | jq '[.[].items[].diags | length] | add // 0')
       echo "total-diags=$(echo $total_diags)" >> $GITHUB_OUTPUT
       total_files=$(echo "$command_output" | jq 'length')
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
@@ -71,4 +71,4 @@ runs:
   - name: fail on non-null diags count
     if: inputs.fail-on-problem == 'true'
     shell: bash
-    run: if [[ "${{ steps.command-run.outputs.total-diags }}" != "null" ]]; then exit 1; else exit 0; fi
+    run: if [[ "${{ steps.command-run.outputs.total-diags }}" != "0" ]]; then exit 1; else exit 0; fi
