@@ -126,10 +126,12 @@ Summary
 | Exclude files/folders           | ✅          | ✅                |
 | Enforce usage of `@inheritdoc`  | ✅          | ✅                |
 | Enforce NatSpec on constructors | ✅          | ✅                |
+| Configure via config file       | ✅          | ✅                |
 | Enforce NatSpec on enums        | ✅          | ❌                |
 | Respects gitignore files        | ✅          | ❌                |
 | JSON output                     | ✅          | ❌                |
 | Pretty output with code excerpt | ✅          | ❌                |
 | Output to file                  | ✅          | ❌                |
+| Configure via env variables     | ✅          | ❌                |
 | Multithreaded                   | ✅          | ❌                |
 | No pre-requisites (npm)         | ✅          | ❌                |
