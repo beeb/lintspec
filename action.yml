@@ -69,7 +69,9 @@ runs:
       echo "total-files=$(echo $total_files)" >> $GITHUB_OUTPUT
 
       # create annotations
-      echo "$command_output" | jq '.[] | .path as $path | [.items[].diags] | flatten[] | "::warning file=\( $path ),col=\( .span.start.column + 1 ),endColumn=\( .span.end.column + 1 ),line=\( .span.start.line + 1 )\( if .span.start.line == .span.end.line then "" else ",endLine=" + "\( .span.end.line + 1 )" end )::\( .message )"' | xargs -n1 echo
+      if [[ $total_diags != "0" ]]; then
+        echo "$command_output" | jq '.[] | .path as $path | [.items[].diags] | flatten[] | "::warning file=\( $path ),col=\( .span.start.column + 1 ),endColumn=\( .span.end.column + 1 ),line=\( .span.start.line + 1 )\( if .span.start.line == .span.end.line then "" else ",endLine=" + "\( .span.end.line + 1 )" end )::\( .message )"' | xargs -n1 echo;
+      fi
       
   - name: fail on non-null diags count
     if: inputs.fail-on-problem == 'true'
