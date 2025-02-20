@@ -131,5 +131,6 @@ Summary
 | JSON output                     | ✅          | ❌                |
 | Pretty output with code excerpt | ✅          | ❌                |
 | Output to file                  | ✅          | ❌                |
+| Configure via env variables     | ✅          | ❌                |
 | Multithreaded                   | ✅          | ❌                |
 | No pre-requisites (npm)         | ✅          | ❌                |
