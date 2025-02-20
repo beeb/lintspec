@@ -90,7 +90,7 @@ runs:
           Automated comment created by [lintspec](https://github.com/beeb/lintspec) :robot:
 
         snippets:
-          - id: any-source-file-changed-{{ filesHash }}
+          - id: any-sol-file-changed
             files:
               - '**/*.sol'
             body: |
