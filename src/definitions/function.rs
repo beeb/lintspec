@@ -27,6 +27,9 @@ pub struct FunctionDefinition {
 }
 
 impl FunctionDefinition {
+    /// Check whether this function requires inheritdoc when we enforce it
+    ///
+    /// External and public functions, as well as overridden internal functions must have inheritdoc.
     fn requires_inheritdoc(&self) -> bool {
         let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
         let internal_override =
@@ -290,5 +293,73 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_requires_inheritdoc() {
+        let contents = "contract Test is ITest {
+            function a() internal returns (uint256) { } 
+        }";
+        let res = parse_file(contents);
+        assert!(!res.requires_inheritdoc());
+
+        let contents = "contract Test is ITest {
+            function b() private returns (uint256) { } 
+        }";
+        let res = parse_file(contents);
+        assert!(!res.requires_inheritdoc());
+
+        let contents = "contract Test is ITest {
+            function c() external returns (uint256) { } 
+        }";
+        let res = parse_file(contents);
+        assert!(res.requires_inheritdoc());
+
+        let contents = "contract Test is ITest {
+            function d() public returns (uint256) { } 
+        }";
+        let res = parse_file(contents);
+        assert!(res.requires_inheritdoc());
+
+        let contents = "contract Test is ITest {
+            function e() internal override (ITest) returns (uint256) { } 
+        }";
+        let res = parse_file(contents);
+        assert!(res.requires_inheritdoc());
+    }
+
+    #[test]
+    fn test_function_inheritdoc() {
+        let contents = "contract Test is ITest {
+            /// @inheritdoc ITest
+            function foo() external { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true)
+                .constructor(false)
+                .struct_params(false)
+                .enum_params(false)
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_function_inheritdoc_missing() {
+        let contents = "contract Test is ITest {
+            /// @notice Test
+            function foo() external { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true)
+                .constructor(false)
+                .struct_params(false)
+                .enum_params(false)
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
     }
 }
