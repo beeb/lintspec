@@ -22,15 +22,14 @@ body = """
                 {{ commit.message }} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }}))
         {% endif -%}
     {% endfor -%}
-
-    {% if version %}
-        {% if previous.version %}
-          **Full Changelog**: $REPO/compare/{{ previous.version }}...{{ version }}
-        {% endif %}
-    {% else -%}
-      {% raw %}\n{% endraw %}
-    {% endif %}
 {% endfor %}\n
+{% if version %}
+    {% if previous.version %}
+      **Full Changelog**: $REPO/compare/{{ previous.version }}...{{ version }}
+    {% endif %}
+{% else -%}
+  {% raw %}\n{% endraw %}
+{% endif %}
 """
 
 # remove the leading and trailing whitespace from the template
