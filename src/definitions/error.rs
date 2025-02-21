@@ -75,6 +75,9 @@ impl Validate for ErrorDefinition {
             span: self.span(),
             diags: vec![],
         };
+        if self.params.is_empty() {
+            return out;
+        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
             out.diags.push(Diagnostic {
@@ -85,5 +88,145 @@ impl Validate for ErrorDefinition {
         };
         out.diags = check_params(natspec, &self.params);
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use semver::Version;
+    use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use super::*;
+
+    static OPTIONS: ValidationOptions = ValidationOptions {
+        inheritdoc: false,
+        constructor: false,
+        struct_params: false,
+        enum_params: false,
+    };
+
+    fn parse_file(contents: &str) -> ErrorDefinition {
+        let parser = Parser::create(Version::new(0, 8, 26)).unwrap();
+        let output = parser.parse(NonterminalKind::SourceUnit, contents);
+        assert!(output.is_valid(), "{:?}", output.errors());
+        let cursor = output.create_tree_cursor();
+        let m = cursor.query(vec![ErrorDefinition::query()]).next().unwrap();
+        let def = ErrorDefinition::extract(m).unwrap();
+        def.as_error().unwrap()
+    }
+
+    #[test]
+    fn test_error() {
+        let contents = "contract Test {
+            /// @param a The first
+            /// @param b The second
+            error Foobar(uint256 a, uint256 b);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_error_no_natspec() {
+        let contents = "contract Test {
+            error Foobar(uint256 a, uint256 b);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+    }
+
+    #[test]
+    fn test_error_only_notice() {
+        let contents = "contract Test {
+            /// @notice
+            error Foobar(uint256 a, uint256 b);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[1].message, "@param b is missing");
+    }
+
+    #[test]
+    fn test_error_one_missing() {
+        let contents = "contract Test {
+            /// @param a The first
+            error Foobar(uint256 a, uint256 b);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param b is missing");
+    }
+
+    #[test]
+    fn test_error_multiline() {
+        let contents = "contract Test {
+            /**
+             * @param a The first
+             * @param b The second
+             */
+            error Foobar(uint256 a, uint256 b);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_error_duplicate() {
+        let contents = "contract Test {
+            /// @param a The first
+            /// @param a The first again
+            error Foobar(uint256 a);
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param a is present more than once");
+    }
+
+    #[test]
+    fn test_error_no_params() {
+        let contents = "contract Test {
+            error Foobar();
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_error_inheritdoc() {
+        let contents = "contract Test {
+            /// @inheritdoc ITest
+            error Foobar(uint256 a);
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true) // has no effect on error
+                .constructor(false)
+                .struct_params(false)
+                .enum_params(false)
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_error_no_contract() {
+        let contents = "
+            /// @param a The first
+            /// @param b The second
+            error Foobar(uint256 a, uint256 b);
+            ";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_error_no_contract_missing() {
+        let contents = "error Foobar(uint256 a, uint256 b);";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }

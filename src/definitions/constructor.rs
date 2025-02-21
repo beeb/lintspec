@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
-    natspec::{NatSpec, NatSpecKind},
+    natspec::NatSpec,
 };
 
 use super::{
@@ -71,10 +71,10 @@ impl Validate for ConstructorDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.constructor {
+        if !options.constructor || self.params.is_empty() {
             return out;
         }
-        // raise error if no NatSpec is available
+
         let Some(natspec) = &self.natspec else {
             out.diags.push(Diagnostic {
                 span: self.span(),
@@ -82,14 +82,6 @@ impl Validate for ConstructorDefinition {
             });
             return out;
         };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
-        }
         // check params
         out.diags.append(&mut check_params(natspec, &self.params));
         out
@@ -142,5 +134,83 @@ mod tests {
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "missing NatSpec");
+    }
+
+    #[test]
+    fn test_constructor_only_notice() {
+        let contents = "contract Test {
+            /// @notice The constructor
+            constructor(uint256 param1, bytes calldata param2) { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[1].message, "@param param2 is missing");
+    }
+
+    #[test]
+    fn test_constructor_one_missing() {
+        let contents = "contract Test {
+            /// @param param1 The first
+            constructor(uint256 param1, bytes calldata param2) { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param param2 is missing");
+    }
+
+    #[test]
+    fn test_constructor_multiline() {
+        let contents = "contract Test {
+            /**
+             * @param param1 Test
+             * @param param2 Test2
+             */
+            constructor(uint256 param1, bytes calldata param2) { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_constructor_duplicate() {
+        let contents = "contract Test {
+            /// @param param1 The first
+            /// @param param1 The first again
+            constructor(uint256 param1) { }
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(
+            res.diags[0].message,
+            "@param param1 is present more than once"
+        );
+    }
+
+    #[test]
+    fn test_constructor_no_params() {
+        let contents = "contract Test {
+            constructor() { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_constructor_inheritdoc() {
+        let contents = "contract Test {
+            /// @inheritdoc ITest
+            constructor(uint256 param1) { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true) // has no effect on constructor
+                .constructor(true)
+                .struct_params(false)
+                .enum_params(false)
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
     }
 }

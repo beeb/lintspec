@@ -57,6 +57,14 @@ impl NatSpec {
             .count()
     }
 
+    /// Count the number of NatSpec items corresponding to an unnamed return
+    pub fn count_unnamed_returns(&self) -> usize {
+        self.items
+            .iter()
+            .filter(|n| matches!(&n.kind, NatSpecKind::Return { name: None }))
+            .count()
+    }
+
     /// Count all the return NatSpec entries for this source item
     pub fn count_all_returns(&self) -> usize {
         self.items
