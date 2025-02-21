@@ -67,7 +67,9 @@ impl NatSpec {
 }
 
 /// A single NatSpec item
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct NatSpecItem {
     /// The kind of NatSpec (notice, dev, param, etc.)
     pub kind: NatSpecKind,

@@ -63,7 +63,9 @@ pub struct Args {
     pub compact: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(PathBuf, into))]
 pub struct Config {
     pub paths: Vec<PathBuf>,
     pub exclude: Vec<PathBuf>,

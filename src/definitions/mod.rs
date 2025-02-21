@@ -45,7 +45,8 @@ pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
 }
 
 /// Validation options to control which lints generate a diagnostic
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
 pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
     pub inheritdoc: bool,
@@ -105,7 +106,8 @@ pub trait Validate {
 /// An identifier (named or unnamed) and its span
 ///
 /// Unnamed identifiers are used for unnamed return params.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[builder(on(String, into))]
 pub struct Identifier {
     pub name: Option<String>,
     pub span: TextRange,
@@ -124,7 +126,8 @@ pub enum Visibility {
 }
 
 /// Attributes for a function or state variable (visibility and override)
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, bon::Builder)]
+#[non_exhaustive]
 pub struct Attributes {
     pub visibility: Visibility,
     pub r#override: bool,
@@ -183,6 +186,70 @@ impl Definition {
             Definition::Modifier(def) => def.validate(options),
             Definition::Struct(def) => def.validate(options),
             Definition::Variable(def) => def.validate(options),
+        }
+    }
+
+    /// Retrieve the inner constructor definition
+    pub fn as_constructor(self) -> Option<ConstructorDefinition> {
+        match self {
+            Definition::Constructor(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner enum definition
+    pub fn as_enum(self) -> Option<EnumDefinition> {
+        match self {
+            Definition::Enumeration(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner error definition
+    pub fn as_error(self) -> Option<ErrorDefinition> {
+        match self {
+            Definition::Error(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner event definition
+    pub fn as_event(self) -> Option<EventDefinition> {
+        match self {
+            Definition::Event(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner function definition
+    pub fn as_function(self) -> Option<FunctionDefinition> {
+        match self {
+            Definition::Function(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner modifier definition
+    pub fn as_modifier(self) -> Option<ModifierDefinition> {
+        match self {
+            Definition::Modifier(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner struct definition
+    pub fn as_struct(self) -> Option<StructDefinition> {
+        match self {
+            Definition::Struct(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Retrieve the inner variable declaration
+    pub fn as_variable(self) -> Option<VariableDeclaration> {
+        match self {
+            Definition::Variable(def) => Some(def),
+            _ => None,
         }
     }
 }

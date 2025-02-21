@@ -12,7 +12,9 @@ use super::{
 };
 
 /// A state variable declaration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct VariableDeclaration {
     pub parent: Option<Parent>,
     pub name: String,

@@ -13,7 +13,9 @@ use super::{
 };
 
 /// A function definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct FunctionDefinition {
     pub parent: Option<Parent>,
     pub name: String,

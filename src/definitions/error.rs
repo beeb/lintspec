@@ -12,7 +12,9 @@ use super::{
 };
 
 /// An error definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct ErrorDefinition {
     pub parent: Option<Parent>,
     pub name: String,
