@@ -54,10 +54,10 @@ impl Validate for VariableDeclaration {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let variable = capture!(m, "variable");
-        let var_type = capture!(m, "variable_type");
-        let attributes = capture!(m, "variable_attr");
-        let name = capture!(m, "variable_name");
+        let variable = capture(&m, "variable")?;
+        let var_type = capture(&m, "variable_type")?;
+        let attributes = capture(&m, "variable_attr")?;
+        let name = capture(&m, "variable_name")?;
 
         let span = var_type.text_range().start..variable.text_range().end;
         let name = name.node().unparse().trim().to_string();

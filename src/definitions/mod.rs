@@ -28,18 +28,21 @@ pub mod structure;
 pub mod variable;
 
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
-macro_rules! capture {
-    ($m:ident, $name:expr) => {
-        match $m.capture($name).map(|(_, mut captures)| captures.next()) {
-            Some(Some(res)) => res,
-            _ => {
-                return Err($crate::error::Error::UnknownError);
-            }
-        }
-    };
+pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
+    match m.capture(name).map(|(_, mut captures)| captures.next()) {
+        Some(Some(res)) => Ok(res),
+        _ => Err(Error::UnknownError),
+    }
 }
 
-pub(crate) use capture;
+/// Retrieve and unwrap the first capture of a parser match if one exists.
+pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
+    match m.capture(name).map(|(_, mut captures)| captures.next()) {
+        Some(Some(res)) => Ok(Some(res)),
+        Some(None) => Ok(None),
+        _ => Err(Error::UnknownError),
+    }
+}
 
 /// Validation options to control which lints generate a diagnostic
 #[derive(Debug, Clone)]
