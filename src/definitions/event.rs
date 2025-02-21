@@ -12,7 +12,9 @@ use super::{
 };
 
 /// An event definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct EventDefinition {
     pub parent: Option<Parent>,
     pub name: String,

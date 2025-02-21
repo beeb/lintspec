@@ -32,7 +32,9 @@ pub struct FileDiagnostics {
 }
 
 /// Diagnostics for a single source item (function, struct, etc.)
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, bon::Builder)]
+#[non_exhaustive]
+#[builder(on(String, into))]
 pub struct ItemDiagnostics {
     /// The parent contract, interface or library's name
     pub parent: Option<Parent>,

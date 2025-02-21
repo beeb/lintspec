@@ -12,7 +12,8 @@ use super::{
 };
 
 /// A constructor definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
 pub struct ConstructorDefinition {
     pub parent: Option<Parent>,
     pub span: TextRange,
@@ -92,5 +93,53 @@ impl Validate for ConstructorDefinition {
         // check params
         out.diags.append(&mut check_params(natspec, &self.params));
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use semver::Version;
+    use slang_solidity::parser::Parser;
+
+    use super::*;
+
+    static OPTIONS: ValidationOptions = ValidationOptions {
+        inheritdoc: false,
+        constructor: true,
+        enum_params: false,
+    };
+
+    fn parse_file(contents: &str) -> ConstructorDefinition {
+        let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
+        let output = parser.parse(NonterminalKind::SourceUnit, contents);
+        assert!(output.is_valid(), "{:?}", output.errors());
+        let cursor = output.create_tree_cursor();
+        let m = cursor
+            .query(vec![ConstructorDefinition::query()])
+            .next()
+            .unwrap();
+        let def = ConstructorDefinition::extract(m).unwrap();
+        def.as_constructor().unwrap()
+    }
+
+    #[test]
+    fn test_constructor() {
+        let contents = "contract Test {
+            /// @param param1 Test
+            /// @param param2 Test2
+            constructor(uint256 param1, bytes calldata param2) { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_constructor_no_natspec() {
+        let contents = "contract Test {
+            constructor(uint256 param1, bytes calldata param2) { } 
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }
