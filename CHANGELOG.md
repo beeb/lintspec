@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.0] - 2025-02-21
+
+### Changed
+
+- **(cli)** [**breaking**] make documenting struct members optional (#32) - ([ee02f55](https://github.com/beeb/lintspec/commit/ee02f55410e5ea779f68e7aaf55b2274bcc5f9df))
+
+- **(definitions)** replace macro with function (#24) - ([7b6ec13](https://github.com/beeb/lintspec/commit/7b6ec1308b66db00905ca094caaa6f3ce03e3a04))
+
+
+-  [**breaking**] make most structs non exhaustive and add builders (#25) - ([f491e0d](https://github.com/beeb/lintspec/commit/f491e0d01dc83b0bb56db29eda675653d43cb421))
+-  modify changelog format (#26) - ([f945663](https://github.com/beeb/lintspec/commit/f945663293ddff9f49fba413e45e06d83921a5aa))
+-  typo in template (#29) - ([303bd7b](https://github.com/beeb/lintspec/commit/303bd7b55fa4b0d4077212dbf758d6c73951c384))
+
+### Fixed
+
+- **(definitions)** parse modifier without params (#22) - ([4a335de](https://github.com/beeb/lintspec/commit/4a335deff8057a4a80908135f921808880c17d00))
+
+- **(definitions)** duplicate results for queries with quantifiers (#34) - ([c68040e](https://github.com/beeb/lintspec/commit/c68040e0f0c333203e631ebe5cfdebdd226cd62d))
+
+
+-  fix git-cliff template (#27) - ([f2fa658](https://github.com/beeb/lintspec/commit/f2fa65827c44fa02d45476b0bba7a82458a15ec0))
+-  fix template (#28) - ([ea014bc](https://github.com/beeb/lintspec/commit/ea014bcd05e47edbe5a61e4d4301c4a4c27d7d07))
+-  fix tags in template (#30) - ([99a5961](https://github.com/beeb/lintspec/commit/99a5961a8c2efa6fd36e04071a778ae890e22a08))
+-  various validation logic fixes and add a bunch of tests (#33) - ([2ff8f1f](https://github.com/beeb/lintspec/commit/2ff8f1fe510ff2428e2ba17769f76b78dfcced0b))
+
+
+
+
+**Full Changelog**: [0.1.6...0.2.0](https://github.com/beeb/lintspec/compare/v0.1.6...v0.2.0)
+
 ## [0.1.6] - 2025-02-20
 
 ### Added
