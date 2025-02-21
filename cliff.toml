@@ -25,7 +25,7 @@ body = """
 {% endfor %}\n
 {% if version %}
     {% if previous.version %}
-      **Full Changelog**: [{{ previous.version }}...{{ version }}]($REPO/compare/{{ previous.version }}...{{ version }})
+      **Full Changelog**: [{{ previous.version }}...{{ version }}]($REPO/compare/v{{ previous.version }}...v{{ version }})
     {% endif %}
 {% else -%}
   {% raw %}\n{% endraw %}
