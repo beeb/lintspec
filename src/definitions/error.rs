@@ -194,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    fn test_constructor_inheritdoc() {
+    fn test_error_inheritdoc() {
         let contents = "contract Test {
             /// @inheritdoc ITest
             error Foobar(uint256 a);
@@ -209,5 +209,24 @@ mod tests {
         );
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_error_no_contract() {
+        let contents = "
+            /// @param a The first
+            /// @param b The second
+            error Foobar(uint256 a, uint256 b);
+            ";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_error_no_contract_missing() {
+        let contents = "error Foobar(uint256 a, uint256 b);";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }
