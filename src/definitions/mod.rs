@@ -395,8 +395,13 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
 
 /// Check a list of returns to see if they are documented with a corresponding item in the NatSpec, and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
-pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnostic> {
+pub fn check_returns(
+    natspec: &NatSpec,
+    returns: &[Identifier],
+    default_span: TextRange,
+) -> Vec<Diagnostic> {
     let mut res = Vec::new();
+    let mut unnamed_returns = 0;
     let returns_count = natspec.count_all_returns() as isize;
     for (idx, ret) in returns.iter().enumerate() {
         let message = match &ret.name {
@@ -408,6 +413,7 @@ pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnosti
                 }
             },
             None => {
+                unnamed_returns += 1;
                 if idx as isize > returns_count - 1 {
                     format!("@return missing for unnamed return #{}", idx + 1)
                 } else {
@@ -418,6 +424,16 @@ pub fn check_returns(natspec: &NatSpec, returns: &[Identifier]) -> Vec<Diagnosti
         res.push(Diagnostic {
             span: ret.span.clone(),
             message,
+        })
+    }
+    if natspec.count_unnamed_returns() > unnamed_returns {
+        res.push(Diagnostic {
+            span: returns
+                .last()
+                .cloned()
+                .map(|r| r.span)
+                .unwrap_or(default_span),
+            message: "too many unnamed returns".to_string(),
         })
     }
     res
