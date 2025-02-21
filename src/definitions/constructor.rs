@@ -3,7 +3,7 @@ use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 use crate::{
     error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
-    natspec::{NatSpec, NatSpecKind},
+    natspec::NatSpec,
 };
 
 use super::{
@@ -71,28 +71,17 @@ impl Validate for ConstructorDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.constructor {
+        if !options.constructor || self.params.is_empty() {
             return out;
         }
-        // raise error if no NatSpec is available
+
         let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() {
-                return out; // nothing to validate
-            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             });
             return out;
         };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
-        }
         // check params
         out.diags.append(&mut check_params(natspec, &self.params));
         out
@@ -190,5 +179,23 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_constructor_inheritdoc() {
+        let contents = "contract Test {
+            /// @inheritdoc ITest
+            constructor(uint256 param1) { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true) // has no effect on constructor
+                .constructor(true)
+                .struct_params(false)
+                .enum_params(false)
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
     }
 }
