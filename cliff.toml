@@ -25,18 +25,19 @@ body = """
 {% endfor %}\n
 {% if version %}
     {% if previous.version %}
-      **Full Changelog**: {{ self::remote_url() }}/compare/{{ previous.version }}...{{ version }}
+      **Full Changelog**: [{{ previous.version }}...{{ version }}]($REPO/compare/{{ previous.version }}...{{ version }})
     {% endif %}
 {% else -%}
   {% raw %}\n{% endraw %}
 {% endif %}
-{%- macro remote_url() -%}
-  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
-{%- endmacro -%}
 """
 
 # remove the leading and trailing whitespace from the template
 trim = true
+
+postprocessors = [
+    { pattern = '\$REPO', replace = "https://github.com/beeb/lintpsec" },
+]
 
 [git]
 # parse the commits based on https://www.conventionalcommits.org
