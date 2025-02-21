@@ -1,15 +1,15 @@
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
-    error::{Error, Result},
+    error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
     natspec::{NatSpec, NatSpecKind},
 };
 
 use super::{
-    capture, check_params, check_returns, extract_attributes, extract_comment, extract_params,
-    extract_parent_name, Attributes, Definition, Identifier, Parent, Validate, ValidationOptions,
-    Visibility,
+    capture, capture_opt, check_params, check_returns, extract_attributes, extract_comment,
+    extract_params, extract_parent_name, Attributes, Definition, Identifier, Parent, Validate,
+    ValidationOptions, Visibility,
 };
 
 /// A function definition
@@ -70,19 +70,12 @@ impl Validate for FunctionDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let func = capture!(m, "function");
-        let keyword = capture!(m, "keyword");
-        let name = capture!(m, "function_name");
-        let params = capture!(m, "function_params");
-        let attributes = capture!(m, "function_attr");
-        let returns = match m
-            .capture("function_returns")
-            .map(|(_, mut captures)| captures.next())
-        {
-            Some(Some(ret)) => Some(ret),
-            Some(None) => None,
-            _ => return Err(Error::UnknownError),
-        };
+        let func = capture(&m, "function")?;
+        let keyword = capture(&m, "keyword")?;
+        let name = capture(&m, "function_name")?;
+        let params = capture(&m, "function_params")?;
+        let attributes = capture(&m, "function_attr")?;
+        let returns = capture_opt(&m, "function_returns")?;
 
         let span = if let Some(returns) = &returns {
             keyword.text_range().start..returns.text_range().end

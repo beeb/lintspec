@@ -45,8 +45,8 @@ impl Validate for ConstructorDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let constructor = capture!(m, "constructor");
-        let params = capture!(m, "constructor_params");
+        let constructor = capture(&m, "constructor")?;
+        let params = capture(&m, "constructor_params")?;
 
         let span = params.text_range();
         let params = extract_params(params, NonterminalKind::Parameter);

@@ -45,9 +45,9 @@ impl Validate for EnumDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let enumeration = capture!(m, "enum");
-        let name = capture!(m, "enum_name");
-        let members = capture!(m, "enum_members");
+        let enumeration = capture(&m, "enum")?;
+        let name = capture(&m, "enum_name")?;
+        let members = capture(&m, "enum_members")?;
 
         let span = enumeration.text_range();
         let name = name.node().unparse().trim().to_string();

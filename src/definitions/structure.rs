@@ -45,9 +45,9 @@ impl Validate for StructDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let structure = capture!(m, "struct");
-        let name = capture!(m, "struct_name");
-        let members = capture!(m, "struct_members");
+        let structure = capture(&m, "struct")?;
+        let name = capture(&m, "struct_name")?;
+        let members = capture(&m, "struct_members")?;
 
         let span = structure.text_range();
         let name = name.node().unparse().trim().to_string();
@@ -96,7 +96,7 @@ fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
     )
     .expect("query should compile");
     for m in cursor.query(vec![query]) {
-        let member_name = capture!(m, "member_name");
+        let member_name = capture(&m, "member_name")?;
         out.push(Identifier {
             name: Some(member_name.node().unparse().trim().to_string()),
             span: member_name.text_range(),

@@ -1,14 +1,14 @@
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
-    error::{Error, Result},
+    error::Result,
     lint::{Diagnostic, ItemDiagnostics, ItemType},
     natspec::{NatSpec, NatSpecKind},
 };
 
 use super::{
-    capture, check_params, extract_comment, extract_params, extract_parent_name, Definition,
-    Identifier, Parent, Validate, ValidationOptions,
+    capture, capture_opt, check_params, extract_comment, extract_params, extract_parent_name,
+    Definition, Identifier, Parent, Validate, ValidationOptions,
 };
 
 /// A modifier definition
@@ -48,17 +48,10 @@ impl Validate for ModifierDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let modifier = capture!(m, "modifier");
-        let name = capture!(m, "modifier_name");
-        let params = match m
-            .capture("modifier_params")
-            .map(|(_, mut captures)| captures.next())
-        {
-            Some(Some(ret)) => Some(ret),
-            Some(None) => None,
-            _ => return Err(Error::UnknownError),
-        };
-        let attr = capture!(m, "modifier_attr");
+        let modifier = capture(&m, "modifier")?;
+        let name = capture(&m, "modifier_name")?;
+        let params = capture_opt(&m, "modifier_params")?;
+        let attr = capture(&m, "modifier_attr")?;
 
         let span = if let Some(params) = &params {
             name.text_range().start..params.text_range().end

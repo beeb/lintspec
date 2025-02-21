@@ -45,9 +45,9 @@ impl Validate for EventDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let event = capture!(m, "event");
-        let name = capture!(m, "event_name");
-        let params = capture!(m, "event_params");
+        let event = capture(&m, "event")?;
+        let name = capture(&m, "event_name")?;
+        let params = capture(&m, "event_params")?;
 
         let span = event.text_range();
         let name = name.node().unparse().trim().to_string();

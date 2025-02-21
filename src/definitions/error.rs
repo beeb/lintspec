@@ -45,9 +45,9 @@ impl Validate for ErrorDefinition {
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
-        let err = capture!(m, "err");
-        let name = capture!(m, "err_name");
-        let params = capture!(m, "err_params");
+        let err = capture(&m, "err")?;
+        let name = capture(&m, "err_name")?;
+        let params = capture(&m, "err_params")?;
 
         let span = err.text_range();
         let name = name.node().unparse().trim().to_string();
