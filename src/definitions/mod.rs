@@ -167,16 +167,14 @@ pub enum Definition {
 impl PartialEq for Definition {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Constructor(a), Self::Constructor(b)) => a.parent == b.parent,
-            (Self::Enumeration(a), Self::Enumeration(b)) => {
-                a.parent == b.parent && a.name == b.name
-            }
-            (Self::Error(a), Self::Error(b)) => a.parent == b.parent && a.name == b.name,
-            (Self::Event(a), Self::Event(b)) => a.parent == b.parent && a.name == b.name,
-            (Self::Function(a), Self::Function(b)) => a.parent == b.parent && a.name == b.name,
-            (Self::Modifier(a), Self::Modifier(b)) => a.parent == b.parent && a.name == b.name,
-            (Self::Struct(a), Self::Struct(b)) => a.parent == b.parent && a.name == b.name,
-            (Self::Variable(a), Self::Variable(b)) => a.parent == b.parent && a.name == b.name,
+            (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
+            (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
+            (Self::Error(a), Self::Error(b)) => a.span.start == b.span.start,
+            (Self::Event(a), Self::Event(b)) => a.span.start == b.span.start,
+            (Self::Function(a), Self::Function(b)) => a.span.start == b.span.start,
+            (Self::Modifier(a), Self::Modifier(b)) => a.span.start == b.span.start,
+            (Self::Struct(a), Self::Struct(b)) => a.span.start == b.span.start,
+            (Self::Variable(a), Self::Variable(b)) => a.span.start == b.span.start,
             _ => false,
         }
     }
