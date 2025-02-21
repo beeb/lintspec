@@ -72,6 +72,7 @@ Options:
   -o, --out <OUT>                    Write output to a file instead of stderr
       --inheritdoc                   Enforce that all public and external items have `@inheritdoc`
       --constructor                  Enforce that constructors have NatSpec
+      --struct-params                Enforce that structs have `@param` for each member
       --enum-params                  Enforce that enums have `@param` for each variant
       --json                         Output diagnostics in JSON format
       --compact                      Compact output
@@ -121,7 +122,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: beeb/lintspec@main
+        # all the lines below are optional
         with:
+          working-directory: "./"
+          paths: "[]"
+          exclude: "[]"
+          extra-args: ""
           version: "latest"
           fail-on-problem: "true"
 ```
@@ -168,11 +174,11 @@ Summary
 | Enforce usage of `@inheritdoc`  | ✅          | ✅                |
 | Enforce NatSpec on constructors | ✅          | ✅                |
 | Configure via config file       | ✅          | ✅                |
-| Enforce NatSpec on enums        | ✅          | ❌                |
-| Respects gitignore files        | ✅          | ❌                |
-| JSON output                     | ✅          | ❌                |
-| Pretty output with code excerpt | ✅          | ❌                |
-| Output to file                  | ✅          | ❌                |
 | Configure via env variables     | ✅          | ❌                |
+| Respects gitignore files        | ✅          | ❌                |
+| Enforce NatSpec on enums        | ✅          | ❌                |
+| Pretty output with code excerpt | ✅          | ❌                |
+| JSON output                     | ✅          | ❌                |
+| Output to file                  | ✅          | ❌                |
 | Multithreaded                   | ✅          | ❌                |
-| No pre-requisites (npm)         | ✅          | ❌                |
+| No pre-requisites (node/npm)    | ✅          | ❌                |

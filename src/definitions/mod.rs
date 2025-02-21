@@ -54,6 +54,12 @@ pub struct ValidationOptions {
     /// Whether to check that constructors have documented params
     pub constructor: bool,
 
+    /// Whether to check that each member of structs is documented with `@param`
+    ///
+    /// Not standard practice, the Solidity spec does not consider `@param` for structs or provide any other way to
+    /// document each member.
+    pub struct_params: bool,
+
     /// Whether to check that each variant of enums is documented with `@param`
     ///
     /// Not standard practice, the Solidity spec does not consider `@param` for enums or provide any other way to
@@ -67,6 +73,7 @@ impl Default for ValidationOptions {
         Self {
             inheritdoc: true,
             constructor: false,
+            struct_params: false,
             enum_params: false,
         }
     }
@@ -77,6 +84,7 @@ impl From<&Config> for ValidationOptions {
         Self {
             inheritdoc: value.inheritdoc,
             constructor: value.constructor,
+            struct_params: value.struct_params,
             enum_params: value.enum_params,
         }
     }

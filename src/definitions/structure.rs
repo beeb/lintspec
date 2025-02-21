@@ -67,7 +67,7 @@ impl Validate for StructDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: ItemType::Struct,
@@ -83,7 +83,9 @@ impl Validate for StructDefinition {
             });
             return out;
         };
-        out.diags.append(&mut check_params(natspec, &self.members));
+        if options.struct_params {
+            out.diags = check_params(natspec, &self.members);
+        }
         out
     }
 }

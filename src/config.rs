@@ -42,6 +42,12 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub constructor: Option<bool>,
 
+    /// Enforce that structs have `@param` for each member
+    ///
+    /// Can be set with `--struct_params` (means true), `--struct_params true` or `--struct_params false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub struct_params: Option<bool>,
+
     /// Enforce that enums have `@param` for each variant
     ///
     /// Can be set with `--enum_params` (means true), `--enum_params true` or `--enum_params false`.
@@ -72,6 +78,7 @@ pub struct Config {
     pub out: Option<PathBuf>,
     pub inheritdoc: bool,
     pub constructor: bool,
+    pub struct_params: bool,
     pub enum_params: bool,
     pub json: bool,
     pub compact: bool,
@@ -85,6 +92,7 @@ impl From<Args> for Config {
             out: value.out,
             inheritdoc: value.inheritdoc.unwrap_or(true),
             constructor: value.constructor.unwrap_or_default(),
+            struct_params: value.enum_params.unwrap_or_default(),
             enum_params: value.enum_params.unwrap_or_default(),
             json: value.json.unwrap_or_default(),
             compact: value.compact.unwrap_or_default(),
@@ -101,6 +109,7 @@ pub fn read_config() -> Result<Config> {
             out: None,
             inheritdoc: None,
             constructor: None,
+            struct_params: None,
             enum_params: None,
             json: None,
             compact: None,
@@ -116,6 +125,9 @@ pub fn read_config() -> Result<Config> {
     }
     if let Some(constructor) = args.constructor {
         temp.constructor = Some(constructor);
+    }
+    if let Some(struct_params) = args.struct_params {
+        temp.struct_params = Some(struct_params);
     }
     if let Some(enum_params) = args.enum_params {
         temp.enum_params = Some(enum_params);

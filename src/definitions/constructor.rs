@@ -106,6 +106,7 @@ mod tests {
     static OPTIONS: ValidationOptions = ValidationOptions {
         inheritdoc: false,
         constructor: true,
+        struct_params: false,
         enum_params: false,
     };
 
