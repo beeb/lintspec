@@ -173,6 +173,21 @@ mod tests {
     }
 
     #[test]
+    fn test_constructor_duplicate() {
+        let contents = "contract Test {
+            /// @param param1 The first
+            /// @param param1 The first again
+            constructor(uint256 param1) { }
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(
+            res.diags[0].message,
+            "@param param1 is present more than once"
+        );
+    }
+
+    #[test]
     fn test_constructor_no_params() {
         let contents = "contract Test {
             constructor() { } 

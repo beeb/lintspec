@@ -220,6 +220,23 @@ mod tests {
     }
 
     #[test]
+    fn test_enum_duplicate() {
+        let contents = "contract Test {
+            /// @param First The first
+            /// @param First The first twice
+            enum Foobar {
+                First
+            }
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(
+            res.diags[0].message,
+            "@param First is present more than once"
+        );
+    }
+
+    #[test]
     fn test_enum_inheritdoc() {
         let contents = "contract Test {
             /// @inheritdoc
