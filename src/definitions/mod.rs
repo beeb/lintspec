@@ -164,6 +164,22 @@ pub enum Definition {
     NatspecParsingError(Error),
 }
 
+impl PartialEq for Definition {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
+            (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
+            (Self::Error(a), Self::Error(b)) => a.span.start == b.span.start,
+            (Self::Event(a), Self::Event(b)) => a.span.start == b.span.start,
+            (Self::Function(a), Self::Function(b)) => a.span.start == b.span.start,
+            (Self::Modifier(a), Self::Modifier(b)) => a.span.start == b.span.start,
+            (Self::Struct(a), Self::Struct(b)) => a.span.start == b.span.start,
+            (Self::Variable(a), Self::Variable(b)) => a.span.start == b.span.start,
+            _ => false,
+        }
+    }
+}
+
 impl Definition {
     /// Validate a definition and generate [`Diagnostic`]s for errors
     pub fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
@@ -276,18 +292,39 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         VariableDeclaration::query(),
     ]) {
         let def = match m.query_number {
-            0 => ConstructorDefinition::extract(m),
-            1 => EnumDefinition::extract(m),
-            2 => ErrorDefinition::extract(m),
-            3 => EventDefinition::extract(m),
-            4 => FunctionDefinition::extract(m),
-            5 => ModifierDefinition::extract(m),
-            6 => StructDefinition::extract(m),
-            7 => VariableDeclaration::extract(m),
+            0 => Some(
+                ConstructorDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+            ),
+            1 => Some(EnumDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError)),
+            2 => Some(ErrorDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError)),
+            3 => Some(EventDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError)),
+            4 => {
+                let def =
+                    FunctionDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError);
+                if out.contains(&def) {
+                    None
+                } else {
+                    Some(def)
+                }
+            }
+            5 => {
+                let def =
+                    ModifierDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError);
+                if out.contains(&def) {
+                    None
+                } else {
+                    Some(def)
+                }
+            }
+            6 => Some(StructDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError)),
+            7 => Some(
+                VariableDeclaration::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+            ),
             _ => unreachable!(),
+        };
+        if let Some(def) = def {
+            out.push(def);
         }
-        .unwrap_or_else(Definition::NatspecParsingError);
-        out.push(def);
     }
     out
 }
