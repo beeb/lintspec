@@ -36,7 +36,7 @@ body = """
 trim = true
 
 postprocessors = [
-    { pattern = '\$REPO', replace = "https://github.com/beeb/lintpsec" },
+    { pattern = '\$REPO', replace = "https://github.com/beeb/lintspec" },
 ]
 
 [git]
