@@ -32,7 +32,7 @@ thiserror = "2.0.11"
 winnow = "0.7.2"
 
 [dev-dependencies]
-insta = { version = "1.42.1", features = ["yaml"] }
+insta = "1.42.1"
 similar-asserts = "1.6.1"
 
 [profile.release]
