@@ -1,12 +1,7 @@
 ---
-source: tests/tests-snapshot.rs
+source: tests/tests-basic-sample.rs
 expression: generate_output(diags)
 ---
-./test-data/BasicSample.sol:9:1
-struct BasicSample.TestStruct
-  @param someAddress is missing
-  @param someNumber is missing
-
 ./test-data/BasicSample.sol:22:1
 error BasicSample.BasicSample_SomeError
   @param _param1 is missing
@@ -14,6 +9,10 @@ error BasicSample.BasicSample_SomeError
 ./test-data/BasicSample.sol:27:1
 event BasicSample.BasicSample_BasicEvent
   @param _param1 is missing
+
+./test-data/BasicSample.sol:44:17
+constructor BasicSample.constructor
+  missing NatSpec
 
 ./test-data/BasicSample.sol:54:5
 function BasicSample.externalSimple
