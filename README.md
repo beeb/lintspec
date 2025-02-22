@@ -88,7 +88,7 @@ which take precedence over the config file.
 
 ## Usage in GitHub Actions
 
-You can check your code in CI with the lintspec GitHub Action. Any `.lintspec.toml` or `.nsignore` file in
+You can check your code in CI with the lintspec GitHub Action. Any `.lintspec.toml` or `.nsignore` file in the
 repository's root will be used to configure the execution.
 
 The action generates
