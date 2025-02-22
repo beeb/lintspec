@@ -1,0 +1,32 @@
+---
+source: tests/tests-snapshot.rs
+expression: result
+---
+./test-data/BasicSample.sol:9:1
+struct BasicSample.TestStruct
+  @param someAddress is missing
+  @param someNumber is missing
+
+./test-data/BasicSample.sol:16:1
+error BasicSample.BasicSample_SomeError
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:21:1
+event BasicSample.BasicSample_BasicEvent
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:48:5
+function BasicSample.externalSimple
+  @param _name is present more than once
+
+./test-data/BasicSample.sol:92:5
+function BasicSample.externalSimpleMultipleUnnamedReturn
+  @return missing for unnamed return #2
+
+./test-data/BasicSample.sol:99:5
+function BasicSample.overriddenFunction
+  @return _returned is missing
+
+./test-data/BasicSample.sol:108:14
+modifier BasicSample.transferFee
+  @param _receiver is missing

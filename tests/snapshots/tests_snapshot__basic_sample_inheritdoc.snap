@@ -1,0 +1,47 @@
+---
+source: tests/tests-snapshot.rs
+expression: generate_output(diags)
+---
+./test-data/BasicSample.sol:22:1
+error BasicSample.BasicSample_SomeError
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:27:1
+event BasicSample.BasicSample_BasicEvent
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:38:1
+variable BasicSample.somePublicNumber
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:54:5
+function BasicSample.externalSimple
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:69:5
+function BasicSample.multiline
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:75:5
+function BasicSample.multitag
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:85:5
+function BasicSample.externalSimpleMultipleReturn
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:98:5
+function BasicSample.externalSimpleMultipleUnnamedReturn
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:105:5
+function BasicSample.overriddenFunction
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:109:5
+function BasicSample.virtualFunction
+  missing NatSpec
+
+./test-data/BasicSample.sol:114:14
+modifier BasicSample.transferFee
+  @param _receiver is missing
