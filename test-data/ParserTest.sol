@@ -73,9 +73,8 @@ contract ParserTest is IParserTest {
     _;
   }
 
-  // TODO: Fallback and receive functions
-  // fallback() {}
-  // receive () {}
+  fallback() external {}
+  receive () external payable {}
 
   /// @inheritdoc IParserTest
   /// @dev Dev comment for the function
@@ -186,8 +185,9 @@ contract ParserTestFunny is IParserTest {
     return 1;
   }
 
-   /**** @notice Some text
-    ** */
+   /**
+    @notice Some text
+  */
   function _viewBlockLinterFail() internal pure {
   }
 

@@ -119,9 +119,13 @@ impl Validate for FunctionDefinition {
         if self.name == "receive" || self.name == "fallback" {
             return out;
         }
-        // raise error if no NatSpec is available (unless there are no params and we don't enforce inheritdoc)
+        // raise error if no NatSpec is available (unless there are no params, no returns, and we don't enforce
+        // inheritdoc)
         let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() && (!options.inheritdoc || !self.requires_inheritdoc()) {
+            if self.returns.is_empty()
+                && self.params.is_empty()
+                && (!options.inheritdoc || !self.requires_inheritdoc())
+            {
                 return out;
             }
             // we require natspec for either inheritdoc or the params
@@ -362,5 +366,18 @@ mod tests {
         );
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+    }
+
+    #[test]
+    fn test_function_internal() {
+        let contents = "contract Test {
+            // @notice
+            function _viewInternal() internal view returns (uint256) {
+                return 1;
+            }
+        }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }

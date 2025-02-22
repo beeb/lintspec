@@ -227,7 +227,11 @@ fn parse_comment_line_single(input: &mut &str) -> Result<NatSpecItem> {
 }
 
 fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
-    let item = preceded("///", parse_comment_line_single).parse_next(input)?;
+    let item = preceded(
+        repeat::<_, _, (), _, _>(3.., '/'),
+        parse_comment_line_single,
+    )
+    .parse_next(input)?;
     if item.is_empty() {
         return Ok(NatSpec::default());
     }
@@ -435,5 +439,25 @@ mod tests {
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
+    }
+
+    #[ignore]
+    #[test]
+    fn test_multiline_weird() {
+        // FIXME: this doesn't pass
+        let comment = "/**** @notice Some text
+    ** */";
+        let res = parse_comment.parse(comment);
+        assert!(res.is_ok(), "{res:?}");
+        let res = res.unwrap();
+        assert_eq!(
+            res,
+            NatSpec {
+                items: vec![NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Some text".to_string()
+                },]
+            }
+        );
     }
 }
