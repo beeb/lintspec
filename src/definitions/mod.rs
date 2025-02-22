@@ -169,10 +169,9 @@ impl PartialEq for Definition {
     ///
     /// If two instances of the same node generate two definitions (due to quantifiers in the query), this can be
     /// used to deduplicate the instances.
-    ///
-    /// TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
-    /// require adding a field in the definition just for that.
     fn eq(&self, other: &Self) -> bool {
+        // TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
+        // require adding a field in the definition just for that.
         match (self, other) {
             (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
             (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
@@ -369,30 +368,70 @@ pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> 
 
 /// Extract and parse the NatSpec comment information, if any
 pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
-    // TODO: should we parse the doc comments inside of structs? filtering them out would add complexity
     let mut cursor = cursor.spawn();
     let mut items = Vec::new();
-    while cursor.go_to_next_terminal_with_kinds(&[
-        TerminalKind::MultiLineNatSpecComment,
-        TerminalKind::SingleLineNatSpecComment,
-    ]) {
-        let comment = &cursor.node().unparse();
-        items.push(
-            parse_comment
-                .parse(comment)
-                .map_err(|e| Error::NatspecParsingError {
-                    parent: extract_parent_name(cursor.clone()),
-                    span: cursor.text_range(),
-                    message: e.to_string(),
-                })?
-                .populate_returns(returns),
-        );
+    while cursor.go_to_next() {
+        if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::MultiLineNatSpecComment,
+            TerminalKind::SingleLineNatSpecComment,
+        ]) {
+            let comment = &cursor.node().unparse();
+            items.push((
+                cursor.node().kind().to_string(), // the node type to differentiate multiline for single line
+                cursor.text_range().start.line, // the line number to remove unwanted single-line comments
+                parse_comment
+                    .parse(comment)
+                    .map_err(|e| Error::NatspecParsingError {
+                        parent: extract_parent_name(cursor.clone()),
+                        span: cursor.text_range(),
+                        message: e.to_string(),
+                    })?
+                    .populate_returns(returns),
+            ));
+        } else if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::ConstructorKeyword,
+            TerminalKind::EnumKeyword,
+            TerminalKind::ErrorKeyword,
+            TerminalKind::EventKeyword,
+            TerminalKind::FunctionKeyword,
+            TerminalKind::ModifierKeyword,
+            TerminalKind::StructKeyword,
+        ]) | cursor
+            .node()
+            .is_nonterminal_with_kind(NonterminalKind::StateVariableAttributes)
+        {
+            // anything after this node should be ignored, because we enter the item's body
+            break;
+        }
     }
-    let items = items.into_iter().reduce(|mut acc, mut i| {
-        acc.append(&mut i);
-        acc
-    });
-    Ok(items)
+    if let Some("MultiLineNatSpecComment") = items.last().map(|(kind, _, _)| kind.as_str()) {
+        // if the last comment is multiline, we ignore all previous comments
+        let (_, _, natspec) = items.pop().expect("there should be at least one elem");
+        return Ok(Some(natspec));
+    }
+    // the last comment is single-line
+    // we need to take the comments (in reverse) up to an empty line or a multiline comment (exclusive)
+    let mut res = Vec::new();
+    let mut iter = items.into_iter().rev().peekable();
+    while let Some((_, item_line, item)) = iter.next() {
+        res.push(item);
+        if let Some((next_kind, next_line, _)) = iter.peek() {
+            if next_kind == "MultiLineNatSpecComment" || *next_line < item_line - 1 {
+                // the next comments up should be ignored
+                break;
+            }
+        }
+    }
+    if res.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(res.into_iter().rev().fold(
+        NatSpec::default(),
+        |mut acc, mut i| {
+            acc.append(&mut i);
+            acc
+        },
+    )))
 }
 
 /// Extract identifiers from a CST node, filtered by label equal to `name`
@@ -924,19 +963,7 @@ mod tests {
             Some(Parent::Contract("ParserTestFunny".to_string())),
             &items,
         );
-        assert_eq!(
-            item.natspec.as_ref().unwrap().items,
-            vec![
-                NatSpecItem {
-                    kind: NatSpecKind::Notice,
-                    comment: "The first variable".to_string()
-                },
-                NatSpecItem {
-                    kind: NatSpecKind::Notice,
-                    comment: "The first variable".to_string()
-                }
-            ]
-        );
+        assert_eq!(item.natspec, None);
     }
 
     #[test]
@@ -989,14 +1016,44 @@ mod tests {
         assert_eq!(item.natspec, None);
     }
 
-    #[ignore]
     #[test]
     fn test_parse_funny_function_private() {
-        // FIXME: should it parse the first comment or nah?
         let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
         let items = find_items(cursor);
         let item = find_function(
-            "_viewPrivate",
+            "_viewPrivateMulti",
+            Some(Parent::Contract("ParserTestFunny".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![
+                NatSpecItem {
+                    kind: NatSpecKind::Notice,
+                    comment: "Some private stuff".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Param {
+                        name: "_paramName".to_string()
+                    },
+                    comment: "The parameter name".to_string()
+                },
+                NatSpecItem {
+                    kind: NatSpecKind::Return {
+                        name: Some("_returned".to_string())
+                    },
+                    comment: "The returned value".to_string()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_funny_function_private_single() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = find_items(cursor);
+        let item = find_function(
+            "_viewPrivateSingle",
             Some(Parent::Contract("ParserTestFunny".to_string())),
             &items,
         );

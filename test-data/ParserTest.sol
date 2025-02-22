@@ -156,14 +156,26 @@ contract ParserTestFunny is IParserTest {
    *
    *
    * 
-   * I met Obama once
-   * She's cool
+   * This should be ignored
    */
 
+  /**
+   * @notice   Some private stuff
+   * @param      _paramName The parameter name
+   * @return     _returned     The returned value
+   */
+  function _viewPrivateMulti(uint256 _paramName) private pure returns (uint256 _returned) {
+    return 1;
+  }
+
+  /// @dev This should be ignored
+  /**
+    * @dev this too
+    */
   /// @notice   Some private stuff
   /// @param      _paramName The parameter name
   /// @return     _returned     The returned value
-  function _viewPrivate(uint256 _paramName) private pure returns (uint256 _returned) {
+  function _viewPrivateSingle(uint256 _paramName) private pure returns (uint256 _returned) {
     return 1;
   }
 
