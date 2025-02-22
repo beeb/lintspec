@@ -106,6 +106,7 @@ fn extract_enum_members(cursor: Cursor) -> Vec<Identifier> {
 #[cfg(test)]
 mod tests {
     use semver::Version;
+    use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use super::*;

@@ -236,6 +236,8 @@ fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]

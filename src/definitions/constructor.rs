@@ -91,6 +91,7 @@ impl Validate for ConstructorDefinition {
 #[cfg(test)]
 mod tests {
     use semver::Version;
+    use similar_asserts::assert_eq;
     use slang_solidity::parser::Parser;
 
     use super::*;
