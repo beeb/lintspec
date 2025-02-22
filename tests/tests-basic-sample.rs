@@ -13,7 +13,7 @@ fn generate_output(diags: FileDiagnostics) -> String {
 }
 
 #[test]
-fn test_basic_sample() {
+fn test_basic() {
     let diags = lint(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
@@ -30,7 +30,7 @@ fn test_basic_sample() {
 }
 
 #[test]
-fn test_basic_sample_inheritdoc() {
+fn test_inheritdoc() {
     let diags = lint(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
@@ -47,7 +47,7 @@ fn test_basic_sample_inheritdoc() {
 }
 
 #[test]
-fn test_basic_sample_constructor() {
+fn test_constructor() {
     let diags = lint(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
@@ -64,7 +64,7 @@ fn test_basic_sample_constructor() {
 }
 
 #[test]
-fn test_basic_sample_struct() {
+fn test_struct() {
     let diags = lint(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
@@ -81,7 +81,7 @@ fn test_basic_sample_struct() {
 }
 
 #[test]
-fn test_basic_sample_enum() {
+fn test_enum() {
     let diags = lint(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
