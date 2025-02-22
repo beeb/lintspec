@@ -576,6 +576,7 @@ pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
     use slang_solidity::parser::Parser;
 
     use crate::{

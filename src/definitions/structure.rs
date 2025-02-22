@@ -113,6 +113,7 @@ fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
 #[cfg(test)]
 mod tests {
     use semver::Version;
+    use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use super::*;

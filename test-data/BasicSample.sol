@@ -14,6 +14,12 @@ contract BasicSample is AbstractBasic {
         uint256 someNumber;
     }
 
+    /// @notice An enum
+    enum TestEnum {
+        First,
+        Second
+    }
+
     /**
      * @notice Some error missing parameter natspec
      */

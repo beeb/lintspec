@@ -24,6 +24,8 @@
           buildInputs = [
             pkgs.rust-analyzer-unwrapped
             toolchain
+            pkgs.cargo-insta
+            pkgs.cargo-nextest
           ];
 
           RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
