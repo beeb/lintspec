@@ -165,6 +165,13 @@ pub enum Definition {
 }
 
 impl PartialEq for Definition {
+    /// Compare two definitions based on their underlying node
+    ///
+    /// If two instances of the same node generate two definitions (due to quantifiers in the query), this can be
+    /// used to deduplicate the instances.
+    ///
+    /// TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
+    /// require adding a field in the definition just for that.
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
