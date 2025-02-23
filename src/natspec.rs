@@ -1,7 +1,7 @@
 //! NatSpec Comment Parser
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
-    combinator::{alt, delimited, empty, opt, repeat, separated},
+    combinator::{alt, delimited, opt, repeat, separated},
     seq,
     token::{take_till, take_until},
     Parser as _, Result,
@@ -198,19 +198,8 @@ fn parse_one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
         _: space0,
         _: repeat::<_, _, (), _, _>(0.., '*'),
         _: space0,
-        kind: parse_natspec_kind,
+        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
         _: space0,
-        comment: take_until(0.., ("\r", "\n", "*/")).parse_to(),
-    }}
-    .parse_next(input)
-}
-
-fn parse_one_notice_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
-    seq! {NatSpecItem {
-        _: space0,
-        _: repeat::<_, _, (), _, _>(0.., '*'),
-        _: space0,
-        kind: empty.map(|_| NatSpecKind::Notice),
         comment: take_until(0.., ("\r", "\n", "*/")).parse_to(),
     }}
     .parse_next(input)
@@ -224,14 +213,7 @@ fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
             space0,
             opt(line_ending),
         ),
-        separated(
-            0..,
-            alt((
-                parse_one_multiline_natspec,
-                parse_one_notice_multiline_natspec,
-            )),
-            line_ending,
-        ),
+        separated(0.., parse_one_multiline_natspec, line_ending),
         (opt(line_ending), space0, parse_end_of_multiline_comment),
     )
     .map(|items| NatSpec { items })
@@ -314,64 +296,44 @@ mod tests {
         }
     }
 
-    #[ignore]
     #[test]
     fn test_one_multiline_item() {
         let cases = [
-            ("@dev Hello world", NatSpecKind::Dev, "Hello world"),
-            ("@title The Title", NatSpecKind::Title, "The Title"),
+            ("@dev Hello world\n", NatSpecKind::Dev, "Hello world"),
+            ("@title The Title\n", NatSpecKind::Title, "The Title"),
             (
-                "        * @author McGyver <hi@buildanything.com>",
+                "        * @author McGyver <hi@buildanything.com>\n",
                 NatSpecKind::Author,
                 "McGyver <hi@buildanything.com>",
             ),
             (
-                " @param foo The bar",
+                " @param foo The bar\r\n",
                 NatSpecKind::Param {
                     name: "foo".to_string(),
                 },
                 "The bar",
             ),
             (
-                " @return something The return value",
+                " @return something The return value\n",
                 NatSpecKind::Return { name: None },
                 "something The return value",
             ),
             (
-                "\t* @custom:foo bar",
+                "\t* @custom:foo bar\n",
                 NatSpecKind::Custom {
                     tag: "foo".to_string(),
                 },
                 "bar",
             ),
+            ("  lorem ipsum\n", NatSpecKind::Notice, "lorem ipsum"),
+            ("lorem ipsum\r\n", NatSpecKind::Notice, "lorem ipsum"),
+            ("\t*  foobar\n", NatSpecKind::Notice, "foobar"),
+            ("    * foobar\n", NatSpecKind::Notice, "foobar"),
         ];
         for case in cases {
-            let res = parse_one_multiline_natspec.parse(case.0);
+            let res = (parse_one_multiline_natspec, line_ending).parse(case.0);
             assert!(res.is_ok(), "{res:?}");
-            let res = res.unwrap();
-            assert_eq!(
-                res,
-                NatSpecItem {
-                    kind: case.1,
-                    comment: case.2.to_string()
-                }
-            );
-        }
-    }
-
-    #[ignore]
-    #[test]
-    fn test_notice_multiline_item() {
-        let cases = [
-            ("  lorem ipsum", NatSpecKind::Notice, "lorem ipsum"),
-            ("lorem ipsum", NatSpecKind::Notice, "lorem ipsum"),
-            ("\t*  foobar", NatSpecKind::Notice, "foobar"),
-            ("    * foobar", NatSpecKind::Notice, "foobar"),
-        ];
-        for case in cases {
-            let res = parse_one_notice_multiline_natspec.parse(case.0);
-            assert!(res.is_ok(), "{res:?}");
-            let res = res.unwrap();
+            let (res, _) = res.unwrap();
             assert_eq!(
                 res,
                 NatSpecItem {
