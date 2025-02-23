@@ -92,7 +92,7 @@ impl From<Args> for Config {
             out: value.out,
             inheritdoc: value.inheritdoc.unwrap_or(true),
             constructor: value.constructor.unwrap_or_default(),
-            struct_params: value.enum_params.unwrap_or_default(),
+            struct_params: value.struct_params.unwrap_or_default(),
             enum_params: value.enum_params.unwrap_or_default(),
             json: value.json.unwrap_or_default(),
             compact: value.compact.unwrap_or_default(),
