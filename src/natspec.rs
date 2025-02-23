@@ -244,7 +244,7 @@ fn parse_single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
 
 fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
     let item = delimited(
-        (space0, repeat::<_, _, (), _, _>(3.., '/')),
+        repeat::<_, _, (), _, _>(3.., '/'),
         parse_single_line_natspec,
         opt(line_ending),
     )
