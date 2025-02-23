@@ -149,21 +149,16 @@ impl From<NatSpecItem> for NatSpec {
 
 /// Parse a Solidity doc-comment to extract the NatSpec information
 pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
-    alt((
-        parse_single_line_comment,
-        parse_multiline_comment,
-        parse_empty_multiline,
-    ))
-    .parse_next(input)
+    alt((single_line_comment, multiline_comment, empty_multiline)).parse_next(input)
 }
 
-fn parse_ident(input: &mut &str) -> Result<String> {
+fn ident(input: &mut &str) -> Result<String> {
     take_till(1.., |c: char| c.is_whitespace())
         .map(|ident: &str| ident.to_owned())
         .parse_next(input)
 }
 
-fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
+fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
     alt((
         "@title".map(|_| NatSpecKind::Title),
         "@author".map(|_| NatSpecKind::Author),
@@ -172,40 +167,40 @@ fn parse_natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
         seq! {NatSpecKind::Param {
             _: "@param",
             _: space1,
-            name: parse_ident
+            name: ident
         }},
         "@return".map(|_| NatSpecKind::Return { name: None }), // we will process the name later since it's optional
         seq! {NatSpecKind::Inheritdoc {
             _: "@inheritdoc",
             _: space1,
-            parent: parse_ident
+            parent: ident
         }},
         seq! {NatSpecKind::Custom {
             _: "@custom:",
-            tag: parse_ident
+            tag: ident
         }},
     ))
     .parse_next(input)
 }
 
-fn parse_end_of_multiline_comment(input: &mut &str) -> Result<()> {
+fn end_of_comment(input: &mut &str) -> Result<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())
 }
 
-fn parse_one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
+fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
         _: repeat::<_, _, (), _, _>(0.., '*'),
         _: space0,
-        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
         _: space0,
         comment: take_until(0.., ("\r", "\n", "*/")).parse_to(),
     }}
     .parse_next(input)
 }
 
-fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
+fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         (
             '/',
@@ -213,14 +208,14 @@ fn parse_multiline_comment(input: &mut &str) -> Result<NatSpec> {
             space0,
             opt(line_ending),
         ),
-        separated(0.., parse_one_multiline_natspec, line_ending),
-        (opt(line_ending), space0, parse_end_of_multiline_comment),
+        separated(0.., one_multiline_natspec, line_ending),
+        (opt(line_ending), space0, end_of_comment),
     )
     .map(|items| NatSpec { items })
     .parse_next(input)
 }
 
-fn parse_empty_multiline(input: &mut &str) -> Result<NatSpec> {
+fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
     let _ = (
         '/',
         repeat::<_, _, (), _, _>(2.., '*'),
@@ -232,20 +227,20 @@ fn parse_empty_multiline(input: &mut &str) -> Result<NatSpec> {
     Ok(NatSpec::default())
 }
 
-fn parse_single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
+fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
-        kind: opt(parse_natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
+        kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
         _: space0,
         comment: till_line_ending.parse_to(),
     }}
     .parse_next(input)
 }
 
-fn parse_single_line_comment(input: &mut &str) -> Result<NatSpec> {
+fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
     let item = delimited(
         repeat::<_, _, (), _, _>(3.., '/'),
-        parse_single_line_natspec,
+        single_line_natspec,
         opt(line_ending),
     )
     .parse_next(input)?;
@@ -289,7 +284,7 @@ mod tests {
             ),
         ];
         for case in cases {
-            let res = parse_natspec_kind.parse(case.0);
+            let res = natspec_kind.parse(case.0);
             assert!(res.is_ok(), "{res:?}");
             let res = res.unwrap();
             assert_eq!(res, case.1);
@@ -331,7 +326,7 @@ mod tests {
             ("    * foobar\n", NatSpecKind::Notice, "foobar"),
         ];
         for case in cases {
-            let res = (parse_one_multiline_natspec, line_ending).parse(case.0);
+            let res = (one_multiline_natspec, line_ending).parse(case.0);
             assert!(res.is_ok(), "{res:?}");
             let (res, _) = res.unwrap();
             assert_eq!(
@@ -375,7 +370,7 @@ mod tests {
             ),
         ];
         for case in cases {
-            let res = parse_single_line_comment.parse(case.0);
+            let res = single_line_comment.parse(case.0);
             assert!(res.is_ok(), "{res:?}");
             let res = res.unwrap();
             assert_eq!(
@@ -391,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_single_line_empty() {
-        let res = parse_single_line_comment.parse("///\n");
+        let res = single_line_comment.parse("///\n");
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
@@ -402,7 +397,7 @@ mod tests {
         let comment = "/**
      * @notice Some notice text.
      */";
-        let res = parse_multiline_comment.parse(comment);
+        let res = multiline_comment.parse(comment);
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(
@@ -422,7 +417,7 @@ mod tests {
      * @notice Some notice text.
      * @custom:something
      */";
-        let res = parse_multiline_comment.parse(comment);
+        let res = multiline_comment.parse(comment);
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(
@@ -450,7 +445,7 @@ mod tests {
 Another notice
         * @param test
      \t** @custom:something */";
-        let res = parse_multiline_comment.parse(comment);
+        let res = multiline_comment.parse(comment);
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(
