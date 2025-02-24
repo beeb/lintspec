@@ -76,6 +76,7 @@ Options:
       --enum-params        Enforce that enums have `@param` for each variant
   -f, --enforce <TYPE>     Enforce NatSpec on items even if they don't have params/returns/members (can be used more than once)
                            [possible values: constructor, enum, error, event, function, modifier, struct, variable]
+      --enforce-all        Enforce NatSpec for all item types, even if they don't have params/returns/members
       --json               Output diagnostics in JSON format
       --compact            Compact output
       --sort               Sort the results by file path
