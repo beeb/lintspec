@@ -67,7 +67,7 @@ impl Validate for EventDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: ItemType::Event,
@@ -75,11 +75,11 @@ impl Validate for EventDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if self.params.is_empty() {
-            return out;
-        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
+            if self.params.is_empty() && !options.enforce.contains(&ItemType::Event) {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
@@ -204,6 +204,21 @@ mod tests {
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_error_enforce() {
+        let contents = "contract Test {
+            event Foobar();
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(false)
+                .enforce(vec![ItemType::Event])
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 
     #[test]
