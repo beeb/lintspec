@@ -120,12 +120,19 @@ impl Validate for FunctionDefinition {
             return out;
         }
         // raise error if no NatSpec is available (unless there are no params, no returns, and we don't enforce
-        // inheritdoc)
+        // inheritdoc or natspec at all)
         let Some(natspec) = &self.natspec else {
             if self.returns.is_empty()
                 && self.params.is_empty()
+                && !options.enforce.contains(&ItemType::Function)
                 && (!options.inheritdoc || !self.requires_inheritdoc())
             {
+                return out;
+            } else if options.inheritdoc && self.requires_inheritdoc() {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "@inheritdoc is missing".to_string(),
+                });
                 return out;
             }
             // we require natspec for either inheritdoc or the params
@@ -353,6 +360,20 @@ mod tests {
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+    }
+
+    #[test]
+    fn test_function_enforce() {
+        let contents = "contract Test {
+            function foo() internal { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Function])
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 
     #[test]

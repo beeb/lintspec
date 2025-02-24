@@ -22,7 +22,7 @@ variable ParserTestFunny.SOME_CONSTANT
 
 ./test-data/ParserTest.sol:145:3
 function ParserTestFunny.viewFunctionWithParams
-  missing NatSpec
+  @inheritdoc is missing
 
 ./test-data/ParserTest.sol:150:3
 function ParserTestFunny._viewInternal
