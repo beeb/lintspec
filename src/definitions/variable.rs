@@ -87,16 +87,19 @@ impl Validate for VariableDeclaration {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available (unless we don't enforce inheritdoc)
+        // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            if !options.inheritdoc || !self.requires_inheritdoc() {
-                return out;
+            if options.inheritdoc && self.requires_inheritdoc() {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "@inheritdoc is missing".to_string(),
+                });
+            } else if options.enforce.contains(&ItemType::Variable) {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "missing NatSpec".to_string(),
+                });
             }
-            // we require natspec for inheritdoc
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
             return out;
         };
         // if there is `inheritdoc`, no further validation is required
@@ -129,6 +132,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> VariableDeclaration {
@@ -155,13 +159,13 @@ mod tests {
     }
 
     #[test]
-    fn test_variable_no_natspec() {
+    fn test_variable_no_natspec_inheritdoc() {
         let contents = "contract Test {
             uint256 public a;
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
     }
 
     #[test]
@@ -207,12 +211,33 @@ mod tests {
         let contents = "contract Test {
             uint256 internal a;
         }";
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_variable_enforce() {
+        let contents = "contract Test {
+            uint256 internal a;
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
                 .inheritdoc(false)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
+                .enforce(vec![ItemType::Variable])
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @dev Some dev
+            uint256 internal a;
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(false)
+                .enforce(vec![ItemType::Variable])
                 .build(),
         );
         assert!(res.diags.is_empty(), "{:#?}", res.diags);

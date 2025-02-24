@@ -71,17 +71,21 @@ impl Validate for ConstructorDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.constructor || self.params.is_empty() {
-            return out;
-        }
-
         let Some(natspec) = &self.natspec else {
+            if (!options.constructor || self.params.is_empty())
+                && !options.enforce.contains(&ItemType::Constructor)
+            {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             });
             return out;
         };
+        if !options.constructor || self.params.is_empty() {
+            return out;
+        }
         // check params
         out.diags.append(&mut check_params(natspec, &self.params));
         out
@@ -101,6 +105,7 @@ mod tests {
         constructor: true,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> ConstructorDefinition {
@@ -203,15 +208,34 @@ mod tests {
             /// @inheritdoc ITest
             constructor(uint256 param1) { } 
         }";
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().constructor(true).build());
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+    }
+
+    #[test]
+    fn test_constructor_enforce() {
+        let contents = "contract Test {
+            constructor() { } 
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect on constructor
-                .constructor(true)
-                .struct_params(false)
-                .enum_params(false)
+                .enforce(vec![ItemType::Constructor])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @notice Some notice
+            constructor() { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Constructor])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }

@@ -67,7 +67,7 @@ impl Validate for ErrorDefinition {
         .into())
     }
 
-    fn validate(&self, _: &ValidationOptions) -> ItemDiagnostics {
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: ItemType::Error,
@@ -75,11 +75,11 @@ impl Validate for ErrorDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if self.params.is_empty() {
-            return out;
-        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
+            if self.params.is_empty() && !options.enforce.contains(&ItemType::Error) {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
@@ -104,6 +104,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> ErrorDefinition {
@@ -200,16 +201,36 @@ mod tests {
             /// @inheritdoc ITest
             error Foobar(uint256 a);
         }";
+        let res = parse_file(contents).validate(&ValidationOptions::default());
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_error_enforce() {
+        let contents = "contract Test {
+            error Foobar();
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect on error
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
+                .inheritdoc(false)
+                .enforce(vec![ItemType::Error])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @notice Some notice
+            error Foobar();
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(false)
+                .enforce(vec![ItemType::Error])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
     #[test]

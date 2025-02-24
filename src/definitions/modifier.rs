@@ -98,12 +98,22 @@ impl Validate for ModifierDefinition {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available (unless there are no params and we don't enforce inheritdoc)
+        // raise error if no NatSpec is available (unless there are no params and we don't enforce inheritdoc or
+        // natspec otherwise)
         let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() && (!options.inheritdoc || !self.requires_inheritdoc()) {
+            if self.params.is_empty()
+                && !options.enforce.contains(&ItemType::Modifier)
+                && (!options.inheritdoc || !self.requires_inheritdoc())
+            {
+                return out;
+            } else if options.inheritdoc && self.requires_inheritdoc() {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "@inheritdoc is missing".to_string(),
+                });
                 return out;
             }
-            // we require natspec for either inheritdoc or the params
+            // we require natspec
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
@@ -143,6 +153,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> ModifierDefinition {
@@ -269,14 +280,7 @@ mod tests {
             /// @inheritdoc ITest
             modifier foo() override (ITest) { _; } 
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res = parse_file(contents).validate(&ValidationOptions::default());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -286,15 +290,33 @@ mod tests {
             /// @notice Test
             modifier foo() override (ITest) { _; } 
         }";
+        let res = parse_file(contents).validate(&ValidationOptions::default());
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+    }
+
+    #[test]
+    fn test_modifier_enforce() {
+        let contents = "contract Test {
+            modifier foo() { _; } 
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
+                .enforce(vec![ItemType::Modifier])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @notice Some notice
+            modifier foo() { _; } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Modifier])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }

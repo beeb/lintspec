@@ -75,17 +75,20 @@ impl Validate for StructDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.struct_params {
-            return out;
-        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
+            if !options.struct_params && !options.enforce.contains(&ItemType::Struct) {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             });
             return out;
         };
+        if !options.struct_params {
+            return out;
+        }
         out.diags = check_params(natspec, &self.members);
         out
     }
@@ -123,6 +126,7 @@ mod tests {
         constructor: false,
         struct_params: true,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> StructDefinition {
@@ -146,14 +150,8 @@ mod tests {
                 bool b;
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -252,16 +250,39 @@ mod tests {
                 uint256 a;
             }
         }";
+        let res = parse_file(contents)
+            .validate(&ValidationOptions::builder().struct_params(true).build());
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_struct_enforce() {
+        let contents = "contract Test {
+            struct Foobar {
+                uint256 a;
+            }
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect for structs
-                .constructor(false)
-                .struct_params(true)
-                .enum_params(false)
+                .enforce(vec![ItemType::Struct])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @notice Some notice
+            struct Foobar {
+                uint256 a;
+            }
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Struct])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
     #[test]

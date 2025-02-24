@@ -49,22 +49,30 @@ pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
 #[non_exhaustive]
 pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
+    #[builder(default = true)]
     pub inheritdoc: bool,
 
     /// Whether to check that constructors have documented params
+    #[builder(default = false)]
     pub constructor: bool,
 
     /// Whether to check that each member of structs is documented with `@param`
     ///
     /// Not standard practice, the Solidity spec does not consider `@param` for structs or provide any other way to
     /// document each member.
+    #[builder(default = false)]
     pub struct_params: bool,
 
     /// Whether to check that each variant of enums is documented with `@param`
     ///
     /// Not standard practice, the Solidity spec does not consider `@param` for enums or provide any other way to
     /// document each variant.
+    #[builder(default = false)]
     pub enum_params: bool,
+
+    /// Which item types should have at least some NatSpec (@dev, @notice) even if they have no param/return/member.
+    #[builder(default = vec![])]
+    pub enforce: Vec<ItemType>,
 }
 
 impl Default for ValidationOptions {
@@ -75,6 +83,7 @@ impl Default for ValidationOptions {
             constructor: false,
             struct_params: false,
             enum_params: false,
+            enforce: vec![],
         }
     }
 }
@@ -86,6 +95,7 @@ impl From<&Config> for ValidationOptions {
             constructor: value.constructor,
             struct_params: value.struct_params,
             enum_params: value.enum_params,
+            enforce: value.enforce.clone(),
         }
     }
 }

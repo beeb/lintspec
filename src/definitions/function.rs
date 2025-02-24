@@ -120,15 +120,22 @@ impl Validate for FunctionDefinition {
             return out;
         }
         // raise error if no NatSpec is available (unless there are no params, no returns, and we don't enforce
-        // inheritdoc)
+        // inheritdoc or natspec at all)
         let Some(natspec) = &self.natspec else {
             if self.returns.is_empty()
                 && self.params.is_empty()
+                && !options.enforce.contains(&ItemType::Function)
                 && (!options.inheritdoc || !self.requires_inheritdoc())
             {
                 return out;
+            } else if options.inheritdoc && self.requires_inheritdoc() {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "@inheritdoc is missing".to_string(),
+                });
+                return out;
             }
-            // we require natspec for either inheritdoc or the params
+            // we require natspec
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
@@ -170,6 +177,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> FunctionDefinition {
@@ -339,14 +347,7 @@ mod tests {
             /// @inheritdoc ITest
             function foo() external { } 
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res = parse_file(contents).validate(&ValidationOptions::default());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -356,16 +357,34 @@ mod tests {
             /// @notice Test
             function foo() external { } 
         }";
+        let res = parse_file(contents).validate(&ValidationOptions::default());
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+    }
+
+    #[test]
+    fn test_function_enforce() {
+        let contents = "contract Test {
+            function foo() internal { } 
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
+                .enforce(vec![ItemType::Function])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @dev Some dev
+            function foo() internal { } 
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Function])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
     #[test]

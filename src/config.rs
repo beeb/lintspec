@@ -9,6 +9,8 @@ use figment::{
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
+use crate::lint::ItemType;
+
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
 #[command(version, about, long_about = None)]
@@ -54,6 +56,11 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub enum_params: Option<bool>,
 
+    /// Enforce NatSpec (@dev, @notice) on items even if they don't have params/returns/members
+    /// (can be used more than once)
+    #[arg(short = 'f', long, name = "TYPE")]
+    pub enforce: Vec<ItemType>,
+
     /// Output diagnostics in JSON format
     ///
     /// Can be set with `--json` (means true), `--json true` or `--json false`.
@@ -86,6 +93,7 @@ pub struct Config {
     pub constructor: bool,
     pub struct_params: bool,
     pub enum_params: bool,
+    pub enforce: Vec<ItemType>,
     pub json: bool,
     pub compact: bool,
     pub sort: bool,
@@ -101,6 +109,7 @@ impl From<Args> for Config {
             constructor: value.constructor.unwrap_or_default(),
             struct_params: value.struct_params.unwrap_or_default(),
             enum_params: value.enum_params.unwrap_or_default(),
+            enforce: value.enforce,
             json: value.json.unwrap_or_default(),
             compact: value.compact.unwrap_or_default(),
             sort: value.sort.unwrap_or_default(),
@@ -119,6 +128,7 @@ pub fn read_config() -> Result<Config> {
             constructor: None,
             struct_params: None,
             enum_params: None,
+            enforce: args.enforce,
             json: None,
             compact: None,
             sort: None,
