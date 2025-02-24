@@ -14,7 +14,11 @@ use crate::error::{Error, Result};
 /// Global git ignore configurations as well as parent folder gitignores are not taken into account.
 /// Hidden files are included.
 /// Returned paths are canonicalized.
-pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<PathBuf>> {
+pub fn find_sol_files<T: AsRef<Path>>(
+    paths: &[T],
+    exclude: &[T],
+    sort: bool,
+) -> Result<Vec<PathBuf>> {
     // canonicalize exclude paths
     let exclude = exclude
         .iter()
@@ -96,6 +100,9 @@ pub fn find_sol_files<T: AsRef<Path>>(paths: &[T], exclude: &[T]) -> Result<Vec<
     let mut files = Vec::new();
     while let Ok(path) = rx.recv() {
         files.push(path);
+    }
+    if sort {
+        files.sort_unstable();
     }
     Ok(files)
 }

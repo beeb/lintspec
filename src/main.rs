@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let config = read_config()?;
 
     // identify Solidity files to parse
-    let paths = find_sol_files(&config.paths, &config.exclude)?;
+    let paths = find_sol_files(&config.paths, &config.exclude, config.sort)?;
     if paths.is_empty() {
         bail!("no Solidity file found, nothing to analyze");
     }

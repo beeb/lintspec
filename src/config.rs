@@ -67,6 +67,12 @@ pub struct Args {
     /// Can be set with `--compact` (means true), `--compact true` or `--compact false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub compact: Option<bool>,
+
+    /// Sort the results by file path
+    ///
+    /// Can be set with `--sort` (means true), `--sort true` or `--sort false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub sort: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
@@ -82,6 +88,7 @@ pub struct Config {
     pub enum_params: bool,
     pub json: bool,
     pub compact: bool,
+    pub sort: bool,
 }
 
 impl From<Args> for Config {
@@ -96,6 +103,7 @@ impl From<Args> for Config {
             enum_params: value.enum_params.unwrap_or_default(),
             json: value.json.unwrap_or_default(),
             compact: value.compact.unwrap_or_default(),
+            sort: value.sort.unwrap_or_default(),
         }
     }
 }
@@ -113,6 +121,7 @@ pub fn read_config() -> Result<Config> {
             enum_params: None,
             json: None,
             compact: None,
+            sort: None,
         }))
         .admerge(Toml::file(".lintspec.toml"))
         .admerge(Env::prefixed("LINTSPEC_"))
@@ -137,6 +146,9 @@ pub fn read_config() -> Result<Config> {
     }
     if let Some(compact) = args.compact {
         temp.compact = Some(compact);
+    }
+    if let Some(sort) = args.sort {
+        temp.sort = Some(sort);
     }
     Ok(temp.into())
 }

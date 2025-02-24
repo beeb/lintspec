@@ -76,6 +76,7 @@ Options:
       --enum-params                  Enforce that enums have `@param` for each variant
       --json                         Output diagnostics in JSON format
       --compact                      Compact output
+      --sort                         Sort the results by file path
   -h, --help                         Print help (see more with '--help')
   -V, --version                      Print version
 ```
