@@ -53,8 +53,8 @@ impl Validate for EventDefinition {
 
         let span = event.text_range();
         let name = name.node().unparse().trim().to_string();
-        let params = extract_params(params, NonterminalKind::EventParameter);
-        let natspec = extract_comment(event.clone(), &[])?;
+        let params = extract_params(&params, NonterminalKind::EventParameter);
+        let natspec = extract_comment(&event.clone(), &[])?;
         let parent = extract_parent_name(event);
 
         Ok(EventDefinition {

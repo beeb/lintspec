@@ -47,6 +47,7 @@ pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
 /// Validation options to control which lints generate a diagnostic
 #[derive(Debug, Clone, bon::Builder)]
 #[non_exhaustive]
+#[allow(clippy::struct_excessive_bools)]
 pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
@@ -70,7 +71,7 @@ pub struct ValidationOptions {
     #[builder(default = false)]
     pub enum_params: bool,
 
-    /// Which item types should have at least some NatSpec (@dev, @notice) even if they have no param/return/member.
+    /// Which item types should have at least some [`NatSpec`] even if they have no param/return/member.
     #[builder(default = vec![])]
     pub enforce: Vec<ItemType>,
 }
@@ -198,6 +199,7 @@ impl PartialEq for Definition {
 
 impl Definition {
     /// Validate a definition and generate [`Diagnostic`]s for errors
+    #[must_use]
     pub fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         match self {
             // if there was an error while parsing the NatSpec comments, a special diagnostic is generated
@@ -230,6 +232,7 @@ impl Definition {
     }
 
     /// Retrieve the inner constructor definition
+    #[must_use]
     pub fn as_constructor(self) -> Option<ConstructorDefinition> {
         match self {
             Definition::Constructor(def) => Some(def),
@@ -238,6 +241,7 @@ impl Definition {
     }
 
     /// Retrieve the inner enum definition
+    #[must_use]
     pub fn as_enum(self) -> Option<EnumDefinition> {
         match self {
             Definition::Enumeration(def) => Some(def),
@@ -246,6 +250,7 @@ impl Definition {
     }
 
     /// Retrieve the inner error definition
+    #[must_use]
     pub fn as_error(self) -> Option<ErrorDefinition> {
         match self {
             Definition::Error(def) => Some(def),
@@ -254,6 +259,7 @@ impl Definition {
     }
 
     /// Retrieve the inner event definition
+    #[must_use]
     pub fn as_event(self) -> Option<EventDefinition> {
         match self {
             Definition::Event(def) => Some(def),
@@ -262,6 +268,7 @@ impl Definition {
     }
 
     /// Retrieve the inner function definition
+    #[must_use]
     pub fn as_function(self) -> Option<FunctionDefinition> {
         match self {
             Definition::Function(def) => Some(def),
@@ -270,6 +277,7 @@ impl Definition {
     }
 
     /// Retrieve the inner modifier definition
+    #[must_use]
     pub fn as_modifier(self) -> Option<ModifierDefinition> {
         match self {
             Definition::Modifier(def) => Some(def),
@@ -278,6 +286,7 @@ impl Definition {
     }
 
     /// Retrieve the inner struct definition
+    #[must_use]
     pub fn as_struct(self) -> Option<StructDefinition> {
         match self {
             Definition::Struct(def) => Some(def),
@@ -286,6 +295,7 @@ impl Definition {
     }
 
     /// Retrieve the inner variable declaration
+    #[must_use]
     pub fn as_variable(self) -> Option<VariableDeclaration> {
         match self {
             Definition::Variable(def) => Some(def),
@@ -348,7 +358,8 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
 /// Extract parameters from a function-like source item.
 ///
 /// The node kind that holds the `Identifier` (`Parameter`, `EventParameter`) is provided as `kind`.
-pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> {
+#[must_use]
+pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier> {
     let mut cursor = cursor.spawn();
     let mut out = Vec::new();
     while cursor.go_to_next_nonterminal_with_kind(kind) {
@@ -376,8 +387,8 @@ pub fn extract_params(cursor: Cursor, kind: NonterminalKind) -> Vec<Identifier> 
     out
 }
 
-/// Extract and parse the NatSpec comment information, if any
-pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
+/// Extract and parse the [`NatSpec`] comment information, if any
+pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option<NatSpec>> {
     let mut cursor = cursor.spawn();
     let mut items = Vec::new();
     while cursor.go_to_next() {
@@ -445,7 +456,8 @@ pub fn extract_comment(cursor: Cursor, returns: &[Identifier]) -> Result<Option<
 }
 
 /// Extract identifiers from a CST node, filtered by label equal to `name`
-pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
+#[must_use]
+pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
@@ -457,13 +469,14 @@ pub fn extract_identifiers(cursor: Cursor) -> Vec<Identifier> {
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),
             span: cursor.text_range(),
-        })
+        });
     }
     out
 }
 
-/// Check a list of params to see if they are documented with a corresponding item in the NatSpec, and generate a
+/// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
+#[must_use]
 pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     for param in params {
@@ -472,8 +485,8 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
             continue;
         };
         let message = match natspec.count_param(param) {
-            0 => format!("@param {} is missing", name),
-            2.. => format!("@param {} is present more than once", name),
+            0 => format!("@param {name} is missing"),
+            2.. => format!("@param {name} is present more than once"),
             _ => {
                 continue;
             }
@@ -481,13 +494,15 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
         res.push(Diagnostic {
             span: param.span.clone(),
             message,
-        })
+        });
     }
     res
 }
 
-/// Check a list of returns to see if they are documented with a corresponding item in the NatSpec, and generate a
+/// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
+#[allow(clippy::cast_possible_wrap)]
+#[must_use]
 pub fn check_returns(
     natspec: &NatSpec,
     returns: &[Identifier],
@@ -497,43 +512,39 @@ pub fn check_returns(
     let mut unnamed_returns = 0;
     let returns_count = natspec.count_all_returns() as isize;
     for (idx, ret) in returns.iter().enumerate() {
-        let message = match &ret.name {
-            Some(name) => match natspec.count_return(ret) {
-                0 => format!("@return {} is missing", name),
-                2.. => format!("@return {} is present more than once", name),
+        let message = if let Some(name) = &ret.name {
+            match natspec.count_return(ret) {
+                0 => format!("@return {name} is missing"),
+                2.. => format!("@return {name} is present more than once"),
                 _ => {
                     continue;
                 }
-            },
-            None => {
-                unnamed_returns += 1;
-                if idx as isize > returns_count - 1 {
-                    format!("@return missing for unnamed return #{}", idx + 1)
-                } else {
-                    continue;
-                }
+            }
+        } else {
+            unnamed_returns += 1;
+            if idx as isize > returns_count - 1 {
+                format!("@return missing for unnamed return #{}", idx + 1)
+            } else {
+                continue;
             }
         };
         res.push(Diagnostic {
             span: ret.span.clone(),
             message,
-        })
+        });
     }
     if natspec.count_unnamed_returns() > unnamed_returns {
         res.push(Diagnostic {
-            span: returns
-                .last()
-                .cloned()
-                .map(|r| r.span)
-                .unwrap_or(default_span),
+            span: returns.last().cloned().map_or(default_span, |r| r.span),
             message: "too many unnamed returns".to_string(),
-        })
+        });
     }
     res
 }
 
 /// Extract the attributes (visibility and override) from a function-like item or state variable
-pub fn extract_attributes(cursor: Cursor) -> Attributes {
+#[must_use]
+pub fn extract_attributes(cursor: &Cursor) -> Attributes {
     let mut cursor = cursor.spawn();
     let mut out = Attributes::default();
     while cursor.go_to_next_terminal_with_kinds(&[
@@ -561,6 +572,7 @@ pub fn extract_attributes(cursor: Cursor) -> Attributes {
 }
 
 /// Find the parent's name (contract, interface, library), if any
+#[must_use]
 pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
     while cursor.go_to_parent() {
         if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
@@ -647,7 +659,7 @@ mod tests {
                     kind: NatSpecKind::Inheritdoc {
                         parent: "IParserTest".to_string()
                     },
-                    comment: "".to_string()
+                    comment: String::new()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
@@ -672,7 +684,7 @@ mod tests {
                 kind: NatSpecKind::Inheritdoc {
                     parent: "IParserTest".to_string()
                 },
-                comment: "".to_string()
+                comment: String::new()
             },]
         );
     }
@@ -692,7 +704,7 @@ mod tests {
                 kind: NatSpecKind::Inheritdoc {
                     parent: "IParserTest".to_string()
                 },
-                comment: "".to_string()
+                comment: String::new()
             },]
         );
     }
@@ -993,7 +1005,7 @@ mod tests {
                     kind: NatSpecKind::Inheritdoc {
                         parent: "IParserTest".to_string()
                     },
-                    comment: "".to_string()
+                    comment: String::new()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
@@ -1145,11 +1157,11 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: "".to_string()
+                    comment: String::new()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: "".to_string()
+                    comment: String::new()
                 },
             ]
         );

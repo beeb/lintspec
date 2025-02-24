@@ -73,10 +73,10 @@ impl Validate for ModifierDefinition {
         };
         let name = name.node().unparse().trim().to_string();
         let params = params
-            .map(|p| extract_params(p, NonterminalKind::Parameter))
+            .map(|p| extract_params(&p, NonterminalKind::Parameter))
             .unwrap_or_default();
 
-        let natspec = extract_comment(modifier.clone(), &[])?;
+        let natspec = extract_comment(&modifier.clone(), &[])?;
         let parent = extract_parent_name(modifier);
 
         Ok(ModifierDefinition {
@@ -85,7 +85,7 @@ impl Validate for ModifierDefinition {
             span,
             params,
             natspec,
-            attributes: extract_attributes(attr),
+            attributes: extract_attributes(&attr),
         }
         .into())
     }

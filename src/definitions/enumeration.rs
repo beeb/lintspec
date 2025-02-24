@@ -53,8 +53,8 @@ impl Validate for EnumDefinition {
 
         let span = enumeration.text_range();
         let name = name.node().unparse().trim().to_string();
-        let members = extract_enum_members(members);
-        let natspec = extract_comment(enumeration.clone(), &[])?;
+        let members = extract_enum_members(&members);
+        let natspec = extract_comment(&enumeration.clone(), &[])?;
         let parent = extract_parent_name(enumeration);
 
         Ok(EnumDefinition {
@@ -94,14 +94,14 @@ impl Validate for EnumDefinition {
     }
 }
 
-fn extract_enum_members(cursor: Cursor) -> Vec<Identifier> {
+fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),
             span: cursor.text_range(),
-        })
+        });
     }
     out
 }

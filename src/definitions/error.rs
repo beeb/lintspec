@@ -53,8 +53,8 @@ impl Validate for ErrorDefinition {
 
         let span = err.text_range();
         let name = name.node().unparse().trim().to_string();
-        let params = extract_identifiers(params);
-        let natspec = extract_comment(err.clone(), &[])?;
+        let params = extract_identifiers(&params);
+        let natspec = extract_comment(&err.clone(), &[])?;
         let parent = extract_parent_name(err);
 
         Ok(ErrorDefinition {
