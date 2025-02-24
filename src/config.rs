@@ -58,7 +58,7 @@ pub struct Args {
 
     /// Enforce NatSpec (@dev, @notice) on items even if they don't have params/returns/members
     /// (can be used more than once)
-    #[arg(short = 'f', long)]
+    #[arg(short = 'f', long, name = "TYPE")]
     pub enforce: Vec<ItemType>,
 
     /// Output diagnostics in JSON format

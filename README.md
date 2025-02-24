@@ -74,6 +74,7 @@ Options:
       --constructor                  Enforce that constructors have NatSpec
       --struct-params                Enforce that structs have `@param` for each member
       --enum-params                  Enforce that enums have `@param` for each variant
+  -f, --enforce <TYPE>               Enforce NatSpec (@dev, @notice) on items even if they don't have params/returns/members (can be used more than once)
       --json                         Output diagnostics in JSON format
       --compact                      Compact output
       --sort                         Sort the results by file path
