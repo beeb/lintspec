@@ -75,17 +75,20 @@ impl Validate for EnumDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.enum_params {
-            return out;
-        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
+            if !options.enum_params && !options.enforce.contains(&ItemType::Enum) {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             });
             return out;
         };
+        if !options.enum_params {
+            return out;
+        }
         out.diags = check_params(natspec, &self.members);
         out
     }
@@ -244,6 +247,35 @@ mod tests {
             parse_file(contents).validate(&ValidationOptions::builder().enum_params(true).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param First is missing");
+    }
+
+    #[test]
+    fn test_enum_enforce() {
+        let contents = "contract Test {
+            enum Foobar {
+                First
+            }
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Enum])
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
+
+        let contents = "contract Test {
+            /// @notice Some notice
+            enum Foobar {
+                First
+            }
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Enum])
+                .build(),
+        );
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
     #[test]
