@@ -50,8 +50,8 @@ impl Validate for ConstructorDefinition {
         let params = capture(&m, "constructor_params")?;
 
         let span = params.text_range();
-        let params = extract_params(params, NonterminalKind::Parameter);
-        let natspec = extract_comment(constructor.clone(), &[])?;
+        let params = extract_params(&params, NonterminalKind::Parameter);
+        let natspec = extract_comment(&constructor.clone(), &[])?;
         let parent = extract_parent_name(constructor);
 
         Ok(ConstructorDefinition {

@@ -54,10 +54,13 @@ fn main() -> Result<()> {
                     })?,
             )
         }
-        None => match diagnostics.is_empty() {
-            true => Box::new(std::io::stdout()),
-            false => Box::new(std::io::stderr()),
-        },
+        None => {
+            if diagnostics.is_empty() {
+                Box::new(std::io::stdout())
+            } else {
+                Box::new(std::io::stderr())
+            }
+        }
     };
 
     // no issue was found

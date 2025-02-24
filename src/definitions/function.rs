@@ -88,11 +88,11 @@ impl Validate for FunctionDefinition {
             keyword.text_range().start..attributes.text_range().end
         };
         let name = name.node().unparse().trim().to_string();
-        let params = extract_params(params, NonterminalKind::Parameter);
+        let params = extract_params(&params, NonterminalKind::Parameter);
         let returns = returns
-            .map(|r| extract_params(r, NonterminalKind::Parameter))
+            .map(|r| extract_params(&r, NonterminalKind::Parameter))
             .unwrap_or_default();
-        let natspec = extract_comment(func.clone(), &returns)?;
+        let natspec = extract_comment(&func.clone(), &returns)?;
         let parent = extract_parent_name(func);
 
         Ok(FunctionDefinition {
@@ -102,7 +102,7 @@ impl Validate for FunctionDefinition {
             params,
             returns,
             natspec,
-            attributes: extract_attributes(attributes),
+            attributes: extract_attributes(&attributes),
         }
         .into())
     }

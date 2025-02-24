@@ -111,18 +111,18 @@ pub enum ItemType {
     Variable,
 }
 
-/// A single diagnostic related to NatSpec.
+/// A single diagnostic related to `NatSpec`.
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     /// The span (text range) related to the diagnostic
     ///
-    /// If related to the item's NatSpec as a whole, this is the same as the item's span.
-    /// For a missing param or return NatSpec, this is the span of the param or return item.
+    /// If related to the item's `NatSpec` as a whole, this is the same as the item's span.
+    /// For a missing param or return `NatSpec`, this is the span of the param or return item.
     pub span: TextRange,
     pub message: String,
 }
 
-/// Lint a file by identifying NatSpec problems.
+/// Lint a file by identifying `NatSpec` problems.
 ///
 /// This is the main business logic entrypoint related to using this library. The path to the Solidity file should be
 /// provided, and a compatible Solidity version will be inferred from the first version pragma statement (if any) to

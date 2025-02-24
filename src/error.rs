@@ -21,7 +21,7 @@ pub enum Error {
     #[error("error parsing a semver string: {0}")]
     SemverParsingError(#[from] semver::Error),
 
-    /// Error during parsing of a NatSpec comment
+    /// Error during parsing of a `NatSpec` comment
     #[error("error parsing a natspec comment: {message}")]
     NatspecParsingError {
         parent: Option<Parent>,

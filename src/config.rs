@@ -94,6 +94,7 @@ pub struct Args {
 #[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 #[builder(on(PathBuf, into))]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Config {
     pub paths: Vec<PathBuf>,
     pub exclude: Vec<PathBuf>,
@@ -126,6 +127,7 @@ impl From<Args> for Config {
     }
 }
 
+/// Read the configuration from config file, environment variables and CLI arguments
 pub fn read_config() -> Result<Config> {
     let args = Args::parse();
     let mut temp: Args = Figment::new()

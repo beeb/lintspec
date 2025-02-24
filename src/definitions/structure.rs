@@ -53,8 +53,8 @@ impl Validate for StructDefinition {
 
         let span = structure.text_range();
         let name = name.node().unparse().trim().to_string();
-        let members = extract_struct_members(members)?;
-        let natspec = extract_comment(structure.clone(), &[])?;
+        let members = extract_struct_members(&members)?;
+        let natspec = extract_comment(&structure.clone(), &[])?;
         let parent = extract_parent_name(structure);
 
         Ok(StructDefinition {
@@ -94,7 +94,7 @@ impl Validate for StructDefinition {
     }
 }
 
-fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
+fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     let cursor = cursor.spawn();
     let mut out = Vec::new();
     let query = Query::parse(
@@ -108,7 +108,7 @@ fn extract_struct_members(cursor: Cursor) -> Result<Vec<Identifier>> {
         out.push(Identifier {
             name: Some(member_name.node().unparse().trim().to_string()),
             span: member_name.text_range(),
-        })
+        });
     }
     Ok(out)
 }

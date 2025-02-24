@@ -1,4 +1,4 @@
-//! NatSpec Comment Parser
+//! `NatSpec` Comment Parser
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, delimited, opt, repeat, separated},
@@ -9,7 +9,7 @@ use winnow::{
 
 use crate::definitions::Identifier;
 
-/// A collection of NatSpec items corresponding to a source item (function, struct, etc.)
+/// A collection of `NatSpec` items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NatSpec {
     pub items: Vec<NatSpecItem>,
@@ -21,15 +21,17 @@ impl NatSpec {
         self.items.append(&mut other.items);
     }
 
-    /// Populate the return NatSpec items with their identifiers (which could be named `None` for unnamed returns)
+    /// Populate the return `NatSpec` items with their identifiers (which could be named `None` for unnamed returns)
+    #[must_use]
     pub fn populate_returns(mut self, returns: &[Identifier]) -> Self {
-        for i in self.items.iter_mut() {
+        for i in &mut self.items {
             i.populate_return(returns);
         }
         self
     }
 
-    /// Count the number of NatSpec items corresponding to a given param identifier
+    /// Count the number of `NatSpec` items corresponding to a given param identifier
+    #[must_use]
     pub fn count_param(&self, ident: &Identifier) -> usize {
         let Some(ident_name) = &ident.name else {
             return 0;
@@ -43,7 +45,8 @@ impl NatSpec {
             .count()
     }
 
-    /// Count the number of NatSpec items corresponding to a given return identifier
+    /// Count the number of `NatSpec` items corresponding to a given return identifier
+    #[must_use]
     pub fn count_return(&self, ident: &Identifier) -> usize {
         let Some(ident_name) = &ident.name else {
             return 0;
@@ -57,7 +60,8 @@ impl NatSpec {
             .count()
     }
 
-    /// Count the number of NatSpec items corresponding to an unnamed return
+    /// Count the number of `NatSpec` items corresponding to an unnamed return
+    #[must_use]
     pub fn count_unnamed_returns(&self) -> usize {
         self.items
             .iter()
@@ -65,7 +69,8 @@ impl NatSpec {
             .count()
     }
 
-    /// Count all the return NatSpec entries for this source item
+    /// Count all the return `NatSpec` entries for this source item
+    #[must_use]
     pub fn count_all_returns(&self) -> usize {
         self.items
             .iter()
@@ -74,20 +79,20 @@ impl NatSpec {
     }
 }
 
-/// A single NatSpec item
+/// A single `NatSpec` item
 #[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct NatSpecItem {
-    /// The kind of NatSpec (notice, dev, param, etc.)
+    /// The kind of `NatSpec` (notice, dev, param, etc.)
     pub kind: NatSpecKind,
 
-    /// The comment associated with this NatSpec item
+    /// The comment associated with this `NatSpec` item
     pub comment: String,
 }
 
 impl NatSpecItem {
-    /// Populate a return NatSpec item with its name if available
+    /// Populate a return `NatSpec` item with its name if available
     ///
     /// For non-return items, this function has no effect.
     pub fn populate_return(&mut self, returns: &[Identifier]) {
@@ -104,7 +109,7 @@ impl NatSpecItem {
                     None => false,
                 })
             })
-            .map(|first_word| first_word.to_owned());
+            .map(ToOwned::to_owned);
         if let Some(name) = &name {
             if let Some(comment) = self.comment.strip_prefix(name) {
                 self.comment = comment.trim_start().to_string();
@@ -114,12 +119,13 @@ impl NatSpecItem {
     }
 
     /// Check if the item is empty (type is `@notice` - the default - and comment is empty)
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.kind == NatSpecKind::Notice && self.comment.is_empty()
     }
 }
 
-/// The kind of a NatSpec item
+/// The kind of a `NatSpec` item
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NatSpecKind {
     Title,
@@ -147,7 +153,7 @@ impl From<NatSpecItem> for NatSpec {
     }
 }
 
-/// Parse a Solidity doc-comment to extract the NatSpec information
+/// Parse a Solidity doc-comment to extract the `NatSpec` information
 pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
     alt((single_line_comment, multiline_comment, empty_multiline)).parse_next(input)
 }
@@ -183,6 +189,7 @@ fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
     .parse_next(input)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn end_of_comment(input: &mut &str) -> Result<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())
@@ -464,7 +471,7 @@ Another notice
                         kind: NatSpecKind::Param {
                             name: "test".to_string()
                         },
-                        comment: "".to_string()
+                        comment: String::new()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Custom {
@@ -510,7 +517,7 @@ Another notice
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Notice,
-                        comment: "".to_string()
+                        comment: String::new()
                     }
                 ]
             }

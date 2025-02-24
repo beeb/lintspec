@@ -66,7 +66,7 @@ impl Validate for VariableDeclaration {
 
         let span = var_type.text_range().start..variable.text_range().end;
         let name = name.node().unparse().trim().to_string();
-        let natspec = extract_comment(variable.clone(), &[])?;
+        let natspec = extract_comment(&variable.clone(), &[])?;
         let parent = extract_parent_name(variable);
 
         Ok(VariableDeclaration {
@@ -74,7 +74,7 @@ impl Validate for VariableDeclaration {
             name,
             span,
             natspec,
-            attributes: extract_attributes(attributes),
+            attributes: extract_attributes(&attributes),
         }
         .into())
     }
