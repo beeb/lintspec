@@ -16,12 +16,7 @@ fn generate_output(diags: FileDiagnostics) -> String {
 fn test_basic() {
     let diags = lint(
         "./test-data/BasicSample.sol",
-        &ValidationOptions::builder()
-            .inheritdoc(false)
-            .constructor(false)
-            .struct_params(false)
-            .enum_params(false)
-            .build(),
+        &ValidationOptions::builder().inheritdoc(false).build(),
         true,
     )
     .unwrap()
@@ -33,12 +28,7 @@ fn test_basic() {
 fn test_inheritdoc() {
     let diags = lint(
         "./test-data/BasicSample.sol",
-        &ValidationOptions::builder()
-            .inheritdoc(true)
-            .constructor(false)
-            .struct_params(false)
-            .enum_params(false)
-            .build(),
+        &ValidationOptions::default(),
         true,
     )
     .unwrap()
@@ -53,8 +43,6 @@ fn test_constructor() {
         &ValidationOptions::builder()
             .inheritdoc(false)
             .constructor(true)
-            .struct_params(false)
-            .enum_params(false)
             .build(),
         true,
     )
@@ -69,9 +57,7 @@ fn test_struct() {
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .constructor(false)
             .struct_params(true)
-            .enum_params(false)
             .build(),
         true,
     )
@@ -86,8 +72,6 @@ fn test_enum() {
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .constructor(false)
-            .struct_params(false)
             .enum_params(true)
             .build(),
         true,

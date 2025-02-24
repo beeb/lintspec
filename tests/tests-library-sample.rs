@@ -16,12 +16,7 @@ fn generate_output(diags: FileDiagnostics) -> String {
 fn test_basic() {
     let diags = lint(
         "./test-data/LibrarySample.sol",
-        &ValidationOptions::builder()
-            .inheritdoc(false)
-            .constructor(false)
-            .struct_params(false)
-            .enum_params(false)
-            .build(),
+        &ValidationOptions::builder().inheritdoc(false).build(),
         true,
     )
     .unwrap()

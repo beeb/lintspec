@@ -143,6 +143,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> ModifierDefinition {
@@ -269,14 +270,7 @@ mod tests {
             /// @inheritdoc ITest
             modifier foo() override (ITest) { _; } 
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res = parse_file(contents).validate(&ValidationOptions::default());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -286,14 +280,7 @@ mod tests {
             /// @notice Test
             modifier foo() override (ITest) { _; } 
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
     }

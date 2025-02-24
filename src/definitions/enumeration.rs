@@ -116,6 +116,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: true,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> EnumDefinition {
@@ -136,14 +137,8 @@ mod tests {
                 Second
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .constructor(false)
-                .enum_params(false)
-                .struct_params(false)
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -245,14 +240,8 @@ mod tests {
                 First
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect for enums
-                .constructor(false)
-                .enum_params(true)
-                .struct_params(false)
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().enum_params(true).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param First is missing");
     }

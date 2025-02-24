@@ -101,6 +101,7 @@ mod tests {
         constructor: true,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> ConstructorDefinition {
@@ -203,14 +204,8 @@ mod tests {
             /// @inheritdoc ITest
             constructor(uint256 param1) { } 
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect on constructor
-                .constructor(true)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().constructor(true).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param param1 is missing");
     }

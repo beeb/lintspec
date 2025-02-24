@@ -123,6 +123,7 @@ mod tests {
         constructor: false,
         struct_params: true,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> StructDefinition {
@@ -146,14 +147,8 @@ mod tests {
                 bool b;
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -252,14 +247,8 @@ mod tests {
                 uint256 a;
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(true) // has no effect for structs
-                .constructor(false)
-                .struct_params(true)
-                .enum_params(false)
-                .build(),
-        );
+        let res = parse_file(contents)
+            .validate(&ValidationOptions::builder().struct_params(true).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
     }

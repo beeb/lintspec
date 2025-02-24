@@ -4,7 +4,7 @@ use std::{
 };
 
 use derive_more::Display;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use slang_solidity::{
     cst::{NonterminalKind, TextRange},
     parser::Parser,
@@ -88,7 +88,7 @@ impl ItemDiagnostics {
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     #[display("constructor")]
@@ -103,7 +103,7 @@ pub enum ItemType {
     Function,
     #[display("modifier")]
     Modifier,
-
+    #[value(skip)]
     ParsingError,
     #[display("struct")]
     Struct,

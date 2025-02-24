@@ -94,7 +94,7 @@ impl Validate for VariableDeclaration {
                     span: self.span(),
                     message: "@inheritdoc is missing".to_string(),
                 });
-            } else {
+            } else if options.enforce.contains(&ItemType::Variable) {
                 out.diags.push(Diagnostic {
                     span: self.span(),
                     message: "missing NatSpec".to_string(),
@@ -132,6 +132,7 @@ mod tests {
         constructor: false,
         struct_params: false,
         enum_params: false,
+        enforce: vec![],
     };
 
     fn parse_file(contents: &str) -> VariableDeclaration {
@@ -210,12 +211,20 @@ mod tests {
         let contents = "contract Test {
             uint256 internal a;
         }";
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
+        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_variable_enforce() {
+        let contents = "contract Test {
+            uint256 internal a;
+        }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
                 .inheritdoc(false)
-                .constructor(false)
-                .struct_params(false)
-                .enum_params(false)
+                .enforce(vec![ItemType::Variable])
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
