@@ -135,7 +135,7 @@ impl Validate for FunctionDefinition {
                 });
                 return out;
             }
-            // we require natspec for either inheritdoc or the params
+            // we require natspec
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
