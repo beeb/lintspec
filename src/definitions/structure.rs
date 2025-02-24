@@ -75,17 +75,20 @@ impl Validate for StructDefinition {
             span: self.span(),
             diags: vec![],
         };
-        if !options.struct_params {
-            return out;
-        }
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
+            if !options.struct_params && !options.enforce.contains(&ItemType::Struct) {
+                return out;
+            }
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "missing NatSpec".to_string(),
             });
             return out;
         };
+        if !options.struct_params {
+            return out;
+        }
         out.diags = check_params(natspec, &self.members);
         out
     }
@@ -251,6 +254,22 @@ mod tests {
             .validate(&ValidationOptions::builder().struct_params(true).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
+    }
+
+    #[test]
+    fn test_struct_enforce() {
+        let contents = "contract Test {
+            struct Foobar {
+                uint256 a;
+            }
+        }";
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .enforce(vec![ItemType::Struct])
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 
     #[test]
