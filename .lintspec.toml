@@ -5,7 +5,7 @@ inheritdoc = true     # enforce that all overridden, public and external items h
 constructor = false   # enforce that constructors have natspec
 struct_params = false # enforce that structs have `@param` for each member
 enum_params = false   # enforce that enums have `@param` for each variant
-# enforce NatSpec on items even if they don't have params/returns/members
+# enforce NatSpec on items even if they don't have params/returns/members. Possible values: constructor, enum, error, event, function, modifier, struct, variable
 enforce = ["variable", "struct"]
 json = false                     # output diagnostics as JSON
 compact = false                  # compact output (minified JSON or compact text)
