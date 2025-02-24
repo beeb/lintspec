@@ -7,3 +7,4 @@ struct_params = false # enforce that structs have `@param` for each member
 enum_params = false   # enforce that enums have `@param` for each variant
 json = false          # output diagnostics as JSON
 compact = false       # compact output (minified JSON or compact text)
+sort = false          # sort results by file path
