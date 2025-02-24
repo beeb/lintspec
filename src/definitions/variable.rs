@@ -87,16 +87,19 @@ impl Validate for VariableDeclaration {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available (unless we don't enforce inheritdoc)
+        // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            if !options.inheritdoc || !self.requires_inheritdoc() {
-                return out;
+            if options.inheritdoc && self.requires_inheritdoc() {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "@inheritdoc is missing".to_string(),
+                });
+            } else {
+                out.diags.push(Diagnostic {
+                    span: self.span(),
+                    message: "missing NatSpec".to_string(),
+                });
             }
-            // we require natspec for inheritdoc
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
             return out;
         };
         // if there is `inheritdoc`, no further validation is required
@@ -155,13 +158,13 @@ mod tests {
     }
 
     #[test]
-    fn test_variable_no_natspec() {
+    fn test_variable_no_natspec_inheritdoc() {
         let contents = "contract Test {
             uint256 public a;
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@inheritdoc is missing");
     }
 
     #[test]
@@ -215,6 +218,7 @@ mod tests {
                 .enum_params(false)
                 .build(),
         );
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }
