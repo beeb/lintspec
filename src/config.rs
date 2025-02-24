@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use figment::{
     providers::{Env, Format as _, Serialized, Toml},
     Figment,
@@ -56,10 +56,19 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub enum_params: Option<bool>,
 
-    /// Enforce NatSpec (@dev, @notice) on items even if they don't have params/returns/members
+    /// Enforce NatSpec on items even if they don't have params/returns/members
     /// (can be used more than once)
+    ///
+    /// To enforce for all types, you can use `--enforce-all`.
     #[arg(short = 'f', long, name = "TYPE")]
     pub enforce: Vec<ItemType>,
+
+    /// Enforce NatSpec for all item types, even if they don't have params/returns/members
+    ///
+    /// Setting this option overrides any previously set `--enforce` arguments.
+    /// Can be set with `--enforce-all` (means true), `--enforce-all true` or `--enforce-all false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub enforce_all: Option<bool>,
 
     /// Output diagnostics in JSON format
     ///
@@ -129,6 +138,7 @@ pub fn read_config() -> Result<Config> {
             struct_params: None,
             enum_params: None,
             enforce: args.enforce,
+            enforce_all: None,
             json: None,
             compact: None,
             sort: None,
@@ -150,6 +160,22 @@ pub fn read_config() -> Result<Config> {
     }
     if let Some(enum_params) = args.enum_params {
         temp.enum_params = Some(enum_params);
+    }
+    // first look if enforce_all was set in a config file or env variable
+    if let Some(enforce_all) = temp.enforce_all {
+        if enforce_all {
+            temp.enforce = ItemType::value_variants().into();
+        } else {
+            temp.enforce = vec![];
+        }
+    }
+    // then look if it was set in the CLI args
+    if let Some(enforce_all) = args.enforce_all {
+        if enforce_all {
+            temp.enforce = ItemType::value_variants().into();
+        } else {
+            temp.enforce = vec![];
+        }
     }
     if let Some(json) = args.json {
         temp.json = Some(json);
