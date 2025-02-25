@@ -17,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct StructDefinition {
+    /// The parent for the struct definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the struct
     pub name: String,
+
+    /// The span of the struct definition
     pub span: TextRange,
+
+    /// The name and span of the struct members
     pub members: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the struct definition, if any
     pub natspec: Option<NatSpec>,
 }
 

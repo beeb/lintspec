@@ -17,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct EnumDefinition {
+    /// The parent for the enum definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the enum
     pub name: String,
+
+    /// The span of the enum definition
     pub span: TextRange,
+
+    /// The name and span of the enum variants
     pub members: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the enum definition, if any
     pub natspec: Option<NatSpec>,
 }
 

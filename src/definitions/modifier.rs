@@ -17,11 +17,22 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct ModifierDefinition {
+    /// The parent for the modifier definition (should always be `Some`)
     pub parent: Option<Parent>,
+
+    /// The name of the modifier
     pub name: String,
+
+    /// The span of the modifier definition, exluding the body
     pub span: TextRange,
+
+    /// The name and span of the modifier's parameters
     pub params: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the modifier definition, if any
     pub natspec: Option<NatSpec>,
+
+    /// The attributes of the modifier (override)
     pub attributes: Attributes,
 }
 
