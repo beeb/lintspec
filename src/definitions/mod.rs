@@ -6,7 +6,7 @@
 //! definitions contained within.
 //! Some helper functions allow to extract useful information from [`Cursor`]s.
 use constructor::ConstructorDefinition;
-use derive_more::{Display, From};
+use derive_more::{Display, From, IsVariant};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -169,7 +169,7 @@ pub enum Parent {
 }
 
 /// A source item's definition
-#[derive(Debug, From)]
+#[derive(Debug, From, IsVariant)]
 pub enum Definition {
     Constructor(ConstructorDefinition),
     Enumeration(EnumDefinition),
