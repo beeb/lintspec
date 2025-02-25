@@ -104,6 +104,7 @@ impl Validate for StructDefinition {
     }
 }
 
+/// Extract the identifiers for each of a struct's members
 fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     let cursor = cursor.spawn();
     let mut out = Vec::new();
