@@ -1,4 +1,4 @@
-//! Parsing and validation of source item definitions.
+//! Parsing and validation of source item definitions
 //!
 //! This module contains structs for each of the source item types that can be documented with `NatSpec`.
 //! The [`Definition`] type provides a unified interface to interact with the various types.

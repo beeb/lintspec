@@ -1,3 +1,7 @@
+//! Check the `NatSpec` documentation of a source file
+//!
+//! The [`lint`] function parsers the source file and contained items, validates them according to the configured
+//! rules and emits a list of diagnostics, grouped by source item.
 use std::{
     fs, io,
     path::{Path, PathBuf},
@@ -36,7 +40,7 @@ pub struct FileDiagnostics {
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct ItemDiagnostics {
-    /// The parent contract, interface or library's name
+    /// The parent contract, interface or library's name, if any
     pub parent: Option<Parent>,
 
     /// The type of this source item (function, struct, etc.)
