@@ -50,14 +50,13 @@ split_commits = false
 commit_parsers = [
     { body = ".*security", group = "Security" },
     { message = "^chore: release", skip = true },
-    { message = "^chore: update changelog", skip = true },
+    { message = "^doc", group = "Documentation" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^test", group = "Tests" },
     { message = "^.*: add", group = "Added" },
     { message = "^.*: support", group = "Added" },
     { message = "^.*: remove", group = "Removed" },
     { message = "^.*: delete", group = "Removed" },
-    { message = "^test", group = "Fixed" },
-    { message = "^fix", group = "Fixed" },
-    { message = "^doc", group = "Documentation" },
     { message = "^.*: fix", group = "Fixed" },
     { message = "^.*", group = "Changed" },
 ] # regex for parsing and grouping commits
