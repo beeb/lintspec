@@ -1,3 +1,4 @@
+//! Tool configuration parsing and validation
 use std::path::PathBuf;
 
 use anyhow::Result;
