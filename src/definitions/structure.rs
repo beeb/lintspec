@@ -150,7 +150,7 @@ mod tests {
             .next()
             .unwrap();
         let def = StructDefinition::extract(m).unwrap();
-        def.as_struct().unwrap()
+        def.to_struct().unwrap()
     }
 
     #[test]

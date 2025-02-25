@@ -155,7 +155,7 @@ mod tests {
             .next()
             .unwrap();
         let def = VariableDeclaration::extract(m).unwrap();
-        def.as_variable().unwrap()
+        def.to_variable().unwrap()
     }
 
     #[test]
