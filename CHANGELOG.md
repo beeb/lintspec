@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.3.0] - 2025-02-25
+
+### Added
+
+- **(config)** add `enforce-all` flag (#44) - ([7373f00](https://github.com/beeb/lintspec/commit/7373f00a2efecc4dd5a1528b6c817e77c8c993ca))
+
+
+-  add option to sort results by file path (#41) - ([3ca29cc](https://github.com/beeb/lintspec/commit/3ca29cc3d7a5c2a4d0f5dbb522962c7c75686bc9))
+
+### Changed
+
+- **(definitions)** [**breaking**] conversion functions (#47) - ([7a5742d](https://github.com/beeb/lintspec/commit/7a5742d811fd38f2fbf8270d6f09d42a29f17f75))
+
+- **(natspec)** parser improvements to support weird edge-cases (#39) - ([97b30c9](https://github.com/beeb/lintspec/commit/97b30c93b29262b2308441856624bc00cfa7f31a))
+
+
+-  allow enforcing natspec on specific items (#42) - ([7d9a5b3](https://github.com/beeb/lintspec/commit/7d9a5b33364981a3478b47b4789f64d1740e0b2d))
+-  [**breaking**] apply more lints from clippy (#45) - ([9c7dad9](https://github.com/beeb/lintspec/commit/9c7dad9cef3a1a26a3b6e4c825c88bc65e535564))
+-  update changelog format (#48) - ([be7ab2b](https://github.com/beeb/lintspec/commit/be7ab2b84b9f35ad8a7544bb67a1f796a75baf85))
+
+### Documentation
+
+
+-  update readme (#43) - ([05a147a](https://github.com/beeb/lintspec/commit/05a147a5cb9207a51a619d1a05a7c909d6ad3fcd))
+-  add documentation (#46) - ([353d659](https://github.com/beeb/lintspec/commit/353d659b42bedc35cae9ca08a727a05a167c20e7))
+
+### Fixed
+
+- **(config)** parsing of the struct-params arg (#40) - ([861f472](https://github.com/beeb/lintspec/commit/861f4724cf7d99f13d1ac1b72ecd0901e20544d3))
+
+- **(definitions)** comments filtering (#35) - ([dc25919](https://github.com/beeb/lintspec/commit/dc25919c4186285ba46d0036ac8ada07eb0036e5))
+
+
+-  natspec parser and function returns validation (#37) - ([f1c0d5f](https://github.com/beeb/lintspec/commit/f1c0d5fc7ac0488a815b6d5374cf2fb49102ef78))
+
+
+
+
+**Full Changelog**: [0.2.0...0.3.0](https://github.com/beeb/lintspec/compare/v0.2.0...v0.3.0)
+
 ## [0.2.0] - 2025-02-21
 
 ### Changed
