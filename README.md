@@ -61,7 +61,7 @@ Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
 ## Usage
 
-```
+```text
 Usage: lintspec [OPTIONS] [PATH]...
 
 Arguments:
@@ -149,7 +149,7 @@ On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
 [Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec is about 214x faster, or
 0.46% of the execution time:
 
-```
+```text
 Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
   Time (mean ± σ):     12.484 s ±  0.157 s    [User: 13.581 s, System: 0.594 s]
   Range (min … max):   12.288 s … 12.817 s    10 runs
