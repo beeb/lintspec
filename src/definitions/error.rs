@@ -124,7 +124,7 @@ mod tests {
         let cursor = output.create_tree_cursor();
         let m = cursor.query(vec![ErrorDefinition::query()]).next().unwrap();
         let def = ErrorDefinition::extract(m).unwrap();
-        def.as_error().unwrap()
+        def.to_error().unwrap()
     }
 
     #[test]

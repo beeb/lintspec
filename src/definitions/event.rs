@@ -124,7 +124,7 @@ mod tests {
         let cursor = output.create_tree_cursor();
         let m = cursor.query(vec![EventDefinition::query()]).next().unwrap();
         let def = EventDefinition::extract(m).unwrap();
-        def.as_event().unwrap()
+        def.to_event().unwrap()
     }
 
     #[test]

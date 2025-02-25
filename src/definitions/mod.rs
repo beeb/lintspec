@@ -238,72 +238,143 @@ impl Definition {
         }
     }
 
-    /// Retrieve the inner constructor definition
+    /// Convert to the inner constructor definition
     #[must_use]
-    pub fn as_constructor(self) -> Option<ConstructorDefinition> {
+    pub fn to_constructor(self) -> Option<ConstructorDefinition> {
         match self {
             Definition::Constructor(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner enum definition
+    /// Convert to the inner enum definition
     #[must_use]
-    pub fn as_enum(self) -> Option<EnumDefinition> {
+    pub fn to_enum(self) -> Option<EnumDefinition> {
         match self {
             Definition::Enumeration(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner error definition
+    /// Convert to the inner error definition
     #[must_use]
-    pub fn as_error(self) -> Option<ErrorDefinition> {
+    pub fn to_error(self) -> Option<ErrorDefinition> {
         match self {
             Definition::Error(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner event definition
+    /// Convert to the inner event definition
     #[must_use]
-    pub fn as_event(self) -> Option<EventDefinition> {
+    pub fn to_event(self) -> Option<EventDefinition> {
         match self {
             Definition::Event(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner function definition
+    /// Convert to the inner function definition
     #[must_use]
-    pub fn as_function(self) -> Option<FunctionDefinition> {
+    pub fn to_function(self) -> Option<FunctionDefinition> {
         match self {
             Definition::Function(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner modifier definition
+    /// Convert to the inner modifier definition
     #[must_use]
-    pub fn as_modifier(self) -> Option<ModifierDefinition> {
+    pub fn to_modifier(self) -> Option<ModifierDefinition> {
         match self {
             Definition::Modifier(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner struct definition
+    /// Convert to the inner struct definition
     #[must_use]
-    pub fn as_struct(self) -> Option<StructDefinition> {
+    pub fn to_struct(self) -> Option<StructDefinition> {
         match self {
             Definition::Struct(def) => Some(def),
             _ => None,
         }
     }
 
-    /// Retrieve the inner variable declaration
+    /// Convert to the inner variable declaration
     #[must_use]
-    pub fn as_variable(self) -> Option<VariableDeclaration> {
+    pub fn to_variable(self) -> Option<VariableDeclaration> {
+        match self {
+            Definition::Variable(def) => Some(def),
+            _ => None,
+        }
+    }
+    /// Reference to the inner constructor definition
+    #[must_use]
+    pub fn as_constructor(&self) -> Option<&ConstructorDefinition> {
+        match self {
+            Definition::Constructor(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner enum definition
+    #[must_use]
+    pub fn as_enum(&self) -> Option<&EnumDefinition> {
+        match self {
+            Definition::Enumeration(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner error definition
+    #[must_use]
+    pub fn as_error(&self) -> Option<&ErrorDefinition> {
+        match self {
+            Definition::Error(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner event definition
+    #[must_use]
+    pub fn as_event(&self) -> Option<&EventDefinition> {
+        match self {
+            Definition::Event(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner function definition
+    #[must_use]
+    pub fn as_function(&self) -> Option<&FunctionDefinition> {
+        match self {
+            Definition::Function(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner modifier definition
+    #[must_use]
+    pub fn as_modifier(&self) -> Option<&ModifierDefinition> {
+        match self {
+            Definition::Modifier(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner struct definition
+    #[must_use]
+    pub fn as_struct(&self) -> Option<&StructDefinition> {
+        match self {
+            Definition::Struct(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner variable declaration
+    #[must_use]
+    pub fn as_variable(&self) -> Option<&VariableDeclaration> {
         match self {
             Definition::Variable(def) => Some(def),
             _ => None,

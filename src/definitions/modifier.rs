@@ -178,7 +178,7 @@ mod tests {
             .next()
             .unwrap();
         let def = ModifierDefinition::extract(m).unwrap();
-        def.as_modifier().unwrap()
+        def.to_modifier().unwrap()
     }
 
     #[test]

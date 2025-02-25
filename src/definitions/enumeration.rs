@@ -140,7 +140,7 @@ mod tests {
         let cursor = output.create_tree_cursor();
         let m = cursor.query(vec![EnumDefinition::query()]).next().unwrap();
         let def = EnumDefinition::extract(m).unwrap();
-        def.as_enum().unwrap()
+        def.to_enum().unwrap()
     }
 
     #[test]

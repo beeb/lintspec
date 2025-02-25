@@ -126,7 +126,7 @@ mod tests {
             .next()
             .unwrap();
         let def = ConstructorDefinition::extract(m).unwrap();
-        def.as_constructor().unwrap()
+        def.to_constructor().unwrap()
     }
 
     #[test]

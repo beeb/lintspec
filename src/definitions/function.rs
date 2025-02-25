@@ -204,7 +204,7 @@ mod tests {
             .next()
             .unwrap();
         let def = FunctionDefinition::extract(m).unwrap();
-        def.as_function().unwrap()
+        def.to_function().unwrap()
     }
 
     #[test]
