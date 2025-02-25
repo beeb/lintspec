@@ -1,3 +1,4 @@
+//! Parsing and validation of state variable declarations.
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{
@@ -16,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct VariableDeclaration {
+    /// The parent for the state variable declaration (should always be `Some`)
     pub parent: Option<Parent>,
+
+    /// The name of the state variable
     pub name: String,
+
+    /// The span of the state variable declaration
     pub span: TextRange,
+
+    /// The [`NatSpec`] associated with the state variable declaration, if any
     pub natspec: Option<NatSpec>,
+
+    /// The attributes of the state variable (visibility)
     pub attributes: Attributes,
 }
 

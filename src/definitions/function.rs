@@ -1,3 +1,4 @@
+//! Parsing and validation of function definitions.
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
@@ -17,12 +18,25 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct FunctionDefinition {
+    /// The parent for the function definition (should always be `Some`)
     pub parent: Option<Parent>,
+
+    /// The name of the function
     pub name: String,
+
+    /// The span of the function definition, exluding the body
     pub span: TextRange,
+
+    /// The name and span of the function's parameters
     pub params: Vec<Identifier>,
+
+    /// The name and span of the function's returns
     pub returns: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the function definition, if any
     pub natspec: Option<NatSpec>,
+
+    /// The attributes of the function (visibility and override)
     pub attributes: Attributes,
 }
 

@@ -1,3 +1,4 @@
+//! Tool configuration parsing and validation
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -91,21 +92,43 @@ pub struct Args {
     pub sort: Option<bool>,
 }
 
+/// The parsed and validated config for the tool
 #[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 #[builder(on(PathBuf, into))]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
+    /// The paths to search for Solidity files
     pub paths: Vec<PathBuf>,
+
+    /// Some paths to ignore while searching for Solidity files
     pub exclude: Vec<PathBuf>,
+
+    /// The file where to output the diagnostics (if `None`, then stderr is used)
     pub out: Option<PathBuf>,
+
+    /// Whether to enforce the use of `@inheritdoc` on external/public/overridden items
     pub inheritdoc: bool,
+
+    /// Whether to enforce documentation of constructors
     pub constructor: bool,
+
+    /// Whether to enforce documentation of struct members
     pub struct_params: bool,
+
+    /// Whether to enforce documentation of enum variants
     pub enum_params: bool,
+
+    /// Whether to enforce documentation of items which have no params/returns/members
     pub enforce: Vec<ItemType>,
+
+    /// Output JSON diagnostics
     pub json: bool,
+
+    /// Output compact format (minified JSON or simple text output)
     pub compact: bool,
+
+    /// Sort diagnostics by file path
     pub sort: bool,
 }
 

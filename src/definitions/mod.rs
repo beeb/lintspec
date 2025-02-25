@@ -1,3 +1,10 @@
+//! Parsing and validation of source item definitions
+//!
+//! This module contains structs for each of the source item types that can be documented with `NatSpec`.
+//! The [`Definition`] type provides a unified interface to interact with the various types.
+//! The [`find_items`] function takes the tree root [`Cursor`] from a Solidity document and returns all the parsed
+//! definitions contained within.
+//! Some helper functions allow to extract useful information from [`Cursor`]s.
 use constructor::ConstructorDefinition;
 use derive_more::{Display, From};
 use enumeration::EnumDefinition;
@@ -304,7 +311,7 @@ impl Definition {
     }
 }
 
-/// Find source item definitions from a root CST cursor
+/// Find source item definitions from a root CST [`Cursor`]
 pub fn find_items(cursor: Cursor) -> Vec<Definition> {
     let mut out = Vec::new();
     for m in cursor.query(vec![
@@ -357,7 +364,7 @@ pub fn find_items(cursor: Cursor) -> Vec<Definition> {
 
 /// Extract parameters from a function-like source item.
 ///
-/// The node kind that holds the `Identifier` (`Parameter`, `EventParameter`) is provided as `kind`.
+/// The node kind that holds the `Identifier` (`Parameter`, `EventParameter`) must be provided with `kind`.
 #[must_use]
 pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier> {
     let mut cursor = cursor.spawn();
@@ -474,6 +481,60 @@ pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
     out
 }
 
+/// Extract the attributes (visibility and override) from a function-like item or state variable
+#[must_use]
+pub fn extract_attributes(cursor: &Cursor) -> Attributes {
+    let mut cursor = cursor.spawn();
+    let mut out = Attributes::default();
+    while cursor.go_to_next_terminal_with_kinds(&[
+        TerminalKind::ExternalKeyword,
+        TerminalKind::InternalKeyword,
+        TerminalKind::PrivateKeyword,
+        TerminalKind::PublicKeyword,
+        TerminalKind::OverrideKeyword,
+    ]) {
+        match cursor
+            .node()
+            .as_terminal()
+            .expect("should be terminal kind")
+            .kind
+        {
+            TerminalKind::ExternalKeyword => out.visibility = Visibility::External,
+            TerminalKind::InternalKeyword => out.visibility = Visibility::Internal,
+            TerminalKind::PrivateKeyword => out.visibility = Visibility::Private,
+            TerminalKind::PublicKeyword => out.visibility = Visibility::Public,
+            TerminalKind::OverrideKeyword => out.r#override = true,
+            _ => unreachable!(),
+        }
+    }
+    out
+}
+
+/// Find the parent's name (contract, interface, library), if any
+#[must_use]
+pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
+    while cursor.go_to_parent() {
+        if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
+            NonterminalKind::ContractDefinition,
+            NonterminalKind::InterfaceDefinition,
+            NonterminalKind::LibraryDefinition,
+        ]) {
+            for child in &parent.children {
+                if child.is_terminal_with_kind(TerminalKind::Identifier) {
+                    let name = child.node.unparse().trim().to_string();
+                    return Some(match parent.kind {
+                        NonterminalKind::ContractDefinition => Parent::Contract(name),
+                        NonterminalKind::InterfaceDefinition => Parent::Interface(name),
+                        NonterminalKind::LibraryDefinition => Parent::Library(name),
+                        _ => unreachable!(),
+                    });
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
 #[must_use]
@@ -540,60 +601,6 @@ pub fn check_returns(
         });
     }
     res
-}
-
-/// Extract the attributes (visibility and override) from a function-like item or state variable
-#[must_use]
-pub fn extract_attributes(cursor: &Cursor) -> Attributes {
-    let mut cursor = cursor.spawn();
-    let mut out = Attributes::default();
-    while cursor.go_to_next_terminal_with_kinds(&[
-        TerminalKind::ExternalKeyword,
-        TerminalKind::InternalKeyword,
-        TerminalKind::PrivateKeyword,
-        TerminalKind::PublicKeyword,
-        TerminalKind::OverrideKeyword,
-    ]) {
-        match cursor
-            .node()
-            .as_terminal()
-            .expect("should be terminal kind")
-            .kind
-        {
-            TerminalKind::ExternalKeyword => out.visibility = Visibility::External,
-            TerminalKind::InternalKeyword => out.visibility = Visibility::Internal,
-            TerminalKind::PrivateKeyword => out.visibility = Visibility::Private,
-            TerminalKind::PublicKeyword => out.visibility = Visibility::Public,
-            TerminalKind::OverrideKeyword => out.r#override = true,
-            _ => unreachable!(),
-        }
-    }
-    out
-}
-
-/// Find the parent's name (contract, interface, library), if any
-#[must_use]
-pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
-    while cursor.go_to_parent() {
-        if let Some(parent) = cursor.node().as_nonterminal_with_kinds(&[
-            NonterminalKind::ContractDefinition,
-            NonterminalKind::InterfaceDefinition,
-            NonterminalKind::LibraryDefinition,
-        ]) {
-            for child in &parent.children {
-                if child.is_terminal_with_kind(TerminalKind::Identifier) {
-                    let name = child.node.unparse().trim().to_string();
-                    return Some(match parent.kind {
-                        NonterminalKind::ContractDefinition => Parent::Contract(name),
-                        NonterminalKind::InterfaceDefinition => Parent::Interface(name),
-                        NonterminalKind::LibraryDefinition => Parent::Library(name),
-                        _ => unreachable!(),
-                    });
-                }
-            }
-        }
-    }
-    None
 }
 
 #[cfg(test)]

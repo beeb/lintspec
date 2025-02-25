@@ -1,3 +1,4 @@
+//! Parsing and validation of struct definitions.
 use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 
 use crate::{
@@ -16,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct StructDefinition {
+    /// The parent for the struct definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the struct
     pub name: String,
+
+    /// The span of the struct definition
     pub span: TextRange,
+
+    /// The name and span of the struct members
     pub members: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the struct definition, if any
     pub natspec: Option<NatSpec>,
 }
 
@@ -94,6 +104,7 @@ impl Validate for StructDefinition {
     }
 }
 
+/// Extract the identifiers for each of a struct's members
 fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     let cursor = cursor.spawn();
     let mut out = Vec::new();

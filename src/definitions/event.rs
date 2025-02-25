@@ -1,3 +1,4 @@
+//! Parsing and validation of event definitions.
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
@@ -16,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct EventDefinition {
+    /// The parent for the event definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the event
     pub name: String,
+
+    /// The span of the event definition
     pub span: TextRange,
+
+    /// The name and span of the event's parameters
     pub params: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the event definition, if any
     pub natspec: Option<NatSpec>,
 }
 

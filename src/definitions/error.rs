@@ -1,3 +1,4 @@
+//! Parsing and validation of error definitions.
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{
@@ -16,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct ErrorDefinition {
+    /// The parent for the error definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the error
     pub name: String,
+
+    /// The span of the error definition
     pub span: TextRange,
+
+    /// The name and span of the error's parameters
     pub params: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the error definition, if any
     pub natspec: Option<NatSpec>,
 }
 

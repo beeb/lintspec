@@ -1,3 +1,4 @@
+//! Parsing and validation of enum definitions.
 use slang_solidity::cst::{Cursor, Query, QueryMatch, TerminalKind, TextRange};
 
 use crate::{
@@ -16,10 +17,19 @@ use super::{
 #[non_exhaustive]
 #[builder(on(String, into))]
 pub struct EnumDefinition {
+    /// The parent for the enum definition, if any
     pub parent: Option<Parent>,
+
+    /// The name of the enum
     pub name: String,
+
+    /// The span of the enum definition
     pub span: TextRange,
+
+    /// The name and span of the enum variants
     pub members: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the enum definition, if any
     pub natspec: Option<NatSpec>,
 }
 
@@ -94,6 +104,7 @@ impl Validate for EnumDefinition {
     }
 }
 
+/// Extract the identifiers of each of an enum's variants
 fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();

@@ -1,6 +1,6 @@
 # 🔎 lintspec
 
-![lintspec screenshot](./screenshot.png)
+![lintspec screenshot](https://raw.githubusercontent.com/beeb/lintspec/refs/heads/main/screenshot.png)
 
 <div align="center">
   <a href="https://github.com/beeb/lintspec"><img
@@ -61,7 +61,7 @@ Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
 ## Usage
 
-```
+```text
 Usage: lintspec [OPTIONS] [PATH]...
 
 Arguments:
@@ -101,16 +101,16 @@ that are displayed in the source files when viewed (e.g. in a PR's "Files" tab).
 
 ### Options
 
-The following options are available for the action (all are optional):
+The following options are available for the action (all are optional if a config file is present):
 
 | Input | Default Value | Description | Example |
 |---|---|---|---|
 | `working-directory` | `"./"` | Working directory path | `"./src"` |
-| `paths` | `"[]"` | Paths to scan, relative to the working directory, in square brackets and separated by commas. | `"[path/to/file.sol,test/test.sol]"` |
+| `paths` | `"[]"` | Paths to scan, relative to the working directory, in square brackets and separated by commas. Required unless a `.lintspec.toml` file is present in the working directory. | `"[path/to/file.sol,test/test.sol]"` |
 | `exclude` | `"[]"` | Paths to exclude, relative to the working directory, in square brackets and separated by commas | `"[path/to/exclude,other/path.sol]"` | 
 | `extra-args` | | Extra arguments passed to the `lintspec` command | `"--constructor=true"` |
 | `version` | `"latest"` | Version of lintspec to use. For enhanced security, you can pin this to a fixed version | `"0.1.5"` |
-| `fail-on-problem` | `"true"` | Whether the action should fail when NatSpec problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
+| `fail-on-problem` | `"true"` | Whether the action should fail when `NatSpec` problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
 
 ### Example Workflow
 
@@ -149,7 +149,7 @@ On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
 [Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec is about 214x faster, or
 0.46% of the execution time:
 
-```
+```text
 Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
   Time (mean ± σ):     12.484 s ±  0.157 s    [User: 13.581 s, System: 0.594 s]
   Range (min … max):   12.288 s … 12.817 s    10 runs

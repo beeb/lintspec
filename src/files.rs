@@ -1,3 +1,4 @@
+//! Find Solidity files to analyze
 use std::{
     path::{Path, PathBuf},
     sync::{mpsc, Arc},

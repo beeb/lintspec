@@ -1,3 +1,4 @@
+//! The error and result types for lintspec
 use std::path::PathBuf;
 
 use slang_solidity::cst::TextRange;
@@ -7,6 +8,7 @@ use crate::definitions::Parent;
 /// The result of a lintspec operation
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A lintspec error
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
 pub enum Error {

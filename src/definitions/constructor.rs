@@ -1,3 +1,4 @@
+//! Parsing and validation of constructors.
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{
@@ -15,9 +16,16 @@ use super::{
 #[derive(Debug, Clone, bon::Builder)]
 #[non_exhaustive]
 pub struct ConstructorDefinition {
+    /// The parent contract (should always be a [`Parent::Contract`])
     pub parent: Option<Parent>,
+
+    /// The span corresponding to the constructor definition, excluding the body
     pub span: TextRange,
+
+    /// The name and span of the constructor's parameters
     pub params: Vec<Identifier>,
+
+    /// The [`NatSpec`] associated with the constructor, if any
     pub natspec: Option<NatSpec>,
 }
 
