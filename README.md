@@ -1,6 +1,6 @@
 # 🔎 lintspec
 
-![lintspec screenshot](./screenshot.png)
+![lintspec screenshot](https://raw.githubusercontent.com/beeb/lintspec/refs/heads/main/screenshot.png)
 
 <div align="center">
   <a href="https://github.com/beeb/lintspec"><img
