@@ -1,3 +1,4 @@
+//! Parsing and validation of enum definitions.
 use slang_solidity::cst::{Cursor, Query, QueryMatch, TerminalKind, TextRange};
 
 use crate::{
@@ -94,6 +95,7 @@ impl Validate for EnumDefinition {
     }
 }
 
+/// Extract the identifiers of each of an enum's variants
 fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();

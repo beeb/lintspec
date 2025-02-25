@@ -1,3 +1,4 @@
+//! Parsing and validation of state variable declarations.
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{

@@ -1,3 +1,4 @@
+//! Parsing and validation of event definitions.
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{

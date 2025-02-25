@@ -1,3 +1,4 @@
+//! Parsing and validation of error definitions.
 use slang_solidity::cst::{Query, QueryMatch, TextRange};
 
 use crate::{

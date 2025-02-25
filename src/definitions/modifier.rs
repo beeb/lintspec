@@ -1,3 +1,4 @@
+//! Parsing and validation of modifier definitions.
 use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
 
 use crate::{

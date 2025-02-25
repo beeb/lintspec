@@ -1,3 +1,4 @@
+//! Parsing and validation of struct definitions.
 use slang_solidity::cst::{Cursor, Query, QueryMatch, TextRange};
 
 use crate::{
