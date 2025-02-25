@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use std::{io, path::Path, sync::Arc};
 
 use lint::{FileDiagnostics, ItemDiagnostics};
@@ -11,10 +12,11 @@ pub mod lint;
 pub mod natspec;
 pub mod utils;
 
-/// Print the reports for a given file, either as pretty or compact text output.
+/// Print the reports for a given file, either as pretty or compact text output
 ///
 /// The root path is the current working directory used to compute relative paths if possible. If the file path is
 /// not a child of the root path, then the full canonical path of the file is used instead.
+/// The writer can be anything that implement [`io::Write`].
 pub fn print_reports(
     f: &mut impl io::Write,
     root_path: impl AsRef<Path>,
@@ -38,6 +40,9 @@ pub fn print_reports(
     Ok(())
 }
 
+/// Print a single report related to one source item with [`miette`].
+///
+/// The writer can be anything that implement [`io::Write`].
 fn print_report(
     f: &mut impl io::Write,
     source: Arc<NamedSource<String>>,
