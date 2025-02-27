@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.3.1] - 2025-02-27
+
+### Added
+
+
+-  add cargo deny (#49) - ([d144a9c](https://github.com/beeb/lintspec/commit/d144a9c4b56417123313c7d530b4895c74639e69))
+
+
+
+
+**Full Changelog**: [0.3.0...0.3.1](https://github.com/beeb/lintspec/compare/v0.3.0...v0.3.1)
+
 ## [0.3.0] - 2025-02-25
 
 ### Added
