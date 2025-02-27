@@ -69,3 +69,12 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
+
+  deny:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-deny
+      - run: cargo deny check all
