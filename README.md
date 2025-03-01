@@ -45,7 +45,7 @@ cargo install lintspec
 cargo binstall lintspec
 ```
 
-#### Via `nix` (coming soon)
+#### Via `nix`
 
 ```bash
 nix-env -iA nixpkgs.lintspec
