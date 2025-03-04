@@ -10,7 +10,7 @@ use figment::{
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::lint::ItemType;
+use crate::definitions::ItemType;
 
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]

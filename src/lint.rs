@@ -3,21 +3,19 @@
 //! The [`lint`] function parsers the source file and contained items, validates them according to the configured
 //! rules and emits a list of diagnostics, grouped by source item.
 use std::{
-    fs, io,
+    io,
     path::{Path, PathBuf},
 };
 
-use derive_more::Display;
-use serde::{Deserialize, Serialize};
-use slang_solidity::{
-    cst::{NonterminalKind, TextRange},
-    parser::Parser,
-};
+use serde::Serialize;
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    definitions::{find_items, Parent, ValidationOptions},
-    error::{Error, Result},
-    utils::detect_solidity_version,
+    config::Config,
+    definitions::{Identifier, ItemType, Parent},
+    error::Result,
+    natspec::NatSpec,
+    parser::Parse,
 };
 
 /// Diagnostics for a single Solidity file
@@ -29,7 +27,7 @@ pub struct FileDiagnostics {
 
     /// Contents of the file (can be an empty string if pretty output is not activated)
     #[serde(skip_serializing)]
-    pub contents: String,
+    pub contents: Option<String>,
 
     /// Diagnostics, grouped by source item (function, struct, etc.)
     pub items: Vec<ItemDiagnostics>,
@@ -91,30 +89,6 @@ impl ItemDiagnostics {
     }
 }
 
-/// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum ItemType {
-    #[display("constructor")]
-    Constructor,
-    #[display("enum")]
-    Enum,
-    #[display("error")]
-    Error,
-    #[display("event")]
-    Event,
-    #[display("function")]
-    Function,
-    #[display("modifier")]
-    Modifier,
-    #[value(skip)]
-    ParsingError,
-    #[display("struct")]
-    Struct,
-    #[display("variable")]
-    Variable,
-}
-
 /// A single diagnostic related to `NatSpec`.
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
@@ -131,35 +105,18 @@ pub struct Diagnostic {
 /// This is the main business logic entrypoint related to using this library. The path to the Solidity file should be
 /// provided, and a compatible Solidity version will be inferred from the first version pragma statement (if any) to
 /// inform the parsing. [`ValidationOptions`] can be provided to control whether some of the lints get reported.
-/// The `drop_contents` parameter controls if the returned [`FileDiagnostics`] contains the original source code
-/// (false) or an empty string (true).
-pub fn lint(
+/// The `keep_contents` parameter controls if the returned [`FileDiagnostics`] contains the original source code.
+pub fn lint<T>(
     path: impl AsRef<Path>,
     options: &ValidationOptions,
-    drop_contents: bool,
-) -> Result<Option<FileDiagnostics>> {
-    let mut contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
-        path: path.as_ref().to_path_buf(),
-        err,
-    })?;
-    let solidity_version = detect_solidity_version(&contents)?;
-
-    let parser = Parser::create(solidity_version).expect("parser should initialize");
-
-    let output = parser.parse(NonterminalKind::SourceUnit, &contents);
-    if drop_contents {
-        // free memory
-        contents = String::new();
-    }
-    if !output.is_valid() {
-        let Some(error) = output.errors().first() else {
-            return Err(Error::UnknownError);
-        };
-        return Err(Error::ParsingError(error.to_string()));
-    }
-
-    let cursor = output.create_tree_cursor();
-    let mut items: Vec<_> = find_items(cursor)
+    keep_contents: bool,
+) -> Result<Option<FileDiagnostics>>
+where
+    T: Parse,
+{
+    let document = T::parse_document(&path, keep_contents)?;
+    let mut items: Vec<_> = document
+        .definitions
         .into_iter()
         .filter_map(|item| {
             let mut item_diags = item.validate(options);
@@ -177,7 +134,138 @@ pub fn lint(
     items.sort_unstable_by_key(|i| i.span.start);
     Ok(Some(FileDiagnostics {
         path: path.as_ref().to_path_buf(),
-        contents,
+        contents: document.contents,
         items,
     }))
+}
+
+/// Validation options to control which lints generate a diagnostic
+#[derive(Debug, Clone, bon::Builder)]
+#[non_exhaustive]
+#[allow(clippy::struct_excessive_bools)]
+pub struct ValidationOptions {
+    /// Whether overridden, public and external functions should have an `@inheritdoc`
+    #[builder(default = true)]
+    pub inheritdoc: bool,
+
+    /// Whether to check that constructors have documented params
+    #[builder(default = false)]
+    pub constructor: bool,
+
+    /// Whether to check that each member of structs is documented with `@param`
+    ///
+    /// Not standard practice, the Solidity spec does not consider `@param` for structs or provide any other way to
+    /// document each member.
+    #[builder(default = false)]
+    pub struct_params: bool,
+
+    /// Whether to check that each variant of enums is documented with `@param`
+    ///
+    /// Not standard practice, the Solidity spec does not consider `@param` for enums or provide any other way to
+    /// document each variant.
+    #[builder(default = false)]
+    pub enum_params: bool,
+
+    /// Which item types should have at least some [`NatSpec`] even if they have no param/return/member.
+    #[builder(default = vec![])]
+    pub enforce: Vec<ItemType>,
+}
+
+impl Default for ValidationOptions {
+    /// Get default validation options (`inheritdoc` is true, the others are false)
+    fn default() -> Self {
+        Self {
+            inheritdoc: true,
+            constructor: false,
+            struct_params: false,
+            enum_params: false,
+            enforce: vec![],
+        }
+    }
+}
+
+impl From<&Config> for ValidationOptions {
+    fn from(value: &Config) -> Self {
+        Self {
+            inheritdoc: value.inheritdoc,
+            constructor: value.constructor,
+            struct_params: value.struct_params,
+            enum_params: value.enum_params,
+            enforce: value.enforce.clone(),
+        }
+    }
+}
+
+/// A trait implemented by [`Definition`][crate::definitions::Definition] to validate the related `NatSpec`
+pub trait Validate {
+    /// Validate the definition and extract the relevant diagnostics
+    fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
+}
+
+/// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
+/// diagnostic for each missing one or if there are more than 1 entry per param.
+#[must_use]
+pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    for param in params {
+        let Some(name) = &param.name else {
+            // no need to document unused params
+            continue;
+        };
+        let message = match natspec.count_param(param) {
+            0 => format!("@param {name} is missing"),
+            2.. => format!("@param {name} is present more than once"),
+            _ => {
+                continue;
+            }
+        };
+        res.push(Diagnostic {
+            span: param.span.clone(),
+            message,
+        });
+    }
+    res
+}
+
+/// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
+/// diagnostic for each missing one or if there are more than 1 entry per param.
+#[allow(clippy::cast_possible_wrap)]
+#[must_use]
+pub fn check_returns(
+    natspec: &NatSpec,
+    returns: &[Identifier],
+    default_span: TextRange,
+) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    let mut unnamed_returns = 0;
+    let returns_count = natspec.count_all_returns() as isize;
+    for (idx, ret) in returns.iter().enumerate() {
+        let message = if let Some(name) = &ret.name {
+            match natspec.count_return(ret) {
+                0 => format!("@return {name} is missing"),
+                2.. => format!("@return {name} is present more than once"),
+                _ => {
+                    continue;
+                }
+            }
+        } else {
+            unnamed_returns += 1;
+            if idx as isize > returns_count - 1 {
+                format!("@return missing for unnamed return #{}", idx + 1)
+            } else {
+                continue;
+            }
+        };
+        res.push(Diagnostic {
+            span: ret.span.clone(),
+            message,
+        });
+    }
+    if natspec.count_unnamed_returns() > unnamed_returns {
+        res.push(Diagnostic {
+            span: returns.last().cloned().map_or(default_span, |r| r.span),
+            message: "too many unnamed returns".to_string(),
+        });
+    }
+    res
 }

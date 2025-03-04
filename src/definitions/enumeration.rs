@@ -1,16 +1,12 @@
 //! Parsing and validation of enum definitions.
-use slang_solidity::cst::{Cursor, Query, QueryMatch, TerminalKind, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, Diagnostic, ItemDiagnostics},
     natspec::NatSpec,
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_parent_name, Definition, Identifier, Parent,
-    Validate, ValidationOptions,
-};
+use super::{Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
 
 /// An enum definition
 #[derive(Debug, Clone, bon::Builder)]
@@ -33,7 +29,11 @@ pub struct EnumDefinition {
     pub natspec: Option<NatSpec>,
 }
 
-impl Validate for EnumDefinition {
+impl SourceItem for EnumDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Enum
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -45,49 +45,20 @@ impl Validate for EnumDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@enum [EnumDefinition
-            @enum_name name:[Identifier]
-            @enum_members members:[EnumMembers]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let enumeration = capture(&m, "enum")?;
-        let name = capture(&m, "enum_name")?;
-        let members = capture(&m, "enum_members")?;
-
-        let span = enumeration.text_range();
-        let name = name.node().unparse().trim().to_string();
-        let members = extract_enum_members(&members);
-        let natspec = extract_comment(&enumeration.clone(), &[])?;
-        let parent = extract_parent_name(enumeration);
-
-        Ok(EnumDefinition {
-            parent,
-            name,
-            span,
-            members,
-            natspec,
-        }
-        .into())
-    }
-
+impl Validate for EnumDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Enum,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            if !options.enum_params && !options.enforce.contains(&ItemType::Enum) {
+            if !options.enum_params && !options.enforce.contains(&Self::item_type()) {
                 return out;
             }
             out.diags.push(Diagnostic {
@@ -104,24 +75,13 @@ impl Validate for EnumDefinition {
     }
 }
 
-/// Extract the identifiers of each of an enum's variants
-fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
-    let mut cursor = cursor.spawn().with_edges();
-    let mut out = Vec::new();
-    while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
-        out.push(Identifier {
-            name: Some(cursor.node().unparse().trim().to_string()),
-            span: cursor.text_range(),
-        });
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 

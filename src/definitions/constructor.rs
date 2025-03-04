@@ -1,16 +1,12 @@
 //! Parsing and validation of constructors.
-use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, Diagnostic, ItemDiagnostics},
     natspec::NatSpec,
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_params, extract_parent_name, Definition,
-    Identifier, Parent, Validate, ValidationOptions,
-};
+use super::{Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
 
 /// A constructor definition
 #[derive(Debug, Clone, bon::Builder)]
@@ -29,7 +25,11 @@ pub struct ConstructorDefinition {
     pub natspec: Option<NatSpec>,
 }
 
-impl Validate for ConstructorDefinition {
+impl SourceItem for ConstructorDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Constructor
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -41,47 +41,20 @@ impl Validate for ConstructorDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@constructor [ConstructorDefinition
-            parameters:[ParametersDeclaration
-                @constructor_params parameters:[Parameters]
-            ]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let constructor = capture(&m, "constructor")?;
-        let params = capture(&m, "constructor_params")?;
-
-        let span = params.text_range();
-        let params = extract_params(&params, NonterminalKind::Parameter);
-        let natspec = extract_comment(&constructor.clone(), &[])?;
-        let parent = extract_parent_name(constructor);
-
-        Ok(ConstructorDefinition {
-            parent,
-            span,
-            params,
-            natspec,
-        }
-        .into())
-    }
-
+impl Validate for ConstructorDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Constructor,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
         let Some(natspec) = &self.natspec else {
             if (!options.constructor || self.params.is_empty())
-                && !options.enforce.contains(&ItemType::Constructor)
+                && !options.enforce.contains(&Self::item_type())
             {
                 return out;
             }
@@ -104,7 +77,9 @@ impl Validate for ConstructorDefinition {
 mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
-    use slang_solidity::parser::Parser;
+    use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
@@ -134,7 +109,7 @@ mod tests {
         let contents = "contract Test {
             /// @param param1 Test
             /// @param param2 Test2
-            constructor(uint256 param1, bytes calldata param2) { } 
+            constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -143,7 +118,7 @@ mod tests {
     #[test]
     fn test_constructor_no_natspec() {
         let contents = "contract Test {
-            constructor(uint256 param1, bytes calldata param2) { } 
+            constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -154,7 +129,7 @@ mod tests {
     fn test_constructor_only_notice() {
         let contents = "contract Test {
             /// @notice The constructor
-            constructor(uint256 param1, bytes calldata param2) { } 
+            constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 2);
@@ -166,7 +141,7 @@ mod tests {
     fn test_constructor_one_missing() {
         let contents = "contract Test {
             /// @param param1 The first
-            constructor(uint256 param1, bytes calldata param2) { } 
+            constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -180,7 +155,7 @@ mod tests {
              * @param param1 Test
              * @param param2 Test2
              */
-            constructor(uint256 param1, bytes calldata param2) { } 
+            constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -204,7 +179,7 @@ mod tests {
     #[test]
     fn test_constructor_no_params() {
         let contents = "contract Test {
-            constructor() { } 
+            constructor() { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -214,7 +189,7 @@ mod tests {
     fn test_constructor_inheritdoc() {
         let contents = "contract Test {
             /// @inheritdoc ITest
-            constructor(uint256 param1) { } 
+            constructor(uint256 param1) { }
         }";
         let res =
             parse_file(contents).validate(&ValidationOptions::builder().constructor(true).build());
@@ -225,7 +200,7 @@ mod tests {
     #[test]
     fn test_constructor_enforce() {
         let contents = "contract Test {
-            constructor() { } 
+            constructor() { }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
@@ -237,7 +212,7 @@ mod tests {
 
         let contents = "contract Test {
             /// @notice Some notice
-            constructor() { } 
+            constructor() { }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()

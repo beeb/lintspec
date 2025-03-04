@@ -1,16 +1,12 @@
 //! Parsing and validation of error definitions.
-use slang_solidity::cst::{Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, Diagnostic, ItemDiagnostics},
     natspec::NatSpec,
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_identifiers, extract_parent_name, Definition,
-    Identifier, Parent, Validate, ValidationOptions,
-};
+use super::{Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
 
 /// An error definition
 #[derive(Debug, Clone, bon::Builder)]
@@ -33,7 +29,11 @@ pub struct ErrorDefinition {
     pub natspec: Option<NatSpec>,
 }
 
-impl Validate for ErrorDefinition {
+impl SourceItem for ErrorDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Error
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -45,49 +45,20 @@ impl Validate for ErrorDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@err [ErrorDefinition
-            @err_name name:[Identifier]
-            @err_params members:[ErrorParametersDeclaration]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let err = capture(&m, "err")?;
-        let name = capture(&m, "err_name")?;
-        let params = capture(&m, "err_params")?;
-
-        let span = err.text_range();
-        let name = name.node().unparse().trim().to_string();
-        let params = extract_identifiers(&params);
-        let natspec = extract_comment(&err.clone(), &[])?;
-        let parent = extract_parent_name(err);
-
-        Ok(ErrorDefinition {
-            parent,
-            name,
-            span,
-            params,
-            natspec,
-        }
-        .into())
-    }
-
+impl Validate for ErrorDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Error,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() && !options.enforce.contains(&ItemType::Error) {
+            if self.params.is_empty() && !options.enforce.contains(&Self::item_type()) {
                 return out;
             }
             out.diags.push(Diagnostic {
@@ -106,6 +77,8 @@ mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 

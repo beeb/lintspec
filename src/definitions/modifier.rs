@@ -1,16 +1,12 @@
 //! Parsing and validation of modifier definitions.
-use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
-use super::{
-    capture, capture_opt, check_params, extract_attributes, extract_comment, extract_params,
-    extract_parent_name, Attributes, Definition, Identifier, Parent, Validate, ValidationOptions,
-};
+use super::{Attributes, Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
 
 /// A modifier definition
 #[derive(Debug, Clone, bon::Builder)]
@@ -46,7 +42,11 @@ impl ModifierDefinition {
     }
 }
 
-impl Validate for ModifierDefinition {
+impl SourceItem for ModifierDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Modifier
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -58,54 +58,13 @@ impl Validate for ModifierDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@modifier [ModifierDefinition
-            @modifier_name name:[Identifier]
-            parameters:[ParametersDeclaration
-                @modifier_params parameters:[Parameters]
-            ]?
-            @modifier_attr attributes:[ModifierAttributes]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let modifier = capture(&m, "modifier")?;
-        let name = capture(&m, "modifier_name")?;
-        let params = capture_opt(&m, "modifier_params")?;
-        let attr = capture(&m, "modifier_attr")?;
-
-        let span = if let Some(params) = &params {
-            name.text_range().start..params.text_range().end
-        } else {
-            name.text_range().start..attr.text_range().end
-        };
-        let name = name.node().unparse().trim().to_string();
-        let params = params
-            .map(|p| extract_params(&p, NonterminalKind::Parameter))
-            .unwrap_or_default();
-
-        let natspec = extract_comment(&modifier.clone(), &[])?;
-        let parent = extract_parent_name(modifier);
-
-        Ok(ModifierDefinition {
-            parent,
-            name,
-            span,
-            params,
-            natspec,
-            attributes: extract_attributes(&attr),
-        }
-        .into())
-    }
-
+impl Validate for ModifierDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Modifier,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
@@ -114,7 +73,7 @@ impl Validate for ModifierDefinition {
         // natspec otherwise)
         let Some(natspec) = &self.natspec else {
             if self.params.is_empty()
-                && !options.enforce.contains(&ItemType::Modifier)
+                && !options.enforce.contains(&Self::item_type())
                 && (!options.inheritdoc || !self.requires_inheritdoc())
             {
                 return out;
@@ -156,7 +115,9 @@ impl Validate for ModifierDefinition {
 mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
-    use slang_solidity::parser::Parser;
+    use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
@@ -186,7 +147,7 @@ mod tests {
         let contents = "contract Test {
             /// @param param1 Test
             /// @param param2 Test2
-            modifier foo(uint256 param1, bytes calldata param2) { _; } 
+            modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -195,7 +156,7 @@ mod tests {
     #[test]
     fn test_modifier_no_natspec() {
         let contents = "contract Test {
-            modifier foo(uint256 param1, bytes calldata param2) { _; } 
+            modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -206,7 +167,7 @@ mod tests {
     fn test_modifier_only_notice() {
         let contents = "contract Test {
             /// @notice The modifier
-            modifier foo(uint256 param1, bytes calldata param2) { _; } 
+            modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 2);
@@ -218,7 +179,7 @@ mod tests {
     fn test_modifier_one_missing() {
         let contents = "contract Test {
             /// @param param1 The first
-            modifier foo(uint256 param1, bytes calldata param2) { _; } 
+            modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -232,7 +193,7 @@ mod tests {
              * @param param1 Test
              * @param param2 Test2
              */
-            modifier foo(uint256 param1, bytes calldata param2) { _; } 
+            modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -243,7 +204,7 @@ mod tests {
         let contents = "contract Test {
             /// @param param1 The first
             /// @param param1 The first again
-            modifier foo(uint256 param1) { _; } 
+            modifier foo(uint256 param1) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -256,7 +217,7 @@ mod tests {
     #[test]
     fn test_modifier_no_params() {
         let contents = "contract Test {
-            modifier foo()  { _; } 
+            modifier foo()  { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -265,7 +226,7 @@ mod tests {
     #[test]
     fn test_modifier_no_params_no_paren() {
         let contents = "contract Test {
-            modifier foo { _; } 
+            modifier foo { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -274,13 +235,13 @@ mod tests {
     #[test]
     fn test_requires_inheritdoc() {
         let contents = "contract Test is ITest {
-            modifier a() { _; } 
+            modifier a() { _; }
         }";
         let res = parse_file(contents);
         assert!(!res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            modifier e() override (ITest) { _; } 
+            modifier e() override (ITest) { _; }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
@@ -290,7 +251,7 @@ mod tests {
     fn test_modifier_inheritdoc() {
         let contents = "contract Test is ITest {
             /// @inheritdoc ITest
-            modifier foo() override (ITest) { _; } 
+            modifier foo() override (ITest) { _; }
         }";
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -300,7 +261,7 @@ mod tests {
     fn test_modifier_inheritdoc_missing() {
         let contents = "contract Test is ITest {
             /// @notice Test
-            modifier foo() override (ITest) { _; } 
+            modifier foo() override (ITest) { _; }
         }";
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
@@ -310,7 +271,7 @@ mod tests {
     #[test]
     fn test_modifier_enforce() {
         let contents = "contract Test {
-            modifier foo() { _; } 
+            modifier foo() { _; }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
@@ -322,7 +283,7 @@ mod tests {
 
         let contents = "contract Test {
             /// @notice Some notice
-            modifier foo() { _; } 
+            modifier foo() { _; }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
