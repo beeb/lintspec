@@ -1,10 +1,7 @@
-//! Parsing and validation of source item definitions
+//! Source item definitions
 //!
 //! This module contains structs for each of the source item types that can be documented with `NatSpec`.
 //! The [`Definition`] type provides a unified interface to interact with the various types.
-//! The [`find_items`] function takes the tree root [`Cursor`] from a Solidity document and returns all the parsed
-//! definitions contained within.
-//! Some helper functions allow to extract useful information from [`Cursor`]s.
 use constructor::ConstructorDefinition;
 use derive_more::{Display, From, IsVariant};
 use enumeration::EnumDefinition;

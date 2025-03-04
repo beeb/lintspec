@@ -196,7 +196,7 @@ impl From<&Config> for ValidationOptions {
     }
 }
 
-/// A trait implemented by [`Definition`] to validate the related `NatSpec`
+/// A trait implemented by [`Definition`][crate::definitions::Definition] to validate the related `NatSpec`
 pub trait Validate {
     /// Validate the definition and extract the relevant diagnostics
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
