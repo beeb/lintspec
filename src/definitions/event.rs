@@ -1,16 +1,12 @@
 //! Parsing and validation of event definitions.
-use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, Diagnostic, ItemDiagnostics},
     natspec::NatSpec,
 };
 
-use super::{
-    capture, check_params, extract_comment, extract_params, extract_parent_name, Definition,
-    Identifier, Parent, Validate, ValidationOptions,
-};
+use super::{Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
 
 /// An event definition
 #[derive(Debug, Clone, bon::Builder)]
@@ -33,7 +29,11 @@ pub struct EventDefinition {
     pub natspec: Option<NatSpec>,
 }
 
-impl Validate for EventDefinition {
+impl SourceItem for EventDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Event
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -45,49 +45,20 @@ impl Validate for EventDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@event [EventDefinition
-            @event_name name:[Identifier]
-            @event_params parameters:[EventParametersDeclaration]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let event = capture(&m, "event")?;
-        let name = capture(&m, "event_name")?;
-        let params = capture(&m, "event_params")?;
-
-        let span = event.text_range();
-        let name = name.node().unparse().trim().to_string();
-        let params = extract_params(&params, NonterminalKind::EventParameter);
-        let natspec = extract_comment(&event.clone(), &[])?;
-        let parent = extract_parent_name(event);
-
-        Ok(EventDefinition {
-            parent,
-            name,
-            span,
-            params,
-            natspec,
-        }
-        .into())
-    }
-
+impl Validate for EventDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Event,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
         // raise error if no NatSpec is available
         let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() && !options.enforce.contains(&ItemType::Event) {
+            if self.params.is_empty() && !options.enforce.contains(&Self::item_type()) {
                 return out;
             }
             out.diags.push(Diagnostic {
@@ -106,6 +77,8 @@ mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 

@@ -10,6 +10,7 @@ pub mod error;
 pub mod files;
 pub mod lint;
 pub mod natspec;
+pub mod parser;
 pub mod utils;
 
 /// Print the reports for a given file, either as pretty or compact text output
@@ -32,7 +33,10 @@ pub fn print_reports(
             Ok(relative_path) => relative_path.to_string_lossy(),
             Err(_) => file_diags.path.to_string_lossy(),
         };
-        let source = Arc::new(NamedSource::new(source_name, file_diags.contents));
+        let source = Arc::new(NamedSource::new(
+            source_name,
+            file_diags.contents.unwrap_or_default(),
+        ));
         for item_diags in file_diags.items {
             print_report(f, Arc::clone(&source), item_diags)?;
         }

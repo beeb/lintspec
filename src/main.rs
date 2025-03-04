@@ -2,8 +2,12 @@ use std::{env, fs::File};
 
 use anyhow::{bail, Result};
 use lintspec::{
-    config::read_config, definitions::ValidationOptions, error::Error, files::find_sol_files,
-    lint::lint, print_reports,
+    config::read_config,
+    error::Error,
+    files::find_sol_files,
+    lint::{lint, ValidationOptions},
+    parser::slang::SlangParser,
+    print_reports,
 };
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
@@ -24,7 +28,7 @@ fn main() -> Result<()> {
     let diagnostics = paths
         .par_iter()
         .filter_map(|p| {
-            lint(p, &options, config.compact || config.json)
+            lint::<SlangParser>(p, &options, !config.compact && !config.json)
                 .map_err(Into::into)
                 .transpose()
         })

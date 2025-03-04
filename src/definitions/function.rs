@@ -1,16 +1,13 @@
 //! Parsing and validation of function definitions.
-use slang_solidity::cst::{NonterminalKind, Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{check_params, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
 use super::{
-    capture, capture_opt, check_params, check_returns, extract_attributes, extract_comment,
-    extract_params, extract_parent_name, Attributes, Definition, Identifier, Parent, Validate,
-    ValidationOptions, Visibility,
+    Attributes, Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions, Visibility,
 };
 
 /// A function definition
@@ -56,7 +53,11 @@ impl FunctionDefinition {
     }
 }
 
-impl Validate for FunctionDefinition {
+impl SourceItem for FunctionDefinition {
+    fn item_type() -> ItemType {
+        ItemType::Function
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -68,63 +69,13 @@ impl Validate for FunctionDefinition {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@function [FunctionDefinition
-            @keyword function_keyword:[FunctionKeyword]
-            @function_name name:[FunctionName]
-            parameters:[ParametersDeclaration
-                @function_params parameters:[Parameters]
-            ]
-            @function_attr attributes:[FunctionAttributes]
-            returns:[ReturnsDeclaration
-                variables:[ParametersDeclaration
-                    @function_returns parameters:[Parameters]
-                ]
-            ]?
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let func = capture(&m, "function")?;
-        let keyword = capture(&m, "keyword")?;
-        let name = capture(&m, "function_name")?;
-        let params = capture(&m, "function_params")?;
-        let attributes = capture(&m, "function_attr")?;
-        let returns = capture_opt(&m, "function_returns")?;
-
-        let span = if let Some(returns) = &returns {
-            keyword.text_range().start..returns.text_range().end
-        } else {
-            keyword.text_range().start..attributes.text_range().end
-        };
-        let name = name.node().unparse().trim().to_string();
-        let params = extract_params(&params, NonterminalKind::Parameter);
-        let returns = returns
-            .map(|r| extract_params(&r, NonterminalKind::Parameter))
-            .unwrap_or_default();
-        let natspec = extract_comment(&func.clone(), &returns)?;
-        let parent = extract_parent_name(func);
-
-        Ok(FunctionDefinition {
-            parent,
-            name,
-            span,
-            params,
-            returns,
-            natspec,
-            attributes: extract_attributes(&attributes),
-        }
-        .into())
-    }
-
+impl Validate for FunctionDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Function,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
@@ -138,7 +89,7 @@ impl Validate for FunctionDefinition {
         let Some(natspec) = &self.natspec else {
             if self.returns.is_empty()
                 && self.params.is_empty()
-                && !options.enforce.contains(&ItemType::Function)
+                && !options.enforce.contains(&Self::item_type())
                 && (!options.inheritdoc || !self.requires_inheritdoc())
             {
                 return out;
@@ -182,7 +133,9 @@ impl Validate for FunctionDefinition {
 mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
-    use slang_solidity::parser::Parser;
+    use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
@@ -214,7 +167,7 @@ mod tests {
             /// @param param2 Test2
             /// @return First output
             /// @return out Second output
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { } 
+            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -223,7 +176,7 @@ mod tests {
     #[test]
     fn test_function_no_natspec() {
         let contents = "contract Test {
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { } 
+            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -234,7 +187,7 @@ mod tests {
     fn test_function_only_notice() {
         let contents = "contract Test {
             /// @notice The function
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { } 
+            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 4);
@@ -251,7 +204,7 @@ mod tests {
     fn test_function_one_missing() {
         let contents = "contract Test {
             /// @param param1 The first
-            function foo(uint256 param1, bytes calldata param2) internal { } 
+            function foo(uint256 param1, bytes calldata param2) internal { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -265,7 +218,7 @@ mod tests {
              * @param param1 Test
              * @param param2 Test2
              */
-            function foo(uint256 param1, bytes calldata param2) internal { } 
+            function foo(uint256 param1, bytes calldata param2) internal { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -276,7 +229,7 @@ mod tests {
         let contents = "contract Test {
             /// @param param1 The first
             /// @param param1 The first again
-            function foo(uint256 param1) internal { } 
+            function foo(uint256 param1) internal { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -291,7 +244,7 @@ mod tests {
         let contents = "contract Test {
             /// @return out The output
             /// @return out The output again
-            function foo() internal returns (uint256 out) { } 
+            function foo() internal returns (uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -306,7 +259,7 @@ mod tests {
         let contents = "contract Test {
             /// @return The output
             /// @return The output again
-            function foo() internal returns (uint256) { } 
+            function foo() internal returns (uint256) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -316,7 +269,7 @@ mod tests {
     #[test]
     fn test_function_no_params() {
         let contents = "contract Test {
-            function foo() internal { } 
+            function foo() internal { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -325,31 +278,31 @@ mod tests {
     #[test]
     fn test_requires_inheritdoc() {
         let contents = "contract Test is ITest {
-            function a() internal returns (uint256) { } 
+            function a() internal returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(!res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function b() private returns (uint256) { } 
+            function b() private returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(!res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function c() external returns (uint256) { } 
+            function c() external returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function d() public returns (uint256) { } 
+            function d() public returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function e() internal override (ITest) returns (uint256) { } 
+            function e() internal override (ITest) returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
@@ -359,7 +312,7 @@ mod tests {
     fn test_function_inheritdoc() {
         let contents = "contract Test is ITest {
             /// @inheritdoc ITest
-            function foo() external { } 
+            function foo() external { }
         }";
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -369,7 +322,7 @@ mod tests {
     fn test_function_inheritdoc_missing() {
         let contents = "contract Test is ITest {
             /// @notice Test
-            function foo() external { } 
+            function foo() external { }
         }";
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
@@ -379,7 +332,7 @@ mod tests {
     #[test]
     fn test_function_enforce() {
         let contents = "contract Test {
-            function foo() internal { } 
+            function foo() internal { }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
@@ -391,7 +344,7 @@ mod tests {
 
         let contents = "contract Test {
             /// @dev Some dev
-            function foo() internal { } 
+            function foo() internal { }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()

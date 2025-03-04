@@ -1,8 +1,11 @@
-use lintspec::{definitions::ValidationOptions, lint::lint};
+use lintspec::{
+    lint::{lint, ValidationOptions},
+    parser::slang::SlangParser,
+};
 
 #[test]
 fn test_basic() {
-    let diags = lint(
+    let diags = lint::<SlangParser>(
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,

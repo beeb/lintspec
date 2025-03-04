@@ -1,16 +1,12 @@
 //! Parsing and validation of state variable declarations.
-use slang_solidity::cst::{Query, QueryMatch, TextRange};
+use slang_solidity::cst::TextRange;
 
 use crate::{
-    error::Result,
-    lint::{Diagnostic, ItemDiagnostics, ItemType},
+    lint::{Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
-use super::{
-    capture, extract_attributes, extract_comment, extract_parent_name, Attributes, Definition,
-    Parent, Validate, ValidationOptions, Visibility,
-};
+use super::{Attributes, ItemType, Parent, SourceItem, Validate, ValidationOptions, Visibility};
 
 /// A state variable declaration
 #[derive(Debug, Clone, bon::Builder)]
@@ -44,7 +40,11 @@ impl VariableDeclaration {
     }
 }
 
-impl Validate for VariableDeclaration {
+impl SourceItem for VariableDeclaration {
+    fn item_type() -> ItemType {
+        ItemType::Variable
+    }
+
     fn parent(&self) -> Option<Parent> {
         self.parent.clone()
     }
@@ -56,43 +56,13 @@ impl Validate for VariableDeclaration {
     fn span(&self) -> TextRange {
         self.span.clone()
     }
+}
 
-    fn query() -> Query {
-        Query::parse(
-            "@variable [StateVariableDefinition
-            @variable_type type_name:[TypeName]
-            @variable_attr attributes:[StateVariableAttributes]
-            @variable_name name:[Identifier]
-        ]",
-        )
-        .expect("query should compile")
-    }
-
-    fn extract(m: QueryMatch) -> Result<Definition> {
-        let variable = capture(&m, "variable")?;
-        let var_type = capture(&m, "variable_type")?;
-        let attributes = capture(&m, "variable_attr")?;
-        let name = capture(&m, "variable_name")?;
-
-        let span = var_type.text_range().start..variable.text_range().end;
-        let name = name.node().unparse().trim().to_string();
-        let natspec = extract_comment(&variable.clone(), &[])?;
-        let parent = extract_parent_name(variable);
-
-        Ok(VariableDeclaration {
-            parent,
-            name,
-            span,
-            natspec,
-            attributes: extract_attributes(&attributes),
-        }
-        .into())
-    }
-
+impl Validate for VariableDeclaration {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: ItemType::Variable,
+            item_type: Self::item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
@@ -104,7 +74,7 @@ impl Validate for VariableDeclaration {
                     span: self.span(),
                     message: "@inheritdoc is missing".to_string(),
                 });
-            } else if options.enforce.contains(&ItemType::Variable) {
+            } else if options.enforce.contains(&Self::item_type()) {
                 out.diags.push(Diagnostic {
                     span: self.span(),
                     message: "missing NatSpec".to_string(),
@@ -134,6 +104,8 @@ mod tests {
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
+
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
