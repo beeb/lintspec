@@ -10,16 +10,70 @@ compact = false # compact output (minified JSON or compact text)
 sort = false    # sort results by file path
 
 [constructor]
-notice = "ignore"
-dev = "ignore"
-param = "ignore"
+notice = "ignored"
+dev = "ignored"
+param = "ignored"
 
 [enum]
-notice = "ignore"
-dev = "ignore"
-param = "ignore"
+notice = "ignored"
+dev = "ignored"
+param = "ignored"
 
 [error]
-notice = "ignore"
-dev = "ignore"
-param = "require"
+notice = "ignored"
+dev = "ignored"
+param = "required"
+
+[event]
+notice = "ignored"
+dev = "ignored"
+param = "required"
+
+[function.private]
+notice = "ignored"
+dev = "ignored"
+param = "ignored"
+return = "ignored"
+
+[function.internal]
+notice = "ignored"
+dev = "ignored"
+param = "ignored"
+return = "required"
+
+[function.public]
+notice = "ignored"
+dev = "ignored"
+param = "required"
+return = "required"
+
+[function.external]
+notice = "ignored"
+dev = "ignored"
+param = "required"
+return = "required"
+
+[modifier]
+notice = "ignored"
+dev = "ignored"
+param = "required"
+
+[struct]
+notice = "ignored"
+dev = "ignored"
+param = "ignored"
+
+[variable.private]
+notice = "ignored"
+dev = "ignored"
+return = "ignored"
+
+[variable.internal]
+notice = "ignored"
+dev = "ignored"
+return = "ignored"
+
+[variable.public]
+notice = "ignored"
+dev = "ignored"
+return = "required"
