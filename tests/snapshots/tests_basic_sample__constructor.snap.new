@@ -1,10 +1,15 @@
 ---
 source: tests/tests-basic-sample.rs
+assertion_line: 52
 expression: generate_output(diags)
 ---
 ./test-data/BasicSample.sol:38:1
 variable BasicSample.somePublicNumber
   @return missing for unnamed return #1
+
+./test-data/BasicSample.sol:44:17
+constructor BasicSample.constructor
+  @param _randomFlag is missing
 
 ./test-data/BasicSample.sol:54:5
 function BasicSample.externalSimple

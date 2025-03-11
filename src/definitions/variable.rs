@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn test_variable_enforce() {
         let mut var_opts = VariableConfig::default();
-        var_opts.internal.notice = Enforcement::Require;
+        var_opts.internal.notice = Enforcement::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .variables(var_opts)

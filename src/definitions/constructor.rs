@@ -202,7 +202,7 @@ mod tests {
     fn test_constructor_enforce() {
         let opts = ValidationOptions::builder()
             .constructors(WithParamsEnforcement {
-                notice: Enforcement::Require,
+                notice: Enforcement::Required,
                 dev: Enforcement::default(),
                 param: Enforcement::default(),
             })

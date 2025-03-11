@@ -224,7 +224,7 @@ mod tests {
     fn test_struct_enforce() {
         let opts = ValidationOptions::builder()
             .structs(WithParamsEnforcement {
-                notice: Enforcement::Require,
+                notice: Enforcement::Required,
                 dev: Enforcement::default(),
                 param: Enforcement::default(),
             })

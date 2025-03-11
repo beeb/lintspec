@@ -17,26 +17,26 @@ use serde_with::skip_serializing_none;
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Enforcement {
-    Require,
-    Disallow,
     #[default]
-    Ignore,
+    Ignored,
+    Required,
+    Forbidden,
 }
 
 impl Enforcement {
     #[must_use]
-    pub fn is_require_or_ignore(&self) -> bool {
+    pub fn is_required_or_ignored(&self) -> bool {
         match self {
-            Enforcement::Require | Enforcement::Ignore => true,
-            Enforcement::Disallow => false,
+            Enforcement::Required | Enforcement::Ignored => true,
+            Enforcement::Forbidden => false,
         }
     }
 
     #[must_use]
-    pub fn is_disallow_or_ignore(&self) -> bool {
+    pub fn is_forbidden_or_ignored(&self) -> bool {
         match self {
-            Enforcement::Disallow | Enforcement::Ignore => true,
-            Enforcement::Require => false,
+            Enforcement::Forbidden | Enforcement::Ignored => true,
+            Enforcement::Required => false,
         }
     }
 }
@@ -57,8 +57,8 @@ impl FunctionEnforcement {
         Self {
             notice: Enforcement::default(),
             dev: Enforcement::default(),
-            param: Enforcement::Require,
-            returns: Enforcement::Require,
+            param: Enforcement::Required,
+            returns: Enforcement::Required,
         }
     }
 }
@@ -98,7 +98,7 @@ impl WithReturnsEnforcement {
         Self {
             notice: Enforcement::default(),
             dev: Enforcement::default(),
-            returns: Enforcement::Require,
+            returns: Enforcement::Required,
         }
     }
 }
@@ -135,7 +135,7 @@ impl WithParamsEnforcement {
         Self {
             notice: Enforcement::default(),
             dev: Enforcement::default(),
-            param: Enforcement::Require,
+            param: Enforcement::Required,
         }
     }
 }
@@ -335,23 +335,23 @@ pub fn read_config() -> Result<Config> {
     }
     if let Some(constructor) = args.constructor {
         config.constructors.param = if constructor {
-            Enforcement::Require
+            Enforcement::Required
         } else {
-            Enforcement::Ignore
+            Enforcement::Ignored
         };
     }
     if let Some(struct_params) = args.struct_params {
         config.structs.param = if struct_params {
-            Enforcement::Require
+            Enforcement::Required
         } else {
-            Enforcement::Ignore
+            Enforcement::Ignored
         };
     }
     if let Some(enum_params) = args.enum_params {
         config.enums.param = if enum_params {
-            Enforcement::Require
+            Enforcement::Required
         } else {
-            Enforcement::Ignore
+            Enforcement::Ignored
         };
     }
     Ok(config)

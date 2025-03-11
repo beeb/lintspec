@@ -193,7 +193,7 @@ mod tests {
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .errors(WithParamsEnforcement {
-                notice: Enforcement::Require,
+                notice: Enforcement::Required,
                 dev: Enforcement::default(),
                 param: Enforcement::default(),
             })

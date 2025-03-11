@@ -1,0 +1,18 @@
+---
+source: tests/tests-parser-test.rs
+assertion_line: 25
+expression: generate_output(diags)
+---
+./test-data/ParserTest.sol:48:3
+function IParserTest.SOME_CONSTANT
+  @return _returned is missing
+
+./test-data/ParserTest.sol:135:1
+variable ParserTestFunny.SOME_CONSTANT
+  @return missing for unnamed return #1
+
+./test-data/ParserTest.sol:145:3
+function ParserTestFunny.viewFunctionWithParams
+  @param _param1 is missing
+  @param _param2 is missing
+  @return missing for unnamed return #1

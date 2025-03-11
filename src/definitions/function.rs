@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_function_enforce() {
         let mut func_opts = FunctionConfig::default();
-        func_opts.internal.notice = Enforcement::Require;
+        func_opts.internal.notice = Enforcement::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .functions(func_opts)

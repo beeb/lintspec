@@ -1,13 +1,25 @@
-paths = []            # paths to files and folders to analyze
-exclude = []          # paths to files or folders to exclude, see also `.nsignore`
-out = ""              # if provided, redirects output to this file
-inheritdoc = true     # enforce that all overridden, public and external items have `@inheritdoc`
-constructor = false   # enforce that constructors have natspec
-struct_params = false # enforce that structs have `@param` for each member
-enum_params = false   # enforce that enums have `@param` for each variant
-# enforce NatSpec on items even if they don't have params/returns/members. Possible values: constructor, enum, error, event, function, modifier, struct, variable
-enforce = ["variable", "struct"]
-enforce_all = true               # same as passing all possible values to `enforce`. Remove if using `enforce`.
-json = false                     # output diagnostics as JSON
-compact = false                  # compact output (minified JSON or compact text)
-sort = false                     # sort results by file path
+[lintspec]
+paths = []        # paths to files and folders to analyze
+exclude = []      # paths to files or folders to exclude, see also `.nsignore`
+inheritdoc = true # enforce that all overridden, public and external items have `@inheritdoc`
+
+[output]
+out = ""        # if provided, redirects output to this file
+json = false    # output diagnostics as JSON
+compact = false # compact output (minified JSON or compact text)
+sort = false    # sort results by file path
+
+[constructor]
+notice = "ignore"
+dev = "ignore"
+param = "ignore"
+
+[enum]
+notice = "ignore"
+dev = "ignore"
+param = "ignore"
+
+[error]
+notice = "ignore"
+dev = "ignore"
+param = "require"

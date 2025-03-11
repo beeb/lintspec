@@ -227,7 +227,7 @@ mod tests {
     fn test_enum_enforce() {
         let opts = ValidationOptions::builder()
             .enums(WithParamsEnforcement {
-                notice: Enforcement::Require,
+                notice: Enforcement::Required,
                 dev: Enforcement::default(),
                 param: Enforcement::default(),
             })

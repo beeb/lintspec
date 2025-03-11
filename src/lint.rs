@@ -213,10 +213,10 @@ pub fn check_params(
     default_span: TextRange,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    if rule.is_ignore() || (rule.is_require() && params.is_empty()) {
+    if rule.is_ignored() || (rule.is_required() && params.is_empty()) {
         return res;
     }
-    if rule.is_require() {
+    if rule.is_required() {
         let Some(natspec) = natspec else {
             res.extend(params.iter().filter_map(|p| {
                 p.name.as_ref().map(|name| Diagnostic {
@@ -244,11 +244,11 @@ pub fn check_params(
             });
         }
     } else if let Some(natspec) = natspec {
-        // the rule is to disallow `@param`
+        // the rule is to forbid `@param`
         if natspec.has_param() {
             res.push(Diagnostic {
                 span: default_span,
-                message: "disallowed @param".to_string(),
+                message: "@param is forbidden".to_string(),
             });
         }
     }
@@ -266,10 +266,10 @@ pub fn check_returns(
     default_span: TextRange,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    if rule.is_ignore() || (rule.is_require() && returns.is_empty()) {
+    if rule.is_ignored() || (rule.is_required() && returns.is_empty()) {
         return res;
     }
-    if rule.is_require() {
+    if rule.is_required() {
         let Some(natspec) = natspec else {
             res.extend(returns.iter().enumerate().map(|(idx, r)| {
                 let message = if let Some(name) = &r.name {
@@ -317,11 +317,11 @@ pub fn check_returns(
             });
         }
     } else if let Some(natspec) = natspec {
-        // the rule is to disallow `@return`
+        // the rule is to forbid `@return`
         if natspec.has_return() {
             res.push(Diagnostic {
                 span: default_span,
-                message: "disallowed @return".to_string(),
+                message: "@return is forbidden".to_string(),
             });
         }
     }
@@ -336,7 +336,7 @@ pub fn check_notice(
 ) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
     match (rule, natspec, &NatSpec::default()) {
-        (Enforcement::Require, Some(natspec), _) | (Enforcement::Require, None, natspec)
+        (Enforcement::Required, Some(natspec), _) | (Enforcement::Required, None, natspec)
             if !natspec.has_notice() =>
         {
             Some(Diagnostic {
@@ -344,9 +344,9 @@ pub fn check_notice(
                 message: "@notice is missing".to_string(),
             })
         }
-        (Enforcement::Disallow, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
+        (Enforcement::Forbidden, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
             span,
-            message: "disallowed @notice".to_string(),
+            message: "@notice is forbidden".to_string(),
         }),
         _ => None,
     }
@@ -360,7 +360,7 @@ pub fn check_dev(
 ) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no dev
     match (rule, natspec, &NatSpec::default()) {
-        (Enforcement::Require, Some(natspec), _) | (Enforcement::Require, None, natspec)
+        (Enforcement::Required, Some(natspec), _) | (Enforcement::Required, None, natspec)
             if !natspec.has_dev() =>
         {
             Some(Diagnostic {
@@ -368,9 +368,9 @@ pub fn check_dev(
                 message: "@dev is missing".to_string(),
             })
         }
-        (Enforcement::Disallow, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
+        (Enforcement::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
             span,
-            message: "disallowed @dev".to_string(),
+            message: "@dev is forbidden".to_string(),
         }),
         _ => None,
     }
