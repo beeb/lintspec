@@ -12,6 +12,146 @@ use serde_with::skip_serializing_none;
 
 use crate::definitions::ItemType;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Enforcement {
+    Require,
+    Disallow,
+    #[default]
+    Ignore,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct FunctionEnforcement {
+    pub notice: Enforcement,
+    pub dev: Enforcement,
+    pub param: Enforcement,
+    #[serde(rename = "return")]
+    pub returns: Enforcement,
+}
+
+impl FunctionEnforcement {
+    #[must_use]
+    pub fn required() -> Self {
+        Self {
+            notice: Enforcement::default(),
+            dev: Enforcement::default(),
+            param: Enforcement::Require,
+            returns: Enforcement::Require,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionConfig {
+    pub private: FunctionEnforcement,
+    pub internal: FunctionEnforcement,
+    pub public: FunctionEnforcement,
+    pub external: FunctionEnforcement,
+}
+
+impl Default for FunctionConfig {
+    fn default() -> Self {
+        Self {
+            private: FunctionEnforcement::default(),
+            internal: FunctionEnforcement::default(),
+            public: FunctionEnforcement::required(),
+            external: FunctionEnforcement::required(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WithReturnsEnforcement {
+    pub notice: Enforcement,
+    pub dev: Enforcement,
+    #[serde(rename = "return")]
+    pub returns: Enforcement,
+}
+
+impl WithReturnsEnforcement {
+    #[must_use]
+    pub fn required() -> Self {
+        Self {
+            notice: Enforcement::default(),
+            dev: Enforcement::default(),
+            returns: Enforcement::Require,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariableConfig {
+    pub private: WithReturnsEnforcement,
+    pub internal: WithReturnsEnforcement,
+    pub public: WithReturnsEnforcement,
+}
+
+impl Default for VariableConfig {
+    fn default() -> Self {
+        Self {
+            private: WithReturnsEnforcement::default(),
+            internal: WithReturnsEnforcement::default(),
+            public: WithReturnsEnforcement::required(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WithParamsEnforcement {
+    pub notice: Enforcement,
+    pub dev: Enforcement,
+    pub param: Enforcement,
+}
+
+impl WithParamsEnforcement {
+    #[must_use]
+    pub fn required() -> Self {
+        Self {
+            notice: Enforcement::default(),
+            dev: Enforcement::default(),
+            param: Enforcement::Require,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct LintSpecConfig {
+    pub paths: Vec<PathBuf>,
+    pub exclude: Vec<PathBuf>,
+    pub inheritdoc: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct OutputConfig {
+    pub out: Option<PathBuf>,
+    pub json: Option<bool>,
+    pub compact: Option<bool>,
+    pub sort: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct ParsedConfig {
+    lintspec: LintSpecConfig,
+    output: OutputConfig,
+    constructor: WithParamsEnforcement,
+    #[serde(rename = "enum")]
+    enums: WithParamsEnforcement,
+    error: WithParamsEnforcement,
+    event: WithParamsEnforcement,
+    function: FunctionConfig,
+    modifier: WithParamsEnforcement,
+    #[serde(rename = "struct")]
+    structs: WithParamsEnforcement,
+    variable: VariableConfig,
+}
+
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
 #[command(version, about, long_about = None)]
