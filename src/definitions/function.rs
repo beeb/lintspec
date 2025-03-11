@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn test_requires_inheritdoc() {
         let contents = "contract Test is ITest {
-            function a() public returns (uint256) { }
+            function a() internal returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(!res.requires_inheritdoc());
@@ -312,7 +312,7 @@ mod tests {
         assert!(res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function e() public override (ITest) returns (uint256) { }
+            function e() internal override (ITest) returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
