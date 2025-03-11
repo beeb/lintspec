@@ -148,17 +148,17 @@ pub struct ValidationOptions {
     pub inheritdoc: bool,
     #[builder(default)]
     pub constructors: WithParamsRules,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::optional())]
     pub enums: WithParamsRules,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub errors: WithParamsRules,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub events: WithParamsRules,
     #[builder(default)]
     pub functions: FunctionConfig,
     #[builder(default)]
     pub modifiers: WithParamsRules,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::optional())]
     pub structs: WithParamsRules,
     #[builder(default)]
     pub variables: VariableConfig,

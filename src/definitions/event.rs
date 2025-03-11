@@ -50,6 +50,7 @@ impl SourceItem for EventDefinition {
 impl Validate for EventDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let opts = &options.events;
+        println!("{opts:?}");
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: Self::item_type(),
@@ -116,8 +117,9 @@ mod tests {
             event Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[1].message, "@param b is missing");
     }
 
     #[test]
@@ -183,7 +185,7 @@ mod tests {
             /// @inheritdoc ITest
             event Foobar(uint256 a);
         }";
-        let res = parse_file(contents).validate(&ValidationOptions::default());
+        let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
     }
@@ -228,7 +230,8 @@ mod tests {
     fn test_event_no_contract_missing() {
         let contents = "event Foobar(uint256 a, uint256 b);";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[1].message, "@param b is missing");
     }
 }
