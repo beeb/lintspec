@@ -171,7 +171,7 @@ mod tests {
             /// @param param2 Test2
             /// @return First output
             /// @return out Second output
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -180,18 +180,24 @@ mod tests {
     #[test]
     fn test_function_no_natspec() {
         let contents = "contract Test {
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 4);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[1].message, "@param param2 is missing");
+        assert_eq!(
+            res.diags[2].message,
+            "@return missing for unnamed return #1"
+        );
+        assert_eq!(res.diags[3].message, "@return out is missing");
     }
 
     #[test]
     fn test_function_only_notice() {
         let contents = "contract Test {
             /// @notice The function
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 4);
@@ -208,7 +214,7 @@ mod tests {
     fn test_function_one_missing() {
         let contents = "contract Test {
             /// @param param1 The first
-            function foo(uint256 param1, bytes calldata param2) internal { }
+            function foo(uint256 param1, bytes calldata param2) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -222,7 +228,7 @@ mod tests {
              * @param param1 Test
              * @param param2 Test2
              */
-            function foo(uint256 param1, bytes calldata param2) internal { }
+            function foo(uint256 param1, bytes calldata param2) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -233,7 +239,7 @@ mod tests {
         let contents = "contract Test {
             /// @param param1 The first
             /// @param param1 The first again
-            function foo(uint256 param1) internal { }
+            function foo(uint256 param1) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -248,7 +254,7 @@ mod tests {
         let contents = "contract Test {
             /// @return out The output
             /// @return out The output again
-            function foo() internal returns (uint256 out) { }
+            function foo() public returns (uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -263,7 +269,7 @@ mod tests {
         let contents = "contract Test {
             /// @return The output
             /// @return The output again
-            function foo() internal returns (uint256) { }
+            function foo() public returns (uint256) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -273,7 +279,7 @@ mod tests {
     #[test]
     fn test_function_no_params() {
         let contents = "contract Test {
-            function foo() internal { }
+            function foo() public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -282,7 +288,7 @@ mod tests {
     #[test]
     fn test_requires_inheritdoc() {
         let contents = "contract Test is ITest {
-            function a() internal returns (uint256) { }
+            function a() public returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(!res.requires_inheritdoc());
@@ -306,7 +312,7 @@ mod tests {
         assert!(res.requires_inheritdoc());
 
         let contents = "contract Test is ITest {
-            function e() internal override (ITest) returns (uint256) { }
+            function e() public override (ITest) returns (uint256) { }
         }";
         let res = parse_file(contents);
         assert!(res.requires_inheritdoc());
@@ -336,7 +342,7 @@ mod tests {
     #[test]
     fn test_function_enforce() {
         let mut func_opts = FunctionConfig::default();
-        func_opts.internal.notice = Req::Required;
+        func_opts.internal.dev = Req::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .functions(func_opts)
@@ -346,7 +352,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@dev is missing");
 
         let contents = "contract Test {
             /// @dev Some dev
@@ -357,15 +363,18 @@ mod tests {
     }
 
     #[test]
-    fn test_function_internal() {
+    fn test_function_public() {
         let contents = "contract Test {
             // @notice
-            function _viewInternal() internal view returns (uint256) {
+            function _viewInternal() public view returns (uint256) {
                 return 1;
             }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(
+            res.diags[0].message,
+            "@return missing for unnamed return #1"
+        );
     }
 }
