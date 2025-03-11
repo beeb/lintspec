@@ -105,7 +105,14 @@ impl Validate for FunctionDefinition {
                 });
                 return out;
             }
+        } else if options.inheritdoc && self.requires_inheritdoc() {
+            out.diags.push(Diagnostic {
+                span: self.span(),
+                message: "@inheritdoc is missing".to_string(),
+            });
+            return out;
         }
+
         out.diags
             .extend(check_notice(&self.natspec, opts.notice, self.span()));
         out.diags
