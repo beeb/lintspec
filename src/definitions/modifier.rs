@@ -121,8 +121,12 @@ mod tests {
 
     use super::*;
 
-    static OPTIONS: LazyLock<ValidationOptions> =
-        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
+    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
+        ValidationOptions::builder()
+            .modifiers(WithParamsRules::required())
+            .inheritdoc(false)
+            .build()
+    });
 
     fn parse_file(contents: &str) -> ModifierDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -154,8 +158,9 @@ mod tests {
             modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[1].message, "@param param2 is missing");
     }
 
     #[test]
@@ -278,7 +283,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
