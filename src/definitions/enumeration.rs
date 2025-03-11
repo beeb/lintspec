@@ -80,7 +80,7 @@ mod tests {
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use crate::{
-        config::{Enforcement, WithParamsEnforcement},
+        config::{Req, WithParamsRules},
         parser::slang::Extract as _,
     };
 
@@ -89,7 +89,7 @@ mod tests {
     static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
         ValidationOptions::builder()
             .inheritdoc(false)
-            .enums(WithParamsEnforcement::required())
+            .enums(WithParamsRules::required())
             .build()
     });
 
@@ -216,7 +216,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
-                .enums(WithParamsEnforcement::required())
+                .enums(WithParamsRules::required())
                 .build(),
         );
         assert_eq!(res.diags.len(), 1);
@@ -226,10 +226,10 @@ mod tests {
     #[test]
     fn test_enum_enforce() {
         let opts = ValidationOptions::builder()
-            .enums(WithParamsEnforcement {
-                notice: Enforcement::Required,
-                dev: Enforcement::default(),
-                param: Enforcement::default(),
+            .enums(WithParamsRules {
+                notice: Req::Required,
+                dev: Req::default(),
+                param: Req::default(),
             })
             .build();
         let contents = "contract Test {

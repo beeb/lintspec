@@ -135,7 +135,7 @@ mod tests {
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use crate::{
-        config::{Enforcement, FunctionConfig},
+        config::{FunctionConfig, Req},
         parser::slang::Extract as _,
     };
 
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_function_enforce() {
         let mut func_opts = FunctionConfig::default();
-        func_opts.internal.notice = Enforcement::Required;
+        func_opts.internal.notice = Req::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .functions(func_opts)

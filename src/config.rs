@@ -16,49 +16,49 @@ use serde_with::skip_serializing_none;
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default, IsVariant,
 )]
 #[serde(rename_all = "lowercase")]
-pub enum Enforcement {
+pub enum Req {
     #[default]
     Ignored,
     Required,
     Forbidden,
 }
 
-impl Enforcement {
+impl Req {
     #[must_use]
     pub fn is_required_or_ignored(&self) -> bool {
         match self {
-            Enforcement::Required | Enforcement::Ignored => true,
-            Enforcement::Forbidden => false,
+            Req::Required | Req::Ignored => true,
+            Req::Forbidden => false,
         }
     }
 
     #[must_use]
     pub fn is_forbidden_or_ignored(&self) -> bool {
         match self {
-            Enforcement::Forbidden | Enforcement::Ignored => true,
-            Enforcement::Required => false,
+            Req::Forbidden | Req::Ignored => true,
+            Req::Required => false,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[non_exhaustive]
-pub struct FunctionEnforcement {
-    pub notice: Enforcement,
-    pub dev: Enforcement,
-    pub param: Enforcement,
+pub struct FunctionRules {
+    pub notice: Req,
+    pub dev: Req,
+    pub param: Req,
     #[serde(rename = "return")]
-    pub returns: Enforcement,
+    pub returns: Req,
 }
 
-impl FunctionEnforcement {
+impl FunctionRules {
     #[must_use]
     pub fn required() -> Self {
         Self {
-            notice: Enforcement::default(),
-            dev: Enforcement::default(),
-            param: Enforcement::Required,
-            returns: Enforcement::Required,
+            notice: Req::default(),
+            dev: Req::default(),
+            param: Req::Required,
+            returns: Req::Required,
         }
     }
 }
@@ -66,39 +66,39 @@ impl FunctionEnforcement {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct FunctionConfig {
-    pub private: FunctionEnforcement,
-    pub internal: FunctionEnforcement,
-    pub public: FunctionEnforcement,
-    pub external: FunctionEnforcement,
+    pub private: FunctionRules,
+    pub internal: FunctionRules,
+    pub public: FunctionRules,
+    pub external: FunctionRules,
 }
 
 impl Default for FunctionConfig {
     fn default() -> Self {
         Self {
-            private: FunctionEnforcement::default(),
-            internal: FunctionEnforcement::default(),
-            public: FunctionEnforcement::required(),
-            external: FunctionEnforcement::required(),
+            private: FunctionRules::default(),
+            internal: FunctionRules::default(),
+            public: FunctionRules::required(),
+            external: FunctionRules::required(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[non_exhaustive]
-pub struct WithReturnsEnforcement {
-    pub notice: Enforcement,
-    pub dev: Enforcement,
+pub struct WithReturnsRules {
+    pub notice: Req,
+    pub dev: Req,
     #[serde(rename = "return")]
-    pub returns: Enforcement,
+    pub returns: Req,
 }
 
-impl WithReturnsEnforcement {
+impl WithReturnsRules {
     #[must_use]
     pub fn required() -> Self {
         Self {
-            notice: Enforcement::default(),
-            dev: Enforcement::default(),
-            returns: Enforcement::Required,
+            notice: Req::default(),
+            dev: Req::default(),
+            returns: Req::Required,
         }
     }
 }
@@ -106,36 +106,36 @@ impl WithReturnsEnforcement {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct VariableConfig {
-    pub private: WithReturnsEnforcement,
-    pub internal: WithReturnsEnforcement,
-    pub public: WithReturnsEnforcement,
+    pub private: WithReturnsRules,
+    pub internal: WithReturnsRules,
+    pub public: WithReturnsRules,
 }
 
 impl Default for VariableConfig {
     fn default() -> Self {
         Self {
-            private: WithReturnsEnforcement::default(),
-            internal: WithReturnsEnforcement::default(),
-            public: WithReturnsEnforcement::required(),
+            private: WithReturnsRules::default(),
+            internal: WithReturnsRules::default(),
+            public: WithReturnsRules::required(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[non_exhaustive]
-pub struct WithParamsEnforcement {
-    pub notice: Enforcement,
-    pub dev: Enforcement,
-    pub param: Enforcement,
+pub struct WithParamsRules {
+    pub notice: Req,
+    pub dev: Req,
+    pub param: Req,
 }
 
-impl WithParamsEnforcement {
+impl WithParamsRules {
     #[must_use]
     pub fn required() -> Self {
         Self {
-            notice: Enforcement::default(),
-            dev: Enforcement::default(),
-            param: Enforcement::Required,
+            notice: Req::default(),
+            dev: Req::default(),
+            param: Req::Required,
         }
     }
 }
@@ -143,13 +143,13 @@ impl WithParamsEnforcement {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
 #[non_exhaustive]
-pub struct LintSpecConfig {
+pub struct BaseConfig {
     pub paths: Vec<PathBuf>,
     pub exclude: Vec<PathBuf>,
     pub inheritdoc: bool,
 }
 
-impl Default for LintSpecConfig {
+impl Default for BaseConfig {
     fn default() -> Self {
         Self {
             paths: Vec::default(),
@@ -174,30 +174,30 @@ pub struct OutputConfig {
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct Config {
-    pub lintspec: LintSpecConfig,
+    pub lintspec: BaseConfig,
 
     pub output: OutputConfig,
 
     #[serde(rename = "constructor")]
-    pub constructors: WithParamsEnforcement,
+    pub constructors: WithParamsRules,
 
     #[serde(rename = "enum")]
-    pub enums: WithParamsEnforcement,
+    pub enums: WithParamsRules,
 
     #[serde(rename = "error")]
-    pub errors: WithParamsEnforcement,
+    pub errors: WithParamsRules,
 
     #[serde(rename = "event")]
-    pub events: WithParamsEnforcement,
+    pub events: WithParamsRules,
 
     #[serde(rename = "function")]
     pub functions: FunctionConfig,
 
     #[serde(rename = "modifier")]
-    pub modifiers: WithParamsEnforcement,
+    pub modifiers: WithParamsRules,
 
     #[serde(rename = "struct")]
-    pub structs: WithParamsEnforcement,
+    pub structs: WithParamsRules,
 
     #[serde(rename = "variable")]
     pub variables: VariableConfig,
@@ -206,15 +206,15 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            lintspec: LintSpecConfig::default(),
+            lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
-            constructors: WithParamsEnforcement::default(),
-            enums: WithParamsEnforcement::default(),
-            errors: WithParamsEnforcement::required(),
-            events: WithParamsEnforcement::required(),
+            constructors: WithParamsRules::default(),
+            enums: WithParamsRules::default(),
+            errors: WithParamsRules::required(),
+            events: WithParamsRules::required(),
             functions: FunctionConfig::default(),
-            modifiers: WithParamsEnforcement::default(),
-            structs: WithParamsEnforcement::default(),
+            modifiers: WithParamsRules::default(),
+            structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
         }
     }
@@ -335,23 +335,23 @@ pub fn read_config() -> Result<Config> {
     }
     if let Some(constructor) = args.constructor {
         config.constructors.param = if constructor {
-            Enforcement::Required
+            Req::Required
         } else {
-            Enforcement::Ignored
+            Req::Ignored
         };
     }
     if let Some(struct_params) = args.struct_params {
         config.structs.param = if struct_params {
-            Enforcement::Required
+            Req::Required
         } else {
-            Enforcement::Ignored
+            Req::Ignored
         };
     }
     if let Some(enum_params) = args.enum_params {
         config.enums.param = if enum_params {
-            Enforcement::Required
+            Req::Required
         } else {
-            Enforcement::Ignored
+            Req::Ignored
         };
     }
     Ok(config)

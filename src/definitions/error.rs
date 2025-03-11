@@ -80,7 +80,7 @@ mod tests {
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use crate::{
-        config::{Enforcement, WithParamsEnforcement},
+        config::{Req, WithParamsRules},
         parser::slang::Extract as _,
     };
 
@@ -192,10 +192,10 @@ mod tests {
     fn test_error_enforce() {
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
-            .errors(WithParamsEnforcement {
-                notice: Enforcement::Required,
-                dev: Enforcement::default(),
-                param: Enforcement::default(),
+            .errors(WithParamsRules {
+                notice: Req::Required,
+                dev: Req::default(),
+                param: Req::default(),
             })
             .build();
         let contents = "contract Test {

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use lintspec::{
-    config::WithParamsEnforcement,
+    config::WithParamsRules,
     lint::{lint, FileDiagnostics, ValidationOptions},
     parser::slang::SlangParser,
     print_reports,
@@ -43,7 +43,7 @@ fn test_constructor() {
         "./test-data/ParserTest.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .constructors(WithParamsEnforcement::required())
+            .constructors(WithParamsRules::required())
             .build(),
         true,
     )
@@ -58,7 +58,7 @@ fn test_struct() {
         "./test-data/ParserTest.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .structs(WithParamsEnforcement::required())
+            .structs(WithParamsRules::required())
             .build(),
         true,
     )
@@ -73,7 +73,7 @@ fn test_enum() {
         "./test-data/ParserTest.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .enums(WithParamsEnforcement::required())
+            .enums(WithParamsRules::required())
             .build(),
         true,
     )

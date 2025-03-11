@@ -80,7 +80,7 @@ mod tests {
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use crate::{
-        config::{Enforcement, WithParamsEnforcement},
+        config::{Req, WithParamsRules},
         parser::slang::Extract as _,
     };
 
@@ -89,7 +89,7 @@ mod tests {
     static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
         ValidationOptions::builder()
             .inheritdoc(false)
-            .structs(WithParamsEnforcement::required())
+            .structs(WithParamsRules::required())
             .build()
     });
 
@@ -223,10 +223,10 @@ mod tests {
     #[test]
     fn test_struct_enforce() {
         let opts = ValidationOptions::builder()
-            .structs(WithParamsEnforcement {
-                notice: Enforcement::Required,
-                dev: Enforcement::default(),
-                param: Enforcement::default(),
+            .structs(WithParamsRules {
+                notice: Req::Required,
+                dev: Req::default(),
+                param: Req::default(),
             })
             .build();
         let contents = "contract Test {

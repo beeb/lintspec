@@ -117,7 +117,7 @@ mod tests {
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
     use crate::{
-        config::{Enforcement, VariableConfig},
+        config::{Req, VariableConfig},
         parser::slang::Extract as _,
     };
 
@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn test_variable_enforce() {
         let mut var_opts = VariableConfig::default();
-        var_opts.internal.notice = Enforcement::Required;
+        var_opts.internal.notice = Req::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .variables(var_opts)

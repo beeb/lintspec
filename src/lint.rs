@@ -11,7 +11,7 @@ use serde::Serialize;
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    config::{Config, Enforcement, FunctionConfig, VariableConfig, WithParamsEnforcement},
+    config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent},
     error::Result,
     natspec::NatSpec,
@@ -147,19 +147,19 @@ pub struct ValidationOptions {
     #[builder(default = true)]
     pub inheritdoc: bool,
     #[builder(default)]
-    pub constructors: WithParamsEnforcement,
+    pub constructors: WithParamsRules,
     #[builder(default)]
-    pub enums: WithParamsEnforcement,
+    pub enums: WithParamsRules,
     #[builder(default)]
-    pub errors: WithParamsEnforcement,
+    pub errors: WithParamsRules,
     #[builder(default)]
-    pub events: WithParamsEnforcement,
+    pub events: WithParamsRules,
     #[builder(default)]
     pub functions: FunctionConfig,
     #[builder(default)]
-    pub modifiers: WithParamsEnforcement,
+    pub modifiers: WithParamsRules,
     #[builder(default)]
-    pub structs: WithParamsEnforcement,
+    pub structs: WithParamsRules,
     #[builder(default)]
     pub variables: VariableConfig,
 }
@@ -169,13 +169,13 @@ impl Default for ValidationOptions {
     fn default() -> Self {
         Self {
             inheritdoc: true,
-            constructors: WithParamsEnforcement::default(),
-            enums: WithParamsEnforcement::default(),
-            errors: WithParamsEnforcement::default(),
-            events: WithParamsEnforcement::default(),
+            constructors: WithParamsRules::default(),
+            enums: WithParamsRules::default(),
+            errors: WithParamsRules::default(),
+            events: WithParamsRules::default(),
             functions: FunctionConfig::default(),
-            modifiers: WithParamsEnforcement::default(),
-            structs: WithParamsEnforcement::default(),
+            modifiers: WithParamsRules::default(),
+            structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
         }
     }
@@ -208,7 +208,7 @@ pub trait Validate {
 #[must_use]
 pub fn check_params(
     natspec: &Option<NatSpec>,
-    rule: Enforcement,
+    rule: Req,
     params: &[Identifier],
     default_span: TextRange,
 ) -> Vec<Diagnostic> {
@@ -261,7 +261,7 @@ pub fn check_params(
 #[must_use]
 pub fn check_returns(
     natspec: &Option<NatSpec>,
-    rule: Enforcement,
+    rule: Req,
     returns: &[Identifier],
     default_span: TextRange,
 ) -> Vec<Diagnostic> {
@@ -329,14 +329,10 @@ pub fn check_returns(
 }
 
 #[must_use]
-pub fn check_notice(
-    natspec: &Option<NatSpec>,
-    rule: Enforcement,
-    span: TextRange,
-) -> Option<Diagnostic> {
+pub fn check_notice(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
     match (rule, natspec, &NatSpec::default()) {
-        (Enforcement::Required, Some(natspec), _) | (Enforcement::Required, None, natspec)
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
             if !natspec.has_notice() =>
         {
             Some(Diagnostic {
@@ -344,7 +340,7 @@ pub fn check_notice(
                 message: "@notice is missing".to_string(),
             })
         }
-        (Enforcement::Forbidden, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
+        (Req::Forbidden, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
             span,
             message: "@notice is forbidden".to_string(),
         }),
@@ -353,14 +349,10 @@ pub fn check_notice(
 }
 
 #[must_use]
-pub fn check_dev(
-    natspec: &Option<NatSpec>,
-    rule: Enforcement,
-    span: TextRange,
-) -> Option<Diagnostic> {
+pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no dev
     match (rule, natspec, &NatSpec::default()) {
-        (Enforcement::Required, Some(natspec), _) | (Enforcement::Required, None, natspec)
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
             if !natspec.has_dev() =>
         {
             Some(Diagnostic {
@@ -368,7 +360,7 @@ pub fn check_dev(
                 message: "@dev is missing".to_string(),
             })
         }
-        (Enforcement::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
+        (Req::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
             span,
             message: "@dev is forbidden".to_string(),
         }),
