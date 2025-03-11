@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, Diagnostic, ItemDiagnostics},
+    lint::{check_dev, check_notice, check_params, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -62,6 +62,7 @@ impl SourceItem for ModifierDefinition {
 
 impl Validate for ModifierDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let opts = &options.modifiers;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: Self::item_type(),
@@ -69,12 +70,12 @@ impl Validate for ModifierDefinition {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available (unless there are no params and we don't enforce inheritdoc or
-        // natspec otherwise)
-        let Some(natspec) = &self.natspec else {
-            if self.params.is_empty()
-                && !options.enforce.contains(&Self::item_type())
-                && (!options.inheritdoc || !self.requires_inheritdoc())
+        if let Some(natspec) = &self.natspec {
+            // if there is `inheritdoc`, no further validation is required
+            if natspec
+                .items
+                .iter()
+                .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
             {
                 return out;
             } else if options.inheritdoc && self.requires_inheritdoc() {
@@ -84,50 +85,38 @@ impl Validate for ModifierDefinition {
                 });
                 return out;
             }
-            // we require natspec
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
-        } else if options.inheritdoc && self.requires_inheritdoc() {
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "@inheritdoc is missing".to_string(),
-            });
-            return out;
         }
-        // check params and returns
-        out.diags.append(&mut check_params(natspec, &self.params));
+        out.diags
+            .extend(check_notice(&self.natspec, opts.notice, self.span()));
+        out.diags
+            .extend(check_dev(&self.natspec, opts.dev, self.span()));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.params,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Enforcement, WithParamsEnforcement},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> ModifierDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -270,14 +259,18 @@ mod tests {
 
     #[test]
     fn test_modifier_enforce() {
+        let opts = ValidationOptions::builder()
+            .inheritdoc(false)
+            .modifiers(WithParamsEnforcement {
+                notice: Enforcement::Require,
+                dev: Enforcement::default(),
+                param: Enforcement::default(),
+            })
+            .build();
         let contents = "contract Test {
             modifier foo() { _; }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Modifier])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "missing NatSpec");
 
@@ -285,11 +278,7 @@ mod tests {
             /// @notice Some notice
             modifier foo() { _; }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Modifier])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }

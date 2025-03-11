@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, Diagnostic, ItemDiagnostics},
+    lint::{check_dev, check_notice, check_params, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -49,6 +49,7 @@ impl SourceItem for StructDefinition {
 
 impl Validate for StructDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let opts = &options.structs;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: Self::item_type(),
@@ -56,42 +57,41 @@ impl Validate for StructDefinition {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available
-        let Some(natspec) = &self.natspec else {
-            if !options.struct_params && !options.enforce.contains(&Self::item_type()) {
-                return out;
-            }
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        if !options.struct_params {
-            return out;
-        }
-        out.diags = check_params(natspec, &self.members);
+        out.diags
+            .extend(check_notice(&self.natspec, opts.notice, self.span()));
+        out.diags
+            .extend(check_dev(&self.natspec, opts.dev, self.span()));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.members,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Enforcement, WithParamsEnforcement},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: true,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
+        ValidationOptions::builder()
+            .inheritdoc(false)
+            .structs(WithParamsEnforcement::required())
+            .build()
+    });
 
     fn parse_file(contents: &str) -> StructDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -214,24 +214,27 @@ mod tests {
                 uint256 a;
             }
         }";
-        let res = parse_file(contents)
-            .validate(&ValidationOptions::builder().struct_params(true).build());
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param a is missing");
     }
 
     #[test]
     fn test_struct_enforce() {
+        let opts = ValidationOptions::builder()
+            .structs(WithParamsEnforcement {
+                notice: Enforcement::Require,
+                dev: Enforcement::default(),
+                param: Enforcement::default(),
+            })
+            .build();
         let contents = "contract Test {
             struct Foobar {
                 uint256 a;
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Struct])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "missing NatSpec");
 
@@ -241,11 +244,7 @@ mod tests {
                 uint256 a;
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Struct])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 

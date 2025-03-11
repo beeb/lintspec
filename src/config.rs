@@ -2,17 +2,19 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
+use derive_more::IsVariant;
 use figment::{
-    providers::{Env, Format as _, Serialized, Toml},
-    Figment,
+    providers::{Env, Format as _, Toml},
+    value::{Dict, Map},
+    Figment, Metadata, Profile, Provider,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::definitions::ItemType;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default, IsVariant,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Enforcement {
     Require,
@@ -21,7 +23,26 @@ pub enum Enforcement {
     Ignore,
 }
 
+impl Enforcement {
+    #[must_use]
+    pub fn is_require_or_ignore(&self) -> bool {
+        match self {
+            Enforcement::Require | Enforcement::Ignore => true,
+            Enforcement::Disallow => false,
+        }
+    }
+
+    #[must_use]
+    pub fn is_disallow_or_ignore(&self) -> bool {
+        match self {
+            Enforcement::Disallow | Enforcement::Ignore => true,
+            Enforcement::Require => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[non_exhaustive]
 pub struct FunctionEnforcement {
     pub notice: Enforcement,
     pub dev: Enforcement,
@@ -43,6 +64,7 @@ impl FunctionEnforcement {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct FunctionConfig {
     pub private: FunctionEnforcement,
     pub internal: FunctionEnforcement,
@@ -62,6 +84,7 @@ impl Default for FunctionConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[non_exhaustive]
 pub struct WithReturnsEnforcement {
     pub notice: Enforcement,
     pub dev: Enforcement,
@@ -81,6 +104,7 @@ impl WithReturnsEnforcement {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct VariableConfig {
     pub private: WithReturnsEnforcement,
     pub internal: WithReturnsEnforcement,
@@ -98,6 +122,7 @@ impl Default for VariableConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[non_exhaustive]
 pub struct WithParamsEnforcement {
     pub notice: Enforcement,
     pub dev: Enforcement,
@@ -121,35 +146,101 @@ impl WithParamsEnforcement {
 pub struct LintSpecConfig {
     pub paths: Vec<PathBuf>,
     pub exclude: Vec<PathBuf>,
-    pub inheritdoc: Option<bool>,
+    pub inheritdoc: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for LintSpecConfig {
+    fn default() -> Self {
+        Self {
+            paths: Vec::default(),
+            exclude: Vec::default(),
+            inheritdoc: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct OutputConfig {
     pub out: Option<PathBuf>,
-    pub json: Option<bool>,
-    pub compact: Option<bool>,
+    pub json: bool,
+    pub compact: bool,
     pub sort: bool,
 }
 
+/// The parsed and validated config for the tool
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
 #[non_exhaustive]
-pub struct ParsedConfig {
-    lintspec: LintSpecConfig,
-    output: OutputConfig,
-    constructor: WithParamsEnforcement,
+pub struct Config {
+    pub lintspec: LintSpecConfig,
+
+    pub output: OutputConfig,
+
+    #[serde(rename = "constructor")]
+    pub constructors: WithParamsEnforcement,
+
     #[serde(rename = "enum")]
-    enums: WithParamsEnforcement,
-    error: WithParamsEnforcement,
-    event: WithParamsEnforcement,
-    function: FunctionConfig,
-    modifier: WithParamsEnforcement,
+    pub enums: WithParamsEnforcement,
+
+    #[serde(rename = "error")]
+    pub errors: WithParamsEnforcement,
+
+    #[serde(rename = "event")]
+    pub events: WithParamsEnforcement,
+
+    #[serde(rename = "function")]
+    pub functions: FunctionConfig,
+
+    #[serde(rename = "modifier")]
+    pub modifiers: WithParamsEnforcement,
+
     #[serde(rename = "struct")]
-    structs: WithParamsEnforcement,
-    variable: VariableConfig,
+    pub structs: WithParamsEnforcement,
+
+    #[serde(rename = "variable")]
+    pub variables: VariableConfig,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            lintspec: LintSpecConfig::default(),
+            output: OutputConfig::default(),
+            constructors: WithParamsEnforcement::default(),
+            enums: WithParamsEnforcement::default(),
+            errors: WithParamsEnforcement::required(),
+            events: WithParamsEnforcement::required(),
+            functions: FunctionConfig::default(),
+            modifiers: WithParamsEnforcement::default(),
+            structs: WithParamsEnforcement::default(),
+            variables: VariableConfig::default(),
+        }
+    }
+}
+
+impl Config {
+    pub fn from(provider: impl Provider) -> Result<Config, figment::Error> {
+        Figment::from(provider).extract()
+    }
+
+    #[must_use]
+    pub fn figment() -> Figment {
+        Figment::from(Config::default())
+            .admerge(Toml::file(".lintspec.toml"))
+            .admerge(Env::prefixed("LINTSPEC_"))
+    }
+}
+
+impl Provider for Config {
+    fn metadata(&self) -> figment::Metadata {
+        Metadata::named("LintSpec Config")
+    }
+
+    fn data(&self) -> Result<Map<Profile, Dict>, figment::Error> {
+        figment::providers::Serialized::defaults(Config::default()).data()
+    }
 }
 
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
@@ -197,20 +288,6 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub enum_params: Option<bool>,
 
-    /// Enforce NatSpec on items even if they don't have params/returns/members
-    /// (can be used more than once)
-    ///
-    /// To enforce for all types, you can use `--enforce-all`.
-    #[arg(short = 'f', long, name = "TYPE")]
-    pub enforce: Vec<ItemType>,
-
-    /// Enforce NatSpec for all item types, even if they don't have params/returns/members
-    ///
-    /// Setting this option overrides any previously set `--enforce` arguments.
-    /// Can be set with `--enforce-all` (means true), `--enforce-all true` or `--enforce-all false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub enforce_all: Option<bool>,
-
     /// Output diagnostics in JSON format
     ///
     /// Can be set with `--json` (means true), `--json true` or `--json false`.
@@ -232,124 +309,50 @@ pub struct Args {
     pub sort: Option<bool>,
 }
 
-/// The parsed and validated config for the tool
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
-#[non_exhaustive]
-#[builder(on(PathBuf, into))]
-#[allow(clippy::struct_excessive_bools)]
-pub struct Config {
-    /// The paths to search for Solidity files
-    pub paths: Vec<PathBuf>,
-
-    /// Some paths to ignore while searching for Solidity files
-    pub exclude: Vec<PathBuf>,
-
-    /// The file where to output the diagnostics (if `None`, then stderr is used)
-    pub out: Option<PathBuf>,
-
-    /// Whether to enforce the use of `@inheritdoc` on external/public/overridden items
-    pub inheritdoc: bool,
-
-    /// Whether to enforce documentation of constructors
-    pub constructor: bool,
-
-    /// Whether to enforce documentation of struct members
-    pub struct_params: bool,
-
-    /// Whether to enforce documentation of enum variants
-    pub enum_params: bool,
-
-    /// Whether to enforce documentation of items which have no params/returns/members
-    pub enforce: Vec<ItemType>,
-
-    /// Output JSON diagnostics
-    pub json: bool,
-
-    /// Output compact format (minified JSON or simple text output)
-    pub compact: bool,
-
-    /// Sort diagnostics by file path
-    pub sort: bool,
-}
-
-impl From<Args> for Config {
-    fn from(value: Args) -> Self {
-        Self {
-            paths: value.paths,
-            exclude: value.exclude,
-            out: value.out,
-            inheritdoc: value.inheritdoc.unwrap_or(true),
-            constructor: value.constructor.unwrap_or_default(),
-            struct_params: value.struct_params.unwrap_or_default(),
-            enum_params: value.enum_params.unwrap_or_default(),
-            enforce: value.enforce,
-            json: value.json.unwrap_or_default(),
-            compact: value.compact.unwrap_or_default(),
-            sort: value.sort.unwrap_or_default(),
-        }
-    }
-}
-
 /// Read the configuration from config file, environment variables and CLI arguments
 pub fn read_config() -> Result<Config> {
     let args = Args::parse();
-    let mut temp: Args = Figment::new()
-        .admerge(Serialized::defaults(Args {
-            paths: args.paths,
-            exclude: args.exclude,
-            out: None,
-            inheritdoc: None,
-            constructor: None,
-            struct_params: None,
-            enum_params: None,
-            enforce: args.enforce,
-            enforce_all: None,
-            json: None,
-            compact: None,
-            sort: None,
-        }))
-        .admerge(Toml::file(".lintspec.toml"))
-        .admerge(Env::prefixed("LINTSPEC_"))
-        .extract()?;
+    let mut config: Config = Config::figment().extract()?;
+    // paths
+    config.lintspec.paths.extend(args.paths);
+    config.lintspec.exclude.extend(args.exclude);
+    // output
     if let Some(out) = args.out {
-        temp.out = Some(out);
-    }
-    if let Some(inheritdoc) = args.inheritdoc {
-        temp.inheritdoc = Some(inheritdoc);
-    }
-    if let Some(constructor) = args.constructor {
-        temp.constructor = Some(constructor);
-    }
-    if let Some(struct_params) = args.struct_params {
-        temp.struct_params = Some(struct_params);
-    }
-    if let Some(enum_params) = args.enum_params {
-        temp.enum_params = Some(enum_params);
-    }
-    // first look if enforce_all was set in a config file or env variable
-    if let Some(enforce_all) = temp.enforce_all {
-        if enforce_all {
-            temp.enforce = ItemType::value_variants().into();
-        } else {
-            temp.enforce = vec![];
-        }
-    }
-    // then look if it was set in the CLI args
-    if let Some(enforce_all) = args.enforce_all {
-        if enforce_all {
-            temp.enforce = ItemType::value_variants().into();
-        } else {
-            temp.enforce = vec![];
-        }
+        config.output.out = Some(out);
     }
     if let Some(json) = args.json {
-        temp.json = Some(json);
+        config.output.json = json;
     }
     if let Some(compact) = args.compact {
-        temp.compact = Some(compact);
+        config.output.compact = compact;
     }
     if let Some(sort) = args.sort {
-        temp.sort = Some(sort);
+        config.output.sort = sort;
     }
-    Ok(temp.into())
+    // natspec config
+    if let Some(inheritdoc) = args.inheritdoc {
+        config.lintspec.inheritdoc = inheritdoc;
+    }
+    if let Some(constructor) = args.constructor {
+        config.constructors.param = if constructor {
+            Enforcement::Require
+        } else {
+            Enforcement::Ignore
+        };
+    }
+    if let Some(struct_params) = args.struct_params {
+        config.structs.param = if struct_params {
+            Enforcement::Require
+        } else {
+            Enforcement::Ignore
+        };
+    }
+    if let Some(enum_params) = args.enum_params {
+        config.enums.param = if enum_params {
+            Enforcement::Require
+        } else {
+            Enforcement::Ignore
+        };
+    }
+    Ok(config)
 }

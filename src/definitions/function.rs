@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, check_returns, Diagnostic, ItemDiagnostics},
+    lint::{check_dev, check_notice, check_params, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -84,13 +84,18 @@ impl Validate for FunctionDefinition {
         if self.name == "receive" || self.name == "fallback" {
             return out;
         }
-        // raise error if no NatSpec is available (unless there are no params, no returns, and we don't enforce
-        // inheritdoc or natspec at all)
-        let Some(natspec) = &self.natspec else {
-            if self.returns.is_empty()
-                && self.params.is_empty()
-                && !options.enforce.contains(&Self::item_type())
-                && (!options.inheritdoc || !self.requires_inheritdoc())
+        let opts = match self.attributes.visibility {
+            Visibility::External => options.functions.external,
+            Visibility::Internal => options.functions.internal,
+            Visibility::Private => options.functions.private,
+            Visibility::Public => options.functions.public,
+        };
+        if let Some(natspec) = &self.natspec {
+            // if there is `inheritdoc`, no further validation is required
+            if natspec
+                .items
+                .iter()
+                .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
             {
                 return out;
             } else if options.inheritdoc && self.requires_inheritdoc() {
@@ -100,52 +105,44 @@ impl Validate for FunctionDefinition {
                 });
                 return out;
             }
-            // we require natspec
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
-        } else if options.inheritdoc && self.requires_inheritdoc() {
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "@inheritdoc is missing".to_string(),
-            });
-            return out;
         }
-        // check params and returns
-        out.diags.append(&mut check_params(natspec, &self.params));
         out.diags
-            .append(&mut check_returns(natspec, &self.returns, self.span()));
+            .extend(check_notice(&self.natspec, opts.notice, self.span()));
+        out.diags
+            .extend(check_dev(&self.natspec, opts.dev, self.span()));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.params,
+            self.span(),
+        ));
+        out.diags.extend(check_returns(
+            &self.natspec,
+            opts.returns,
+            &self.returns,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Enforcement, FunctionConfig},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> FunctionDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -331,14 +328,16 @@ mod tests {
 
     #[test]
     fn test_function_enforce() {
+        let mut func_opts = FunctionConfig::default();
+        func_opts.internal.notice = Enforcement::Require;
+        let opts = ValidationOptions::builder()
+            .inheritdoc(false)
+            .functions(func_opts)
+            .build();
         let contents = "contract Test {
             function foo() internal { }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Function])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "missing NatSpec");
 
@@ -346,11 +345,7 @@ mod tests {
             /// @dev Some dev
             function foo() internal { }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Function])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 

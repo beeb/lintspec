@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, Diagnostic, ItemDiagnostics},
+    lint::{check_dev, check_notice, check_params, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -49,6 +49,7 @@ impl SourceItem for EventDefinition {
 
 impl Validate for EventDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let opts = &options.events;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: Self::item_type(),
@@ -56,39 +57,37 @@ impl Validate for EventDefinition {
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available
-        let Some(natspec) = &self.natspec else {
-            if self.params.is_empty() && !options.enforce.contains(&Self::item_type()) {
-                return out;
-            }
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        out.diags = check_params(natspec, &self.params);
+        out.diags
+            .extend(check_notice(&self.natspec, opts.notice, self.span()));
+        out.diags
+            .extend(check_dev(&self.natspec, opts.dev, self.span()));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.params,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Enforcement, WithParamsEnforcement},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> EventDefinition {
         let parser = Parser::create(Version::new(0, 8, 26)).unwrap();
@@ -191,15 +190,18 @@ mod tests {
 
     #[test]
     fn test_error_enforce() {
+        let opts = ValidationOptions::builder()
+            .inheritdoc(false)
+            .events(WithParamsEnforcement {
+                notice: Enforcement::Require,
+                dev: Enforcement::default(),
+                param: Enforcement::default(),
+            })
+            .build();
         let contents = "contract Test {
             event Foobar();
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .enforce(vec![ItemType::Event])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "missing NatSpec");
 
@@ -207,12 +209,7 @@ mod tests {
             /// @notice Some notice
             event Foobar();
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .enforce(vec![ItemType::Event])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 

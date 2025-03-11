@@ -1,4 +1,5 @@
 //! `NatSpec` Comment Parser
+use derive_more::IsVariant;
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, delimited, opt, repeat, separated},
@@ -72,10 +73,27 @@ impl NatSpec {
     /// Count all the return `NatSpec` entries for this source item
     #[must_use]
     pub fn count_all_returns(&self) -> usize {
-        self.items
-            .iter()
-            .filter(|n| matches!(&n.kind, NatSpecKind::Return { .. }))
-            .count()
+        self.items.iter().filter(|n| n.kind.is_return()).count()
+    }
+
+    #[must_use]
+    pub fn has_param(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_param())
+    }
+
+    #[must_use]
+    pub fn has_return(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_return())
+    }
+
+    #[must_use]
+    pub fn has_notice(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_notice())
+    }
+
+    #[must_use]
+    pub fn has_dev(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_dev())
     }
 }
 
@@ -126,7 +144,7 @@ impl NatSpecItem {
 }
 
 /// The kind of a `NatSpec` item
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, IsVariant)]
 pub enum NatSpecKind {
     Title,
     Author,
