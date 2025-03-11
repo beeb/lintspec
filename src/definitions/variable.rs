@@ -63,10 +63,10 @@ impl SourceItem for VariableDeclaration {
 impl Validate for VariableDeclaration {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let opts = match self.attributes.visibility {
-            Visibility::External => options.functions.external,
-            Visibility::Internal => options.functions.internal,
-            Visibility::Private => options.functions.private,
-            Visibility::Public => options.functions.public,
+            Visibility::External => unreachable!("variables cannot be external"),
+            Visibility::Internal => &options.variables.internal,
+            Visibility::Private => &options.variables.private,
+            Visibility::Public => &options.variables.public,
         };
         let mut out = ItemDiagnostics {
             parent: self.parent(),
@@ -90,6 +90,12 @@ impl Validate for VariableDeclaration {
                 });
                 return out;
             }
+        } else if options.inheritdoc && self.requires_inheritdoc() {
+            out.diags.push(Diagnostic {
+                span: self.span(),
+                message: "@inheritdoc is missing".to_string(),
+            });
+            return out;
         }
         out.diags
             .extend(check_notice(&self.natspec, opts.notice, self.span()));
@@ -209,7 +215,7 @@ mod tests {
     #[test]
     fn test_variable_enforce() {
         let mut var_opts = VariableConfig::default();
-        var_opts.internal.notice = Req::Required;
+        var_opts.internal.dev = Req::Required;
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .variables(var_opts)
@@ -219,7 +225,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@dev is missing");
 
         let contents = "contract Test {
             /// @dev Some dev
