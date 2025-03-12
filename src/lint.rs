@@ -140,7 +140,7 @@ where
 }
 
 /// Validation options to control which lints generate a diagnostic
-#[derive(Debug, Clone, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
 #[non_exhaustive]
 pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
@@ -149,7 +149,7 @@ pub struct ValidationOptions {
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     #[builder(default)]
     pub notice_or_dev: bool,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub constructors: WithParamsRules,
     #[builder(default)]
     pub enums: WithParamsRules,
@@ -173,7 +173,7 @@ impl Default for ValidationOptions {
         Self {
             inheritdoc: true,
             notice_or_dev: false,
-            constructors: WithParamsRules::default(),
+            constructors: WithParamsRules::required(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
@@ -408,4 +408,71 @@ pub fn check_notice_and_dev(
         (true, Req::Ignored, Req::Ignored) => {}
     }
     res
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::{BaseConfig, FunctionRules, NoticeDevRules};
+
+    use super::*;
+
+    #[test]
+    fn test_validation_options_default() {
+        assert_eq!(
+            ValidationOptions::default(),
+            ValidationOptions::builder().build()
+        );
+    }
+
+    #[test]
+    fn test_validation_options_conversion() {
+        let config = Config::builder().build();
+        let options = ValidationOptions::from(&config);
+        assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
+        assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.constructors, options.constructors);
+        assert_eq!(config.enums, options.enums);
+        assert_eq!(config.errors, options.errors);
+        assert_eq!(config.events, options.events);
+        assert_eq!(config.functions, options.functions);
+        assert_eq!(config.modifiers, options.modifiers);
+        assert_eq!(config.structs, options.structs);
+        assert_eq!(config.variables, options.variables);
+
+        let config = Config::builder()
+            .lintspec(
+                BaseConfig::builder()
+                    .inheritdoc(false)
+                    .notice_or_dev(true)
+                    .build(),
+            )
+            .constructors(WithParamsRules::builder().dev(Req::Required).build())
+            .enums(WithParamsRules::builder().param(Req::Required).build())
+            .errors(WithParamsRules::builder().notice(Req::Forbidden).build())
+            .events(WithParamsRules::builder().param(Req::Forbidden).build())
+            .functions(
+                FunctionConfig::builder()
+                    .private(FunctionRules::builder().dev(Req::Required).build())
+                    .build(),
+            )
+            .modifiers(WithParamsRules::builder().dev(Req::Forbidden).build())
+            .structs(WithParamsRules::builder().notice(Req::Ignored).build())
+            .variables(
+                VariableConfig::builder()
+                    .private(NoticeDevRules::builder().dev(Req::Required).build())
+                    .build(),
+            )
+            .build();
+        let options = ValidationOptions::from(&config);
+        assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
+        assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.constructors, options.constructors);
+        assert_eq!(config.enums, options.enums);
+        assert_eq!(config.errors, options.errors);
+        assert_eq!(config.events, options.events);
+        assert_eq!(config.functions, options.functions);
+        assert_eq!(config.modifiers, options.modifiers);
+        assert_eq!(config.structs, options.structs);
+        assert_eq!(config.variables, options.variables);
+    }
 }

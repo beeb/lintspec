@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use lintspec::{
-    config::{FunctionConfig, FunctionRules, NoticeDevRules, Req, VariableConfig, WithParamsRules},
+    config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::{lint, FileDiagnostics, ValidationOptions},
     parser::slang::SlangParser,
     print_reports,
@@ -89,12 +89,6 @@ fn test_all() {
         &ValidationOptions::builder()
             .constructors(WithParamsRules::required())
             .enums(WithParamsRules::required())
-            .functions(
-                FunctionConfig::builder()
-                    .private(FunctionRules::required())
-                    .internal(FunctionRules::required())
-                    .build(),
-            )
             .modifiers(WithParamsRules::required())
             .structs(WithParamsRules::required())
             .variables(
@@ -129,12 +123,6 @@ fn test_all_no_inheritdoc() {
             .inheritdoc(false)
             .constructors(WithParamsRules::required())
             .enums(WithParamsRules::required())
-            .functions(
-                FunctionConfig::builder()
-                    .private(FunctionRules::required())
-                    .internal(FunctionRules::required())
-                    .build(),
-            )
             .modifiers(WithParamsRules::required())
             .structs(WithParamsRules::required())
             .variables(

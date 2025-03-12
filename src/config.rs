@@ -67,9 +67,7 @@ macro_rules! cli_rule_override {
     };
 }
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default, IsVariant,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, IsVariant)]
 #[serde(rename_all = "lowercase")]
 pub enum Req {
     #[default]
@@ -96,10 +94,10 @@ impl Req {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, bon::Builder)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionRules {
-    #[builder(default)]
+    #[builder(default = Req::Required)]
     pub notice: Req,
     #[builder(default)]
     pub dev: Req,
@@ -110,11 +108,10 @@ pub struct FunctionRules {
     pub returns: Req,
 }
 
-impl FunctionRules {
-    #[must_use]
-    pub fn required() -> Self {
+impl Default for FunctionRules {
+    fn default() -> Self {
         Self {
-            notice: Req::default(),
+            notice: Req::Required,
             dev: Req::default(),
             param: Req::Required,
             returns: Req::Required,
@@ -122,87 +119,74 @@ impl FunctionRules {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionConfig {
     #[builder(default)]
     pub private: FunctionRules,
     #[builder(default)]
     pub internal: FunctionRules,
-    #[builder(default = FunctionRules::required())]
+    #[builder(default)]
     pub public: FunctionRules,
-    #[builder(default = FunctionRules::required())]
+    #[builder(default)]
     pub external: FunctionRules,
 }
 
-impl Default for FunctionConfig {
-    fn default() -> Self {
-        Self {
-            private: FunctionRules::default(),
-            internal: FunctionRules::default(),
-            public: FunctionRules::required(),
-            external: FunctionRules::required(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct WithReturnsRules {
-    #[builder(default)]
+    #[builder(default = Req::Required)]
     pub notice: Req,
     #[builder(default)]
     pub dev: Req,
     #[serde(rename = "return")]
-    #[builder(default)]
+    #[builder(default = Req::Required)]
     pub returns: Req,
 }
 
-impl WithReturnsRules {
-    #[must_use]
-    pub fn required() -> Self {
+impl Default for WithReturnsRules {
+    fn default() -> Self {
         Self {
-            notice: Req::default(),
+            notice: Req::Required,
             dev: Req::default(),
             returns: Req::Required,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct NoticeDevRules {
-    #[builder(default)]
+    #[builder(default = Req::Required)]
     pub notice: Req,
     #[builder(default)]
     pub dev: Req,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
+impl Default for NoticeDevRules {
+    fn default() -> Self {
+        Self {
+            notice: Req::Required,
+            dev: Req::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct VariableConfig {
     #[builder(default)]
     pub private: NoticeDevRules,
     #[builder(default)]
     pub internal: NoticeDevRules,
-    #[builder(default = WithReturnsRules::required())]
+    #[builder(default)]
     pub public: WithReturnsRules,
 }
 
-impl Default for VariableConfig {
-    fn default() -> Self {
-        Self {
-            private: NoticeDevRules::default(),
-            internal: NoticeDevRules::default(),
-            public: WithReturnsRules::required(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct WithParamsRules {
-    #[builder(default)]
+    #[builder(default = Req::Required)]
     pub notice: Req,
     #[builder(default)]
     pub dev: Req,
@@ -210,18 +194,27 @@ pub struct WithParamsRules {
     pub param: Req,
 }
 
-impl WithParamsRules {
-    #[must_use]
-    pub fn required() -> Self {
+impl Default for WithParamsRules {
+    fn default() -> Self {
         Self {
-            notice: Req::default(),
+            notice: Req::Required,
             dev: Req::default(),
-            param: Req::Required,
+            param: Req::default(),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
+impl WithParamsRules {
+    #[must_use]
+    pub fn required() -> Self {
+        Self {
+            param: Req::Required,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct BaseConfig {
@@ -246,7 +239,7 @@ impl Default for BaseConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct OutputConfig {
@@ -260,7 +253,7 @@ pub struct OutputConfig {
 }
 
 /// The parsed and validated config for the tool
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct Config {
@@ -271,7 +264,7 @@ pub struct Config {
     pub output: OutputConfig,
 
     #[serde(rename = "constructor")]
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub constructors: WithParamsRules,
 
     #[serde(rename = "enum")]
@@ -308,7 +301,7 @@ impl Default for Config {
         Self {
             lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
-            constructors: WithParamsRules::default(),
+            constructors: WithParamsRules::required(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
@@ -539,4 +532,28 @@ pub fn write_default_config() -> Result<PathBuf> {
     }
     fs::write(&path, toml::to_string(&config)?)?;
     Ok(dunce::canonicalize(path)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_builder() {
+        assert_eq!(FunctionRules::default(), FunctionRules::builder().build());
+        assert_eq!(FunctionConfig::default(), FunctionConfig::builder().build());
+        assert_eq!(
+            WithReturnsRules::default(),
+            WithReturnsRules::builder().build()
+        );
+        assert_eq!(NoticeDevRules::default(), NoticeDevRules::builder().build());
+        assert_eq!(VariableConfig::default(), VariableConfig::builder().build());
+        assert_eq!(
+            WithParamsRules::default(),
+            WithParamsRules::builder().build()
+        );
+        assert_eq!(BaseConfig::default(), BaseConfig::builder().build());
+        assert_eq!(OutputConfig::default(), OutputConfig::builder().build());
+        assert_eq!(Config::default(), Config::builder().build());
+    }
 }
