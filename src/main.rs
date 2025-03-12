@@ -24,6 +24,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
     let config = read_config(args)?;
+    println!("{config:#?}");
 
     // identify Solidity files to parse
     let paths = find_sol_files(

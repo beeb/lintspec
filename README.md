@@ -31,6 +31,9 @@ speed and ergonomics. By default, lintspec will respect gitignore rules when loo
 
 Dual-licensed under MIT or Apache 2.0.
 
+> Note: the `main` branch can contain unreleased changes. To view the README information for the latest stable release,
+visit [crates.io](https://crates.io/crates/lintspec) or select the latest git tag from the branch/tag dropdown.
+
 ## Installation
 
 #### Via `cargo`
@@ -62,33 +65,71 @@ Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 ## Usage
 
 ```text
-Usage: lintspec [OPTIONS] [PATH]...
+Usage: lintspec [OPTIONS] [PATH]... [COMMAND]
+
+Commands:
+  init  Create a `.lintspec.toml` config file with default values
+  help  Print this message or the help of the given subcommand(s)
 
 Arguments:
   [PATH]...  One or more paths to files and folders to analyze
 
 Options:
-  -e, --exclude <EXCLUDE>  Path to a file or folder to exclude (can be used more than once)
-  -o, --out <OUT>          Write output to a file instead of stderr
-      --inheritdoc         Enforce that all public and external items have `@inheritdoc`
-      --constructor        Enforce that constructors have NatSpec
-      --struct-params      Enforce that structs have `@param` for each member
-      --enum-params        Enforce that enums have `@param` for each variant
-  -f, --enforce <TYPE>     Enforce NatSpec on items even if they don't have params/returns/members (can be used more than once)
-                           [possible values: constructor, enum, error, event, function, modifier, struct, variable]
-      --enforce-all        Enforce NatSpec for all item types, even if they don't have params/returns/members
-      --json               Output diagnostics in JSON format
-      --compact            Compact output
-      --sort               Sort the results by file path
-  -h, --help               Print help (see more with '--help')
-  -V, --version            Print version
+  -e, --exclude <EXCLUDE>        Path to a file or folder to exclude (can be used more than once)
+  -o, --out <OUT>                Write output to a file instead of stderr
+      --inheritdoc               Enforce that all public and external items have `@inheritdoc`
+      --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
+      --notice-ignored <TYPE>    Ignore `@notice` for these items (can be used more than once)
+      --notice-required <TYPE>   Enforce `@notice` for these items (can be used more than once)
+      --notice-forbidden <TYPE>  Forbid `@notice` for these items (can be used more than once)
+      --dev-ignored <TYPE>       Ignore `@dev` for these items (can be used more than once)
+      --dev-required <TYPE>      Enforce `@dev` for these items (can be used more than once)
+      --dev-forbidden <TYPE>     Forbid `@dev` for these items (can be used more than once)
+      --param-ignored <TYPE>     Ignore `@param` for these items (can be used more than once)
+      --param-required <TYPE>    Enforce `@param` for these items (can be used more than once)
+      --param-forbidden <TYPE>   Forbid `@param` for these items (can be used more than once)
+      --return-ignored <TYPE>    Ignore `@return` for these items (can be used more than once)
+      --return-required <TYPE>   Enforce `@return` for these items (can be used more than once)
+      --return-forbidden <TYPE>  Forbid `@return` for these items (can be used more than once)
+      --json                     Output diagnostics in JSON format
+      --compact                  Compact output
+      --sort                     Sort the results by file path
+  -h, --help                     Print help (see more with '--help')
+  -V, --version                  Print version
 ```
 
 ## Configuration
 
-The tool can be configured with a `.lintspec.toml` file ([see example](./.lintspec.toml)), environment variables
-([see example](./.env.example)) or CLI arguments (see above). CLI arguments take precedence over environment variables,
-which take precedence over the config file.
+### Config File
+
+Create a default configuration with the following command:
+
+```bash
+lintspec init
+```
+
+This will create a `.lintspec.toml` file with the default configuration in the current directory.
+
+### Environment Variables
+
+Environment variables (in capitals, with the `LS_` prefix) can also be used and take precedence over the
+configuration file. They use the same names as in the TOML config file and use the `_` character as delimitor for
+nested items.
+
+Examples:
+- `LS_LINTSPEC_PATHS=[src,test]`
+- `LS_LINTSPEC_INHERITDOC=false`
+- `LS_OUTPUT_JSON=true`
+- `LS_CONSTRUCTOR_NOTICE=required`
+
+### CLI Arguments
+
+Finally, the tool can be customized with command-line arguments, which take precedence over the other two methods.
+To see the CLI usage information, run:
+
+```bash
+lintspec help
+```
 
 ## Usage in GitHub Actions
 
@@ -180,7 +221,7 @@ Summary
 | Configure via config file       | ✅          | ✅                |
 | Configure via env variables     | ✅          | ❌                |
 | Respects gitignore files        | ✅          | ❌                |
-| Enforce NatSpec on enums        | ✅          | ❌                |
+| Granular validation rules       | ✅          | ❌                |
 | Pretty output with code excerpt | ✅          | ❌                |
 | JSON output                     | ✅          | ❌                |
 | Output to file                  | ✅          | ❌                |

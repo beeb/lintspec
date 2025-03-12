@@ -331,7 +331,7 @@ impl Config {
     pub fn figment() -> Figment {
         Figment::from(Config::default())
             .admerge(Toml::file(".lintspec.toml"))
-            .admerge(Env::prefixed("LINTSPEC_"))
+            .admerge(Env::prefixed("LS_").split("_"))
     }
 }
 
