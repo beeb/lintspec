@@ -288,4 +288,17 @@ mod tests {
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@param b is missing");
     }
+
+    #[test]
+    fn test_struct_missing_space() {
+        let contents = "
+            /// @notice A struct
+            /// @param fooThe param
+            struct Test {
+                uint256 foo;
+            }";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@param foo is missing");
+    }
 }
