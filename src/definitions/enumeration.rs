@@ -91,8 +91,8 @@ mod tests {
 
     static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
         ValidationOptions::builder()
-            .inheritdoc(false)
             .enums(WithParamsRules::required())
+            .inheritdoc(false)
             .build()
     });
 
@@ -109,6 +109,7 @@ mod tests {
     #[test]
     fn test_enum() {
         let contents = "contract Test {
+            /// @notice The enum
             enum Foobar {
                 First,
                 Second
@@ -128,14 +129,16 @@ mod tests {
             }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param First is missing");
-        assert_eq!(res.diags[1].message, "@param Second is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param First is missing");
+        assert_eq!(res.diags[2].message, "@param Second is missing");
     }
 
     #[test]
     fn test_enum_params() {
         let contents = "contract Test {
+            /// @notice The notice
             /// @param First The first
             /// @param Second The second
             enum Foobar {
@@ -181,6 +184,7 @@ mod tests {
     fn test_enum_multiline() {
         let contents = "contract Test {
             /**
+             * @notice The enum
              * @param First The first
              * @param Second The second
              */
@@ -196,6 +200,7 @@ mod tests {
     #[test]
     fn test_enum_duplicate() {
         let contents = "contract Test {
+            /// @notice The enum
             /// @param First The first
             /// @param First The first twice
             enum Foobar {
@@ -212,19 +217,17 @@ mod tests {
 
     #[test]
     fn test_enum_inheritdoc() {
+        // inheritdoc should be ignored as it doesn't apply to enums
         let contents = "contract Test {
-            /// @inheritdoc
+            /// @inheritdoc Something
             enum Foobar {
                 First
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enums(WithParamsRules::required())
-                .build(),
-        );
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(true).build());
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param First is missing");
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
@@ -258,6 +261,7 @@ mod tests {
     #[test]
     fn test_enum_no_contract() {
         let contents = "
+            /// @notice An enum
             /// @param First The first
             /// @param Second The second
             enum Foobar {
@@ -275,14 +279,16 @@ mod tests {
                 Second
             }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param First is missing");
-        assert_eq!(res.diags[1].message, "@param Second is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param First is missing");
+        assert_eq!(res.diags[2].message, "@param Second is missing");
     }
 
     #[test]
     fn test_enum_no_contract_one_missing() {
         let contents = "
+            /// @notice The enum
             /// @param First The first
             enum Foobar {
                 First,
