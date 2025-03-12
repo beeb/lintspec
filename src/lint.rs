@@ -149,7 +149,7 @@ pub struct ValidationOptions {
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     #[builder(default)]
     pub notice_or_dev: bool,
-    #[builder(default = WithParamsRules::required())]
+    #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
     #[builder(default)]
     pub enums: WithParamsRules,
@@ -173,7 +173,7 @@ impl Default for ValidationOptions {
         Self {
             inheritdoc: true,
             notice_or_dev: false,
-            constructors: WithParamsRules::required(),
+            constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
@@ -412,6 +412,8 @@ pub fn check_notice_and_dev(
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use crate::config::{BaseConfig, FunctionRules, NoticeDevRules};
 
     use super::*;
@@ -422,6 +424,10 @@ mod tests {
             ValidationOptions::default(),
             ValidationOptions::builder().build()
         );
+
+        let default_config = Config::default();
+        let options = ValidationOptions::from(&default_config);
+        assert_eq!(ValidationOptions::default(), options);
     }
 
     #[test]

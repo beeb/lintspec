@@ -212,6 +212,15 @@ impl WithParamsRules {
             ..Default::default()
         }
     }
+
+    #[must_use]
+    pub fn default_constructor() -> Self {
+        Self {
+            notice: Req::Ignored,
+            param: Req::Required,
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
@@ -264,7 +273,7 @@ pub struct Config {
     pub output: OutputConfig,
 
     #[serde(rename = "constructor")]
-    #[builder(default = WithParamsRules::required())]
+    #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
 
     #[serde(rename = "enum")]
@@ -301,7 +310,7 @@ impl Default for Config {
         Self {
             lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
-            constructors: WithParamsRules::required(),
+            constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
@@ -536,6 +545,8 @@ pub fn write_default_config() -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use similar_asserts::assert_eq;
+
     use super::*;
 
     #[test]
