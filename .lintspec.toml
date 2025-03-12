@@ -11,14 +11,14 @@ compact = false # compact output (minified JSON or compact text)
 sort = false    # sort results by file path
 
 [constructor]
-notice = "ignored"
+notice = "ignored" # since constructors rarely have another purpose than deployment, `@notice` is optional
 dev = "ignored"
 param = "required"
 
 [enum]
 notice = "required"
 dev = "ignored"
-param = "ignored"
+param = "ignored"   # `@param` on enums is not in the official spec
 
 [error]
 notice = "required"
@@ -62,7 +62,7 @@ param = "required"
 [struct]
 notice = "required"
 dev = "ignored"
-param = "ignored"
+param = "ignored"   # `@param` on structs is not in the official spec
 
 [variable.private]
 notice = "required"
