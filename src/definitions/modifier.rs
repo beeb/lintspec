@@ -117,19 +117,12 @@ mod tests {
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::{
-        config::{Req, WithParamsRules},
-        parser::slang::Extract as _,
-    };
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
-    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
-        ValidationOptions::builder()
-            .modifiers(WithParamsRules::required())
-            .inheritdoc(false)
-            .build()
-    });
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> ModifierDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -147,6 +140,7 @@ mod tests {
     #[test]
     fn test_modifier() {
         let contents = "contract Test {
+            /// @notice A modifier
             /// @param param1 Test
             /// @param param2 Test2
             modifier foo(uint256 param1, bytes calldata param2) { _; }
@@ -161,9 +155,10 @@ mod tests {
             modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param param1 is missing");
-        assert_eq!(res.diags[1].message, "@param param2 is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param param1 is missing");
+        assert_eq!(res.diags[2].message, "@param param2 is missing");
     }
 
     #[test]
@@ -181,6 +176,7 @@ mod tests {
     #[test]
     fn test_modifier_one_missing() {
         let contents = "contract Test {
+            /// @notice A modifier
             /// @param param1 The first
             modifier foo(uint256 param1, bytes calldata param2) { _; }
         }";
@@ -193,6 +189,7 @@ mod tests {
     fn test_modifier_multiline() {
         let contents = "contract Test {
             /**
+             * @notice A modifier
              * @param param1 Test
              * @param param2 Test2
              */
@@ -205,6 +202,7 @@ mod tests {
     #[test]
     fn test_modifier_duplicate() {
         let contents = "contract Test {
+            /// @notice A modifier
             /// @param param1 The first
             /// @param param1 The first again
             modifier foo(uint256 param1) { _; }
@@ -220,6 +218,7 @@ mod tests {
     #[test]
     fn test_modifier_no_params() {
         let contents = "contract Test {
+            /// @notice A modifier
             modifier foo()  { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
@@ -229,6 +228,7 @@ mod tests {
     #[test]
     fn test_modifier_no_params_no_paren() {
         let contents = "contract Test {
+            /// @notice A modifier
             modifier foo { _; }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
@@ -269,30 +269,5 @@ mod tests {
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
-    }
-
-    #[test]
-    fn test_modifier_enforce() {
-        let opts = ValidationOptions::builder()
-            .inheritdoc(false)
-            .modifiers(WithParamsRules {
-                notice: Req::Required,
-                dev: Req::default(),
-                param: Req::default(),
-            })
-            .build();
-        let contents = "contract Test {
-            modifier foo() { _; }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@notice is missing");
-
-        let contents = "contract Test {
-            /// @notice Some notice
-            modifier foo() { _; }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }
