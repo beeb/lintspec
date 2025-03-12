@@ -119,8 +119,9 @@ mod tests {
             constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[1].message, "@param param2 is missing");
     }
 
     #[test]
@@ -212,7 +213,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
