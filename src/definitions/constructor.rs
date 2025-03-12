@@ -85,12 +85,8 @@ mod tests {
 
     use super::*;
 
-    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
-        ValidationOptions::builder()
-            .inheritdoc(false)
-            .constructors(WithParamsRules::required())
-            .build()
-    });
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> ConstructorDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -188,18 +184,21 @@ mod tests {
     }
 
     #[test]
-    fn test_constructor_inheritdoc() {
+    fn test_constructor_notice() {
+        // inheritdoc should be ignored since it's a constructor
         let contents = "contract Test {
             /// @inheritdoc ITest
             constructor(uint256 param1) { }
         }";
         let res = parse_file(contents).validate(
             &ValidationOptions::builder()
+                .inheritdoc(true)
                 .constructors(WithParamsRules::required())
                 .build(),
         );
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param param1 is missing");
     }
 
     #[test]
