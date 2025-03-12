@@ -146,6 +146,9 @@ pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+    /// Whether to enforce either `@notice` or `@dev` if either or both are required
+    #[builder(default)]
+    pub notice_or_dev: bool,
     #[builder(default)]
     pub constructors: WithParamsRules,
     #[builder(default)]
@@ -169,6 +172,7 @@ impl Default for ValidationOptions {
     fn default() -> Self {
         Self {
             inheritdoc: true,
+            notice_or_dev: false,
             constructors: WithParamsRules::default(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -185,6 +189,7 @@ impl From<&Config> for ValidationOptions {
     fn from(value: &Config) -> Self {
         Self {
             inheritdoc: value.lintspec.inheritdoc,
+            notice_or_dev: value.lintspec.notice_or_dev,
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
             errors: value.errors.clone(),
@@ -373,4 +378,34 @@ pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Optio
         }),
         _ => None,
     }
+}
+
+#[must_use]
+pub fn check_notice_and_dev(
+    natspec: &Option<NatSpec>,
+    notice_rule: Req,
+    dev_rule: Req,
+    notice_or_dev: bool,
+    span: TextRange,
+) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    match (notice_or_dev, notice_rule, dev_rule) {
+        (true, Req::Required, Req::Ignored | Req::Required)
+        | (true, Req::Ignored, Req::Required) => {
+            if natspec.is_none()
+                || (!natspec.as_ref().unwrap().has_notice() && !natspec.as_ref().unwrap().has_dev())
+            {
+                res.push(Diagnostic {
+                    span,
+                    message: "@notice or @dev is missing".to_string(),
+                });
+            }
+        }
+        (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
+            res.extend(check_notice(natspec, notice_rule, span.clone()));
+            res.extend(check_dev(natspec, dev_rule, span));
+        }
+        (true, Req::Ignored, Req::Ignored) => {}
+    }
+    res
 }

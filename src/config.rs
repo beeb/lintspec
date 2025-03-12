@@ -176,6 +176,8 @@ pub struct BaseConfig {
     pub exclude: Vec<PathBuf>,
     #[builder(default = true)]
     pub inheritdoc: bool,
+    #[builder(default)]
+    pub notice_or_dev: bool,
 }
 
 impl Default for BaseConfig {
@@ -184,6 +186,7 @@ impl Default for BaseConfig {
             paths: Vec::default(),
             exclude: Vec::default(),
             inheritdoc: true,
+            notice_or_dev: false,
         }
     }
 }
@@ -315,31 +318,41 @@ pub struct Args {
     ///
     /// Functions which override a parent function also must have `@inheritdoc`.
     ///
-    /// Can be set with `--inheritdoc` (means true), `--inheritdoc true` or `--inheritdoc false`.
+    /// Can be set with `--inheritdoc` (means true), `--inheritdoc=true` or `--inheritdoc=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub inheritdoc: Option<bool>,
 
-    /// Enforce that constructors have NatSpec
+    /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules.
     ///
-    /// Can be set with `--constructor` (means true), `--constructor true` or `--constructor false`.
+    /// If either `dev = "required"` or `notice = "required"` (or both), this allows to enforce that at least one
+    /// `@dev` or one `@notice` is present, but not dictate which one it should be.
+    /// This flag has no effect if either `dev = "forbidden"` or `notice = "forbidden"`.
+    ///
+    /// Can be set with `--notice-or-dev` (means true), `--notice-or-dev=true` or `--notice-or-dev=false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub notice_or_dev: Option<bool>,
+
+    /// Enforce that constructors have `@param` if applicable
+    ///
+    /// Can be set with `--constructor` (means true), `--constructor=true` or `--constructor=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub constructor: Option<bool>,
 
     /// Enforce that structs have `@param` for each member
     ///
-    /// Can be set with `--struct_params` (means true), `--struct_params true` or `--struct_params false`.
+    /// Can be set with `--struct_params` (means true), `--struct_params=true` or `--struct_params=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub struct_params: Option<bool>,
 
     /// Enforce that enums have `@param` for each variant
     ///
-    /// Can be set with `--enum_params` (means true), `--enum_params true` or `--enum_params false`.
+    /// Can be set with `--enum_params` (means true), `--enum_params=true` or `--enum_params=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub enum_params: Option<bool>,
 
     /// Output diagnostics in JSON format
     ///
-    /// Can be set with `--json` (means true), `--json true` or `--json false`.
+    /// Can be set with `--json` (means true), `--json=true` or `--json=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub json: Option<bool>,
 
@@ -347,13 +360,13 @@ pub struct Args {
     ///
     /// If combined with `--json`, the output is minified.
     ///
-    /// Can be set with `--compact` (means true), `--compact true` or `--compact false`.
+    /// Can be set with `--compact` (means true), `--compact=true` or `--compact=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub compact: Option<bool>,
 
     /// Sort the results by file path
     ///
-    /// Can be set with `--sort` (means true), `--sort true` or `--sort false`.
+    /// Can be set with `--sort` (means true), `--sort=true` or `--sort=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub sort: Option<bool>,
 
@@ -383,6 +396,9 @@ pub fn read_config(args: Args) -> Result<Config> {
     // natspec config
     if let Some(inheritdoc) = args.inheritdoc {
         config.lintspec.inheritdoc = inheritdoc;
+    }
+    if let Some(notice_or_dev) = args.notice_or_dev {
+        config.lintspec.notice_or_dev = notice_or_dev;
     }
     if let Some(constructor) = args.constructor {
         config.constructors.param = if constructor {

@@ -1,7 +1,8 @@
 [lintspec]
-paths = []        # paths to files and folders to analyze
-exclude = []      # paths to files or folders to exclude, see also `.nsignore`
-inheritdoc = true # enforce that all overridden, public and external items have `@inheritdoc`
+paths = []            # paths to files and folders to analyze
+exclude = []          # paths to files or folders to exclude, see also `.nsignore`
+inheritdoc = true     # enforce that all overridden, public and external items have `@inheritdoc`
+notice-or-dev = false # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
 
 [output]
 out = ""        # if provided, redirects output to this file

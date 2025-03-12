@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_dev, check_notice, check_returns, Diagnostic, ItemDiagnostics},
+    lint::{check_notice_and_dev, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -109,9 +109,13 @@ impl Validate for VariableDeclaration {
             });
             return out;
         }
-        out.diags
-            .extend(check_notice(&self.natspec, notice, self.span()));
-        out.diags.extend(check_dev(&self.natspec, dev, self.span()));
+        out.diags.extend(check_notice_and_dev(
+            &self.natspec,
+            notice,
+            dev,
+            options.notice_or_dev,
+            self.span(),
+        ));
         if let Some(returns) = returns {
             out.diags.extend(check_returns(
                 &self.natspec,
