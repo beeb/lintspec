@@ -82,10 +82,7 @@ mod tests {
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::{
-        config::{Req, WithParamsRules},
-        parser::slang::Extract as _,
-    };
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
@@ -105,6 +102,7 @@ mod tests {
     #[test]
     fn test_error() {
         let contents = "contract Test {
+            /// @notice An error
             /// @param a The first
             /// @param b The second
             error Foobar(uint256 a, uint256 b);
@@ -119,15 +117,16 @@ mod tests {
             error Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 
     #[test]
     fn test_error_only_notice() {
         let contents = "contract Test {
-            /// @notice
+            /// @notice An error
             error Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
@@ -139,6 +138,7 @@ mod tests {
     #[test]
     fn test_error_one_missing() {
         let contents = "contract Test {
+            /// @notice An error
             /// @param a The first
             error Foobar(uint256 a, uint256 b);
         }";
@@ -151,6 +151,7 @@ mod tests {
     fn test_error_multiline() {
         let contents = "contract Test {
             /**
+             * @notice An error
              * @param a The first
              * @param b The second
              */
@@ -163,6 +164,7 @@ mod tests {
     #[test]
     fn test_error_duplicate() {
         let contents = "contract Test {
+            /// @notice An error
             /// @param a The first
             /// @param a The first again
             error Foobar(uint256 a);
@@ -178,48 +180,27 @@ mod tests {
             error Foobar();
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
     fn test_error_inheritdoc() {
+        // inheritdoc should be ignored as it doesn't apply to errors
         let contents = "contract Test {
             /// @inheritdoc ITest
             error Foobar(uint256 a);
         }";
         let res = parse_file(contents).validate(&ValidationOptions::default());
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-    }
-
-    #[test]
-    fn test_error_enforce() {
-        let opts = ValidationOptions::builder()
-            .inheritdoc(false)
-            .errors(WithParamsRules {
-                notice: Req::Required,
-                dev: Req::default(),
-                param: Req::default(),
-            })
-            .build();
-        let contents = "contract Test {
-            error Foobar();
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags.len(), 2);
         assert_eq!(res.diags[0].message, "@notice is missing");
-
-        let contents = "contract Test {
-            /// @notice Some notice
-            error Foobar();
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags[1].message, "@param a is missing");
     }
 
     #[test]
     fn test_error_no_contract() {
         let contents = "
+            /// @notice An error
             /// @param a The first
             /// @param b The second
             error Foobar(uint256 a, uint256 b);
@@ -232,8 +213,9 @@ mod tests {
     fn test_error_no_contract_missing() {
         let contents = "error Foobar(uint256 a, uint256 b);";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 }
