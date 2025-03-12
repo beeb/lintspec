@@ -50,7 +50,6 @@ impl SourceItem for EventDefinition {
 impl Validate for EventDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let opts = &options.events;
-        println!("{opts:?}");
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: Self::item_type(),
