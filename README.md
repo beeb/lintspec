@@ -113,12 +113,13 @@ This will create a `.lintspec.toml` file with the default configuration in the c
 ### Environment Variables
 
 Environment variables (in capitals, with the `LS_` prefix) can also be used and take precedence over the
-configuration file. They use the same names as in the TOML config file and use the `_` character as delimitor for
+configuration file. They use the same names as in the TOML config file and use the `_` character as delimiter for
 nested items.
 
 Examples:
 - `LS_LINTSPEC_PATHS=[src,test]`
 - `LS_LINTSPEC_INHERITDOC=false`
+- `LS_LINTSPEC_NOTICE_OR_DEV=true`: if the setting name contains `_`, it is not considered a delimiter
 - `LS_OUTPUT_JSON=true`
 - `LS_CONSTRUCTOR_NOTICE=required`
 

@@ -331,7 +331,14 @@ impl Config {
     pub fn figment() -> Figment {
         Figment::from(Config::default())
             .admerge(Toml::file(".lintspec.toml"))
-            .admerge(Env::prefixed("LS_").split("_"))
+            .admerge(Env::prefixed("LS_").split("_").map(|k| {
+                // special case for parameters with an underscore in the name
+                if k == "LINTSPEC.NOTICE.OR.DEV" {
+                    "LINTSPEC.NOTICE_OR_DEV".into()
+                } else {
+                    k.into()
+                }
+            }))
     }
 }
 
