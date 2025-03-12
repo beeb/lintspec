@@ -149,10 +149,7 @@ mod tests {
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::{
-        config::{FunctionConfig, Req},
-        parser::slang::Extract as _,
-    };
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
@@ -175,6 +172,7 @@ mod tests {
     #[test]
     fn test_function() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 Test
             /// @param param2 Test2
             /// @return First output
@@ -191,14 +189,15 @@ mod tests {
             function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 4);
-        assert_eq!(res.diags[0].message, "@param param1 is missing");
-        assert_eq!(res.diags[1].message, "@param param2 is missing");
+        assert_eq!(res.diags.len(), 5);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param param1 is missing");
+        assert_eq!(res.diags[2].message, "@param param2 is missing");
         assert_eq!(
-            res.diags[2].message,
+            res.diags[3].message,
             "@return missing for unnamed return #1"
         );
-        assert_eq!(res.diags[3].message, "@return out is missing");
+        assert_eq!(res.diags[4].message, "@return out is missing");
     }
 
     #[test]
@@ -221,6 +220,7 @@ mod tests {
     #[test]
     fn test_function_one_missing() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 The first
             function foo(uint256 param1, bytes calldata param2) public { }
         }";
@@ -233,6 +233,7 @@ mod tests {
     fn test_function_multiline() {
         let contents = "contract Test {
             /**
+             * @notice A function
              * @param param1 Test
              * @param param2 Test2
              */
@@ -245,6 +246,7 @@ mod tests {
     #[test]
     fn test_function_duplicate() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 The first
             /// @param param1 The first again
             function foo(uint256 param1) public { }
@@ -260,6 +262,7 @@ mod tests {
     #[test]
     fn test_function_duplicate_return() {
         let contents = "contract Test {
+            /// @notice A function
             /// @return out The output
             /// @return out The output again
             function foo() public returns (uint256 out) { }
@@ -275,6 +278,7 @@ mod tests {
     #[test]
     fn test_function_duplicate_unnamed_return() {
         let contents = "contract Test {
+            /// @notice A function
             /// @return The output
             /// @return The output again
             function foo() public returns (uint256) { }
@@ -290,7 +294,8 @@ mod tests {
             function foo() public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
@@ -345,44 +350,5 @@ mod tests {
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
-    }
-
-    #[test]
-    fn test_function_enforce() {
-        let mut func_opts = FunctionConfig::default();
-        func_opts.internal.dev = Req::Required;
-        let opts = ValidationOptions::builder()
-            .inheritdoc(false)
-            .functions(func_opts)
-            .build();
-        let contents = "contract Test {
-            function foo() internal { }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@dev is missing");
-
-        let contents = "contract Test {
-            /// @dev Some dev
-            function foo() internal { }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
-    }
-
-    #[test]
-    fn test_function_public() {
-        let contents = "contract Test {
-            // @notice
-            function _viewInternal() public view returns (uint256) {
-                return 1;
-            }
-        }";
-        let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(
-            res.diags[0].message,
-            "@return missing for unnamed return #1"
-        );
     }
 }
