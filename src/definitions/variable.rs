@@ -62,11 +62,23 @@ impl SourceItem for VariableDeclaration {
 
 impl Validate for VariableDeclaration {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
-        let opts = match self.attributes.visibility {
+        let (notice, dev, returns) = match self.attributes.visibility {
             Visibility::External => unreachable!("variables cannot be external"),
-            Visibility::Internal => &options.variables.internal,
-            Visibility::Private => &options.variables.private,
-            Visibility::Public => &options.variables.public,
+            Visibility::Internal => (
+                options.variables.internal.notice,
+                options.variables.internal.dev,
+                None,
+            ),
+            Visibility::Private => (
+                options.variables.private.notice,
+                options.variables.private.dev,
+                None,
+            ),
+            Visibility::Public => (
+                options.variables.public.notice,
+                options.variables.public.dev,
+                Some(options.variables.public.returns),
+            ),
         };
         let mut out = ItemDiagnostics {
             parent: self.parent(),
@@ -98,18 +110,20 @@ impl Validate for VariableDeclaration {
             return out;
         }
         out.diags
-            .extend(check_notice(&self.natspec, opts.notice, self.span()));
-        out.diags
-            .extend(check_dev(&self.natspec, opts.dev, self.span()));
-        out.diags.extend(check_returns(
-            &self.natspec,
-            opts.returns,
-            &[Identifier {
-                name: None,
-                span: self.span(),
-            }],
-            self.span(),
-        ));
+            .extend(check_notice(&self.natspec, notice, self.span()));
+        out.diags.extend(check_dev(&self.natspec, dev, self.span()));
+        if let Some(returns) = returns {
+            out.diags.extend(check_returns(
+                &self.natspec,
+                returns,
+                &[Identifier {
+                    name: None,
+                    span: self.span(),
+                }],
+                self.span(),
+                true,
+            ));
+        }
         out
     }
 }

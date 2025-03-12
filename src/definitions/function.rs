@@ -128,6 +128,7 @@ impl Validate for FunctionDefinition {
             opts.returns,
             &self.returns,
             self.span(),
+            false,
         ));
         out
     }

@@ -264,6 +264,7 @@ pub fn check_returns(
     rule: Req,
     returns: &[Identifier],
     default_span: TextRange,
+    is_var: bool,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
     if rule.is_ignored() || (rule.is_required() && returns.is_empty()) {
@@ -274,6 +275,8 @@ pub fn check_returns(
             res.extend(returns.iter().enumerate().map(|(idx, r)| {
                 let message = if let Some(name) = &r.name {
                     format!("@return {name} is missing")
+                } else if is_var {
+                    "@return missing".to_string()
                 } else {
                     format!("@return missing for unnamed return #{}", idx + 1)
                 };
@@ -300,7 +303,11 @@ pub fn check_returns(
             } else {
                 unnamed_returns += 1;
                 if idx as isize > returns_count - 1 {
-                    format!("@return missing for unnamed return #{}", idx + 1)
+                    if is_var {
+                        "@return missing".to_string()
+                    } else {
+                        format!("@return missing for unnamed return #{}", idx + 1)
+                    }
                 } else {
                     continue;
                 }

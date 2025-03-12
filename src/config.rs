@@ -41,13 +41,17 @@ impl Req {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionRules {
+    #[builder(default)]
     pub notice: Req,
+    #[builder(default)]
     pub dev: Req,
+    #[builder(default = Req::Required)]
     pub param: Req,
     #[serde(rename = "return")]
+    #[builder(default = Req::Required)]
     pub returns: Req,
 }
 
@@ -63,12 +67,16 @@ impl FunctionRules {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionConfig {
+    #[builder(default)]
     pub private: FunctionRules,
+    #[builder(default)]
     pub internal: FunctionRules,
+    #[builder(default = FunctionRules::required())]
     pub public: FunctionRules,
+    #[builder(default = FunctionRules::required())]
     pub external: FunctionRules,
 }
 
@@ -83,12 +91,15 @@ impl Default for FunctionConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
 #[non_exhaustive]
 pub struct WithReturnsRules {
+    #[builder(default)]
     pub notice: Req,
+    #[builder(default)]
     pub dev: Req,
     #[serde(rename = "return")]
+    #[builder(default)]
     pub returns: Req,
 }
 
@@ -103,29 +114,44 @@ impl WithReturnsRules {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
+#[non_exhaustive]
+pub struct NoticeDevRules {
+    #[builder(default)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct VariableConfig {
-    pub private: WithReturnsRules,
-    pub internal: WithReturnsRules,
+    #[builder(default)]
+    pub private: NoticeDevRules,
+    #[builder(default)]
+    pub internal: NoticeDevRules,
+    #[builder(default = WithReturnsRules::required())]
     pub public: WithReturnsRules,
 }
 
 impl Default for VariableConfig {
     fn default() -> Self {
         Self {
-            private: WithReturnsRules::default(),
-            internal: WithReturnsRules::default(),
+            private: NoticeDevRules::default(),
+            internal: NoticeDevRules::default(),
             public: WithReturnsRules::required(),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
 #[non_exhaustive]
 pub struct WithParamsRules {
+    #[builder(default)]
     pub notice: Req,
+    #[builder(default)]
     pub dev: Req,
+    #[builder(default)]
     pub param: Req,
 }
 
@@ -140,12 +166,15 @@ impl WithParamsRules {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct BaseConfig {
+    #[builder(default)]
     pub paths: Vec<PathBuf>,
+    #[builder(default)]
     pub exclude: Vec<PathBuf>,
+    #[builder(default = true)]
     pub inheritdoc: bool,
 }
 
@@ -159,47 +188,60 @@ impl Default for BaseConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct OutputConfig {
     pub out: Option<PathBuf>,
+    #[builder(default)]
     pub json: bool,
+    #[builder(default)]
     pub compact: bool,
+    #[builder(default)]
     pub sort: bool,
 }
 
 /// The parsed and validated config for the tool
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct Config {
+    #[builder(default)]
     pub lintspec: BaseConfig,
 
+    #[builder(default)]
     pub output: OutputConfig,
 
     #[serde(rename = "constructor")]
+    #[builder(default)]
     pub constructors: WithParamsRules,
 
     #[serde(rename = "enum")]
+    #[builder(default)]
     pub enums: WithParamsRules,
 
     #[serde(rename = "error")]
+    #[builder(default = WithParamsRules::required())]
     pub errors: WithParamsRules,
 
     #[serde(rename = "event")]
+    #[builder(default = WithParamsRules::required())]
     pub events: WithParamsRules,
 
     #[serde(rename = "function")]
+    #[builder(default)]
     pub functions: FunctionConfig,
 
     #[serde(rename = "modifier")]
+    #[builder(default)]
     pub modifiers: WithParamsRules,
 
     #[serde(rename = "struct")]
+    #[builder(default)]
     pub structs: WithParamsRules,
 
     #[serde(rename = "variable")]
+    #[builder(default)]
     pub variables: VariableConfig,
 }
 
