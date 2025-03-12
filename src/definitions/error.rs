@@ -116,8 +116,9 @@ mod tests {
             error Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[1].message, "@param b is missing");
     }
 
     #[test]
@@ -203,7 +204,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
@@ -228,7 +229,8 @@ mod tests {
     fn test_error_no_contract_missing() {
         let contents = "error Foobar(uint256 a, uint256 b);";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param a is missing");
+        assert_eq!(res.diags[1].message, "@param b is missing");
     }
 }

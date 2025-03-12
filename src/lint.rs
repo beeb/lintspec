@@ -148,7 +148,7 @@ pub struct ValidationOptions {
     pub inheritdoc: bool,
     #[builder(default)]
     pub constructors: WithParamsRules,
-    #[builder(default = WithParamsRules::optional())]
+    #[builder(default)]
     pub enums: WithParamsRules,
     #[builder(default = WithParamsRules::required())]
     pub errors: WithParamsRules,
@@ -158,7 +158,7 @@ pub struct ValidationOptions {
     pub functions: FunctionConfig,
     #[builder(default)]
     pub modifiers: WithParamsRules,
-    #[builder(default = WithParamsRules::optional())]
+    #[builder(default)]
     pub structs: WithParamsRules,
     #[builder(default)]
     pub variables: VariableConfig,
@@ -171,8 +171,8 @@ impl Default for ValidationOptions {
             inheritdoc: true,
             constructors: WithParamsRules::default(),
             enums: WithParamsRules::default(),
-            errors: WithParamsRules::default(),
-            events: WithParamsRules::default(),
+            errors: WithParamsRules::required(),
+            events: WithParamsRules::required(),
             functions: FunctionConfig::default(),
             modifiers: WithParamsRules::default(),
             structs: WithParamsRules::default(),

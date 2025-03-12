@@ -131,17 +131,6 @@ pub struct WithParamsRules {
 
 impl WithParamsRules {
     #[must_use]
-    pub fn optional() -> Self {
-        Self {
-            notice: Req::default(),
-            dev: Req::default(),
-            param: Req::default(),
-        }
-    }
-}
-
-impl WithParamsRules {
-    #[must_use]
     pub fn required() -> Self {
         Self {
             notice: Req::default(),
@@ -220,12 +209,12 @@ impl Default for Config {
             lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
             constructors: WithParamsRules::default(),
-            enums: WithParamsRules::optional(),
+            enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
             functions: FunctionConfig::default(),
             modifiers: WithParamsRules::default(),
-            structs: WithParamsRules::optional(),
+            structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
         }
     }

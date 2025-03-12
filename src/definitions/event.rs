@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn test_error_enforce() {
+    fn test_event_enforce() {
         let opts = ValidationOptions::builder()
             .inheritdoc(false)
             .events(WithParamsRules {
