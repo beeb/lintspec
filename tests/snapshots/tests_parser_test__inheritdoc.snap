@@ -24,14 +24,6 @@ variable ParserTestFunny.SOME_CONSTANT
 function ParserTestFunny.viewFunctionWithParams
   @inheritdoc is missing
 
-./test-data/ParserTest.sol:150:3
-function ParserTestFunny._viewInternal
-  missing NatSpec
-
-./test-data/ParserTest.sol:184:3
-function ParserTestFunny._viewInternal
-  @param _paramName is missing
-
 ./test-data/ParserTest.sol:203:3
 function ParserTestFunny.functionUnnamedEmptyReturn
   @inheritdoc is missing

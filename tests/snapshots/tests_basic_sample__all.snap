@@ -1,11 +1,36 @@
 ---
 source: tests/tests-basic-sample.rs
-assertion_line: 37
 expression: generate_output(diags)
 ---
+./test-data/BasicSample.sol:5:5
+function AbstractBasic.overriddenFunction
+  @return _returned is missing
+
+./test-data/BasicSample.sol:9:1
+struct BasicSample.TestStruct
+  @param someAddress is missing
+  @param someNumber is missing
+
+./test-data/BasicSample.sol:16:1
+enum BasicSample.TestEnum
+  @param First is missing
+  @param Second is missing
+
+./test-data/BasicSample.sol:22:1
+error BasicSample.BasicSample_SomeError
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:27:1
+event BasicSample.BasicSample_BasicEvent
+  @param _param1 is missing
+
 ./test-data/BasicSample.sol:38:1
 variable BasicSample.somePublicNumber
   @inheritdoc is missing
+
+./test-data/BasicSample.sol:44:17
+constructor BasicSample.constructor
+  @param _randomFlag is missing
 
 ./test-data/BasicSample.sol:54:5
 function BasicSample.externalSimple
@@ -33,4 +58,8 @@ function BasicSample.overriddenFunction
 
 ./test-data/BasicSample.sol:109:5
 function BasicSample.virtualFunction
-  @return _returned is missing
+  @inheritdoc is missing
+
+./test-data/BasicSample.sol:114:14
+modifier BasicSample.transferFee
+  @param _receiver is missing
