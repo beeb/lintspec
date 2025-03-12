@@ -105,6 +105,7 @@ mod tests {
     #[test]
     fn test_event() {
         let contents = "contract Test {
+            /// @notice An event
             /// @param a The first
             /// @param b The second
             event Foobar(uint256 a, uint256 b);
@@ -119,38 +120,29 @@ mod tests {
             event Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 
     #[test]
     fn test_event_only_notice() {
         let contents = "contract Test {
-            /// @notice
+            /// @notice An event
             event Foobar(uint256 a, uint256 b);
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 2);
         assert_eq!(res.diags[0].message, "@param a is missing");
         assert_eq!(res.diags[1].message, "@param b is missing");
-    }
-
-    #[test]
-    fn test_event_one_missing() {
-        let contents = "contract Test {
-            /// @param a The first
-            event Foobar(uint256 a, uint256 b);
-        }";
-        let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param b is missing");
     }
 
     #[test]
     fn test_event_multiline() {
         let contents = "contract Test {
             /**
+             * @notice An event
              * @param a The first
              * @param b The second
              */
@@ -163,6 +155,7 @@ mod tests {
     #[test]
     fn test_event_duplicate() {
         let contents = "contract Test {
+            /// @notice An event
             /// @param a The first
             /// @param a The first again
             event Foobar(uint256 a);
@@ -178,48 +171,27 @@ mod tests {
             event Foobar();
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
     fn test_event_inheritdoc() {
+        // inheritdoc should be ignored as it doesn't apply to events
         let contents = "contract Test {
             /// @inheritdoc ITest
             event Foobar(uint256 a);
         }";
-        let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-    }
-
-    #[test]
-    fn test_event_enforce() {
-        let opts = ValidationOptions::builder()
-            .inheritdoc(false)
-            .events(WithParamsRules {
-                notice: Req::Required,
-                dev: Req::default(),
-                param: Req::default(),
-            })
-            .build();
-        let contents = "contract Test {
-            event Foobar();
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
+        let res = parse_file(contents).validate(&ValidationOptions::default());
+        assert_eq!(res.diags.len(), 2);
         assert_eq!(res.diags[0].message, "@notice is missing");
-
-        let contents = "contract Test {
-            /// @notice Some notice
-            event Foobar();
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags[1].message, "@param a is missing");
     }
 
     #[test]
     fn test_event_no_contract() {
         let contents = "
+            /// @notice An event
             /// @param a The first
             /// @param b The second
             event Foobar(uint256 a, uint256 b);
@@ -232,8 +204,9 @@ mod tests {
     fn test_event_no_contract_missing() {
         let contents = "event Foobar(uint256 a, uint256 b);";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 }
