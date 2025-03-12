@@ -25,3 +25,7 @@ function BasicSample.externalSimpleMultipleUnnamedReturn
 ./test-data/BasicSample.sol:109:5
 function BasicSample.virtualFunction
   @return _returned is missing
+
+./test-data/BasicSample.sol:114:14
+modifier BasicSample.transferFee
+  @param _receiver is missing

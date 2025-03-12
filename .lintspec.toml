@@ -39,7 +39,7 @@ return = "ignored"
 notice = "ignored"
 dev = "ignored"
 param = "ignored"
-return = "required"
+return = "ignored"
 
 [function.public]
 notice = "ignored"
@@ -56,7 +56,7 @@ return = "required"
 [modifier]
 notice = "ignored"
 dev = "ignored"
-param = "required"
+param = "ignored"
 
 [struct]
 notice = "ignored"
@@ -66,12 +66,10 @@ param = "ignored"
 [variable.private]
 notice = "ignored"
 dev = "ignored"
-return = "ignored"
 
 [variable.internal]
 notice = "ignored"
 dev = "ignored"
-return = "ignored"
 
 [variable.public]
 notice = "ignored"

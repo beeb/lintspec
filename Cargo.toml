@@ -39,6 +39,7 @@ serde_json = "1.0.138"
 serde_with = "3.12.0"
 slang_solidity = "0.18.3"
 thiserror = "2.0.11"
+toml = "0.8.20"
 winnow = "0.7.2"
 
 [dev-dependencies]
@@ -55,4 +56,3 @@ lto = "thin"
 
 [profile.dev.package]
 insta.opt-level = 3
-similar.opt-level = 3

@@ -1,8 +1,9 @@
 use std::{env, fs::File};
 
 use anyhow::{bail, Result};
+use clap::Parser as _;
 use lintspec::{
-    config::read_config,
+    config::{read_config, write_default_config, Args, Commands},
     error::Error,
     files::find_sol_files,
     lint::{lint, ValidationOptions},
@@ -15,7 +16,14 @@ fn main() -> Result<()> {
     dotenvy::dotenv().ok(); // load .env file if present
 
     // parse config from CLI args, environment variables and the `.lintspec.toml` file.
-    let config = read_config()?;
+    let args = Args::parse();
+    if let Some(Commands::Init) = args.command {
+        let path = write_default_config()?;
+        println!("Default config was written to {path:?}");
+        println!("Exiting");
+        return Ok(());
+    }
+    let config = read_config(args)?;
 
     // identify Solidity files to parse
     let paths = find_sol_files(

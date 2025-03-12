@@ -156,7 +156,7 @@ pub struct ValidationOptions {
     pub events: WithParamsRules,
     #[builder(default)]
     pub functions: FunctionConfig,
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub modifiers: WithParamsRules,
     #[builder(default)]
     pub structs: WithParamsRules,
@@ -174,7 +174,7 @@ impl Default for ValidationOptions {
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
             functions: FunctionConfig::default(),
-            modifiers: WithParamsRules::default(),
+            modifiers: WithParamsRules::required(),
             structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
         }

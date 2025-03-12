@@ -41,3 +41,7 @@ function BasicSample.overriddenFunction
 ./test-data/BasicSample.sol:109:5
 function BasicSample.virtualFunction
   @inheritdoc is missing
+
+./test-data/BasicSample.sol:114:14
+modifier BasicSample.transferFee
+  @param _receiver is missing

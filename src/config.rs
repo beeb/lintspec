@@ -1,8 +1,8 @@
 //! Tool configuration parsing and validation
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use derive_more::IsVariant;
 use figment::{
     providers::{Env, Format as _, Toml},
@@ -233,7 +233,7 @@ pub struct Config {
     pub functions: FunctionConfig,
 
     #[serde(rename = "modifier")]
-    #[builder(default)]
+    #[builder(default = WithParamsRules::required())]
     pub modifiers: WithParamsRules,
 
     #[serde(rename = "struct")]
@@ -255,7 +255,7 @@ impl Default for Config {
             errors: WithParamsRules::required(),
             events: WithParamsRules::required(),
             functions: FunctionConfig::default(),
-            modifiers: WithParamsRules::default(),
+            modifiers: WithParamsRules::required(),
             structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
         }
@@ -283,6 +283,13 @@ impl Provider for Config {
     fn data(&self) -> Result<Map<Profile, Dict>, figment::Error> {
         figment::providers::Serialized::defaults(Config::default()).data()
     }
+}
+
+#[derive(Subcommand, Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Commands {
+    /// Create a `.lintspec.toml` config file with default values
+    Init,
 }
 
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
@@ -349,11 +356,13 @@ pub struct Args {
     /// Can be set with `--sort` (means true), `--sort true` or `--sort false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub sort: Option<bool>,
+
+    #[command(subcommand)]
+    pub command: Option<Commands>,
 }
 
 /// Read the configuration from config file, environment variables and CLI arguments
-pub fn read_config() -> Result<Config> {
-    let args = Args::parse();
+pub fn read_config(args: Args) -> Result<Config> {
     let mut config: Config = Config::figment().extract()?;
     // paths
     config.lintspec.paths.extend(args.paths);
@@ -397,4 +406,19 @@ pub fn read_config() -> Result<Config> {
         };
     }
     Ok(config)
+}
+
+/// Write the default configuration to a `.lintspec.toml` file in the current directory.
+///
+/// If a file already exists with the same name, it gets renamed to `.lintspec.bck.toml` before writing the default
+/// config.
+pub fn write_default_config() -> Result<PathBuf> {
+    let config = Config::default();
+    let path = PathBuf::from(".lintspec.toml");
+    if path.exists() {
+        fs::rename(&path, ".lintspec.bck.toml")?;
+        println!("Existing `.lintspec.toml` file was renamed to `.lintpsec.bck.toml`");
+    }
+    fs::write(&path, toml::to_string(&config)?)?;
+    Ok(dunce::canonicalize(path)?)
 }
