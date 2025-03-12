@@ -82,10 +82,7 @@ mod tests {
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::{
-        config::{Req, WithParamsRules},
-        parser::slang::Extract as _,
-    };
+    use crate::{config::WithParamsRules, parser::slang::Extract as _};
 
     use super::*;
 
@@ -112,6 +109,7 @@ mod tests {
     #[test]
     fn test_struct() {
         let contents = "contract Test {
+            /// @notice A struct
             struct Foobar {
                 uint256 a;
                 bool b;
@@ -131,14 +129,16 @@ mod tests {
             }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 
     #[test]
     fn test_struct_params() {
         let contents = "contract Test {
+            /// @notice A struct
             /// @param a The first
             /// @param b The second
             struct Foobar {
@@ -184,6 +184,7 @@ mod tests {
     fn test_struct_multiline() {
         let contents = "contract Test {
             /**
+             * @notice A struct
              * @param a The first
              * @param b The second
              */
@@ -199,6 +200,7 @@ mod tests {
     #[test]
     fn test_struct_duplicate() {
         let contents = "contract Test {
+            /// @notice A struct
             /// @param a The first
             /// @param a The first twice
             struct Foobar {
@@ -212,48 +214,28 @@ mod tests {
 
     #[test]
     fn test_struct_inheritdoc() {
+        // inheritdoc should be ignored as it doesn't apply to structs
         let contents = "contract Test {
-            /// @inheritdoc
+            /// @inheritdoc ISomething
             struct Foobar {
                 uint256 a;
             }
         }";
-        let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-    }
-
-    #[test]
-    fn test_struct_enforce() {
-        let opts = ValidationOptions::builder()
-            .structs(WithParamsRules {
-                notice: Req::Required,
-                dev: Req::default(),
-                param: Req::default(),
-            })
-            .build();
-        let contents = "contract Test {
-            struct Foobar {
-                uint256 a;
-            }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true)
+                .structs(WithParamsRules::required())
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 2);
         assert_eq!(res.diags[0].message, "@notice is missing");
-
-        let contents = "contract Test {
-            /// @notice Some notice
-            struct Foobar {
-                uint256 a;
-            }
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags[1].message, "@param a is missing");
     }
 
     #[test]
     fn test_struct_no_contract() {
         let contents = "
+            /// @notice A struct
             /// @param a The first
             /// @param b The second
             struct Foobar {
@@ -271,14 +253,16 @@ mod tests {
                 bool b;
             }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 2);
-        assert_eq!(res.diags[0].message, "@param a is missing");
-        assert_eq!(res.diags[1].message, "@param b is missing");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param a is missing");
+        assert_eq!(res.diags[2].message, "@param b is missing");
     }
 
     #[test]
     fn test_struct_no_contract_one_missing() {
         let contents = "
+            /// @notice A struct
             /// @param a The first
             struct Foobar {
                 uint256 a;
