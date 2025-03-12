@@ -13,66 +13,66 @@ sort = false    # sort results by file path
 [constructor]
 notice = "ignored"
 dev = "ignored"
-param = "ignored"
+param = "required"
 
 [enum]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "ignored"
 
 [error]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "required"
 
 [event]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "required"
 
 [function.private]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
-param = "ignored"
-return = "ignored"
+param = "required"
+return = "required"
 
 [function.internal]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
-param = "ignored"
-return = "ignored"
+param = "required"
+return = "required"
 
 [function.public]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "required"
 return = "required"
 
 [function.external]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "required"
 return = "required"
 
 [modifier]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
-param = "ignored"
+param = "required"
 
 [struct]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 param = "ignored"
 
 [variable.private]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 
 [variable.internal]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 
 [variable.public]
-notice = "ignored"
+notice = "required"
 dev = "ignored"
 return = "required"
