@@ -30,7 +30,7 @@ pub mod variable;
 
 /// Source-related information about a [`Definition`]
 pub trait SourceItem {
-    fn item_type() -> ItemType;
+    fn item_type(&self) -> ItemType;
 
     /// Retrieve the parent contract, interface or library's name
     fn parent(&self) -> Option<Parent>;
@@ -309,7 +309,13 @@ pub enum ItemType {
     #[display("event")]
     Event,
     #[display("function")]
-    Function,
+    PrivateFunction,
+    #[display("function")]
+    InternalFunction,
+    #[display("function")]
+    PublicFunction,
+    #[display("function")]
+    ExternalFunction,
     #[display("modifier")]
     Modifier,
     #[value(skip)]
@@ -317,5 +323,9 @@ pub enum ItemType {
     #[display("struct")]
     Struct,
     #[display("variable")]
-    Variable,
+    PrivateVariable,
+    #[display("variable")]
+    InternalVariable,
+    #[display("variable")]
+    PublicVariable,
 }

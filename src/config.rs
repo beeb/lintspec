@@ -12,6 +12,61 @@ use figment::{
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
+use crate::definitions::ItemType;
+
+/// Macro to implement the rule overrides from the CLI
+macro_rules! cli_rule_override {
+    ($config:expr, $items:expr, param, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::Constructor => $config.constructors.param = $req,
+                ItemType::Enum => $config.enums.param = $req,
+                ItemType::Error => $config.errors.param = $req,
+                ItemType::Event => $config.events.param = $req,
+                ItemType::PrivateFunction => $config.functions.private.param = $req,
+                ItemType::InternalFunction => $config.functions.internal.param = $req,
+                ItemType::PublicFunction => $config.functions.public.param = $req,
+                ItemType::ExternalFunction => $config.functions.external.param = $req,
+                ItemType::Modifier => $config.modifiers.param = $req,
+                ItemType::Struct => $config.structs.param = $req,
+                _ => {}
+            }
+        }
+    };
+    ($config:expr, $items:expr, return, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::PrivateFunction => $config.functions.private.returns = $req,
+                ItemType::InternalFunction => $config.functions.internal.returns = $req,
+                ItemType::PublicFunction => $config.functions.public.returns = $req,
+                ItemType::ExternalFunction => $config.functions.external.returns = $req,
+                ItemType::PublicVariable => $config.variables.public.returns = $req,
+                _ => {}
+            }
+        }
+    };
+    ($config:expr, $items:expr, $tag:ident, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::Constructor => $config.constructors.$tag = $req,
+                ItemType::Enum => $config.enums.$tag = $req,
+                ItemType::Error => $config.errors.$tag = $req,
+                ItemType::Event => $config.events.$tag = $req,
+                ItemType::PrivateFunction => $config.functions.private.$tag = $req,
+                ItemType::InternalFunction => $config.functions.internal.$tag = $req,
+                ItemType::PublicFunction => $config.functions.public.$tag = $req,
+                ItemType::ExternalFunction => $config.functions.external.$tag = $req,
+                ItemType::Modifier => $config.modifiers.$tag = $req,
+                ItemType::Struct => $config.structs.$tag = $req,
+                ItemType::PrivateVariable => $config.variables.private.$tag = $req,
+                ItemType::InternalVariable => $config.variables.internal.$tag = $req,
+                ItemType::PublicVariable => $config.variables.public.$tag = $req,
+                ItemType::ParsingError => {}
+            }
+        }
+    };
+}
+
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum, Default, IsVariant,
 )]
@@ -332,23 +387,77 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub notice_or_dev: Option<bool>,
 
-    /// Enforce that constructors have `@param` if applicable
-    ///
-    /// Can be set with `--constructor` (means true), `--constructor=true` or `--constructor=false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub constructor: Option<bool>,
+    /// Ignore `@notice` for these items (can be used more than once)
+    #[arg(long)]
+    pub notice_ignored: Vec<ItemType>,
 
-    /// Enforce that structs have `@param` for each member
+    /// Enforce `@notice` for these items (can be used more than once)
     ///
-    /// Can be set with `--struct_params` (means true), `--struct_params=true` or `--struct_params=false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub struct_params: Option<bool>,
+    /// This takes precedence over `--notice-ignored`.
+    #[arg(long)]
+    pub notice_required: Vec<ItemType>,
 
-    /// Enforce that enums have `@param` for each variant
+    /// Forbid `@notice` for these items (can be used more than once)
     ///
-    /// Can be set with `--enum_params` (means true), `--enum_params=true` or `--enum_params=false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub enum_params: Option<bool>,
+    /// This takes precedence over `--notice-required`.
+    #[arg(long)]
+    pub notice_forbidden: Vec<ItemType>,
+
+    /// Ignore `@dev` for these items (can be used more than once)
+    #[arg(long)]
+    pub dev_ignored: Vec<ItemType>,
+
+    /// Enforce `@dev` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--dev-ignored`.
+    #[arg(long)]
+    pub dev_required: Vec<ItemType>,
+
+    /// Forbid `@dev` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--dev-required`.
+    #[arg(long)]
+    pub dev_forbidden: Vec<ItemType>,
+
+    /// Ignore `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    #[arg(long)]
+    pub param_ignored: Vec<ItemType>,
+
+    /// Enforce `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    /// This takes precedence over `--param-ignored`.
+    #[arg(long)]
+    pub param_required: Vec<ItemType>,
+
+    /// Forbid `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    /// This takes precedence over `--param-required`.
+    #[arg(long)]
+    pub param_forbidden: Vec<ItemType>,
+
+    /// Ignore `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    #[arg(long)]
+    pub return_ignored: Vec<ItemType>,
+
+    /// Enforce `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    /// This takes precedence over `--return-ignored`.
+    #[arg(long)]
+    pub return_required: Vec<ItemType>,
+
+    /// Forbid `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    /// This takes precedence over `--return-required`.
+    #[arg(long)]
+    pub return_forbidden: Vec<ItemType>,
 
     /// Output diagnostics in JSON format
     ///
@@ -400,27 +509,20 @@ pub fn read_config(args: Args) -> Result<Config> {
     if let Some(notice_or_dev) = args.notice_or_dev {
         config.lintspec.notice_or_dev = notice_or_dev;
     }
-    if let Some(constructor) = args.constructor {
-        config.constructors.param = if constructor {
-            Req::Required
-        } else {
-            Req::Ignored
-        };
-    }
-    if let Some(struct_params) = args.struct_params {
-        config.structs.param = if struct_params {
-            Req::Required
-        } else {
-            Req::Ignored
-        };
-    }
-    if let Some(enum_params) = args.enum_params {
-        config.enums.param = if enum_params {
-            Req::Required
-        } else {
-            Req::Ignored
-        };
-    }
+
+    cli_rule_override!(config, args.notice_ignored, notice, Req::Ignored);
+    cli_rule_override!(config, args.notice_required, notice, Req::Required);
+    cli_rule_override!(config, args.notice_forbidden, notice, Req::Forbidden);
+    cli_rule_override!(config, args.dev_ignored, dev, Req::Ignored);
+    cli_rule_override!(config, args.dev_required, dev, Req::Required);
+    cli_rule_override!(config, args.dev_forbidden, dev, Req::Forbidden);
+    cli_rule_override!(config, args.param_ignored, param, Req::Ignored);
+    cli_rule_override!(config, args.param_required, param, Req::Required);
+    cli_rule_override!(config, args.param_forbidden, param, Req::Forbidden);
+    cli_rule_override!(config, args.return_ignored, return, Req::Ignored);
+    cli_rule_override!(config, args.return_required, return, Req::Required);
+    cli_rule_override!(config, args.return_forbidden, return, Req::Forbidden);
+
     Ok(config)
 }
 

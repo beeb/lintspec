@@ -43,7 +43,7 @@ impl ModifierDefinition {
 }
 
 impl SourceItem for ModifierDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Modifier
     }
 
@@ -65,7 +65,7 @@ impl Validate for ModifierDefinition {
         let opts = &options.modifiers;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

@@ -26,7 +26,7 @@ pub struct ConstructorDefinition {
 }
 
 impl SourceItem for ConstructorDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Constructor
     }
 
@@ -48,7 +48,7 @@ impl Validate for ConstructorDefinition {
         let opts = &options.constructors;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

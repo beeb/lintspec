@@ -43,8 +43,13 @@ impl VariableDeclaration {
 }
 
 impl SourceItem for VariableDeclaration {
-    fn item_type() -> ItemType {
-        ItemType::Variable
+    fn item_type(&self) -> ItemType {
+        match self.attributes.visibility {
+            Visibility::External => unreachable!("variables cannot be external"),
+            Visibility::Internal => ItemType::InternalVariable,
+            Visibility::Private => ItemType::PrivateVariable,
+            Visibility::Public => ItemType::PublicVariable,
+        }
     }
 
     fn parent(&self) -> Option<Parent> {
@@ -82,7 +87,7 @@ impl Validate for VariableDeclaration {
         };
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

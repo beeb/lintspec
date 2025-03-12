@@ -30,7 +30,7 @@ pub struct StructDefinition {
 }
 
 impl SourceItem for StructDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Struct
     }
 
@@ -52,7 +52,7 @@ impl Validate for StructDefinition {
         let opts = &options.structs;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

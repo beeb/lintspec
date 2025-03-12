@@ -54,8 +54,13 @@ impl FunctionDefinition {
 }
 
 impl SourceItem for FunctionDefinition {
-    fn item_type() -> ItemType {
-        ItemType::Function
+    fn item_type(&self) -> ItemType {
+        match self.attributes.visibility {
+            Visibility::External => ItemType::ExternalFunction,
+            Visibility::Internal => ItemType::InternalFunction,
+            Visibility::Private => ItemType::PrivateFunction,
+            Visibility::Public => ItemType::PublicFunction,
+        }
     }
 
     fn parent(&self) -> Option<Parent> {
@@ -75,7 +80,7 @@ impl Validate for FunctionDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

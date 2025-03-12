@@ -30,7 +30,7 @@ pub struct EventDefinition {
 }
 
 impl SourceItem for EventDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Event
     }
 
@@ -52,7 +52,7 @@ impl Validate for EventDefinition {
         let opts = &options.events;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

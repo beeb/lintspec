@@ -30,7 +30,7 @@ pub struct EnumDefinition {
 }
 
 impl SourceItem for EnumDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Enum
     }
 
@@ -52,7 +52,7 @@ impl Validate for EnumDefinition {
         let opts = &options.enums;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],

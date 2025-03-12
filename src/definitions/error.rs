@@ -30,7 +30,7 @@ pub struct ErrorDefinition {
 }
 
 impl SourceItem for ErrorDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Error
     }
 
@@ -52,7 +52,7 @@ impl Validate for ErrorDefinition {
         let opts = &options.errors;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
