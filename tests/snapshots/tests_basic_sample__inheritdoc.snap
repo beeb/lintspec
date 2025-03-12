@@ -2,6 +2,11 @@
 source: tests/tests-basic-sample.rs
 expression: generate_output(diags)
 ---
+./test-data/BasicSample.sol:5:5
+function AbstractBasic.overriddenFunction
+  @notice is missing
+  @return _returned is missing
+
 ./test-data/BasicSample.sol:22:1
 error BasicSample.BasicSample_SomeError
   @param _param1 is missing
@@ -13,6 +18,10 @@ event BasicSample.BasicSample_BasicEvent
 ./test-data/BasicSample.sol:38:1
 variable BasicSample.somePublicNumber
   @inheritdoc is missing
+
+./test-data/BasicSample.sol:44:17
+constructor BasicSample.constructor
+  @param _randomFlag is missing
 
 ./test-data/BasicSample.sol:54:5
 function BasicSample.externalSimple
