@@ -281,7 +281,7 @@ pub fn check_returns(
                 let message = if let Some(name) = &r.name {
                     format!("@return {name} is missing")
                 } else if is_var {
-                    "@return missing".to_string()
+                    "@return is missing".to_string()
                 } else {
                     format!("@return missing for unnamed return #{}", idx + 1)
                 };
@@ -309,7 +309,7 @@ pub fn check_returns(
                 unnamed_returns += 1;
                 if idx as isize > returns_count - 1 {
                     if is_var {
-                        "@return missing".to_string()
+                        "@return is missing".to_string()
                     } else {
                         format!("@return missing for unnamed return #{}", idx + 1)
                     }

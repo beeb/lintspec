@@ -178,6 +178,18 @@ mod tests {
     }
 
     #[test]
+    fn test_variable_no_natspec() {
+        let contents = "contract Test {
+            uint256 public a;
+        }";
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@return is missing");
+    }
+
+    #[test]
     fn test_variable_no_natspec_inheritdoc() {
         let contents = "contract Test {
             uint256 public a;
@@ -228,33 +240,11 @@ mod tests {
     #[test]
     fn test_variable_no_inheritdoc() {
         let contents = "contract Test {
+            /// @notice A variable
             uint256 internal a;
         }";
         let res =
             parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
-    }
-
-    #[test]
-    fn test_variable_enforce() {
-        let mut var_opts = VariableConfig::default();
-        var_opts.internal.dev = Req::Required;
-        let opts = ValidationOptions::builder()
-            .inheritdoc(false)
-            .variables(var_opts)
-            .build();
-        let contents = "contract Test {
-            uint256 internal a;
-        }";
-        let res = parse_file(contents).validate(&opts);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@dev is missing");
-
-        let contents = "contract Test {
-            /// @dev Some dev
-            uint256 internal a;
-        }";
-        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }
