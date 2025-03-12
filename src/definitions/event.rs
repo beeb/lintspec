@@ -205,7 +205,7 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
