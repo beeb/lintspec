@@ -145,10 +145,7 @@ mod tests {
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::{
-        config::{Req, VariableConfig},
-        parser::slang::Extract as _,
-    };
+    use crate::parser::slang::Extract as _;
 
     use super::*;
 
