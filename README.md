@@ -32,7 +32,7 @@ speed and ergonomics. By default, lintspec will respect gitignore rules when loo
 Dual-licensed under MIT or Apache 2.0.
 
 > Note: the `main` branch can contain unreleased changes. To view the README information for the latest stable release,
-visit [crates.io](https://crates.io/crates/lintspec) or select the latest git tag from the branch/tag dropdown.
+> visit [crates.io](https://crates.io/crates/lintspec) or select the latest git tag from the branch/tag dropdown.
 
 ## Installation
 
