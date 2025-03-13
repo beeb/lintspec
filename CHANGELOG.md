@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.0] - 2025-03-13
+
+### Added
+
+
+-  add cargo deny ([#49](https://github.com/beeb/lintspec/pull/49)) - ([d144a9c](https://github.com/beeb/lintspec/commit/d144a9c4b56417123313c7d530b4895c74639e69))
+
+### Changed
+
+
+-  update readme ([#51](https://github.com/beeb/lintspec/pull/51)) - ([79a7638](https://github.com/beeb/lintspec/commit/79a763877f7b5750322b93861b7ab5381e162e22))
+-  [**breaking**] separate parsing from validation ([#54](https://github.com/beeb/lintspec/pull/54)) - ([9cdd90d](https://github.com/beeb/lintspec/commit/9cdd90d69d469c15ac539ec499e82ee96dc29c6e))
+-  [**breaking**] granular configuration ([#56](https://github.com/beeb/lintspec/pull/56)) - ([e286013](https://github.com/beeb/lintspec/commit/e286013090873fda3e14347b3cdc6198b9761e18))
+
+### Removed
+
+
+-  remove deprecated feature ([#53](https://github.com/beeb/lintspec/pull/53)) - ([8cfc11f](https://github.com/beeb/lintspec/commit/8cfc11f4bfe077967365c517c7c0eb3daded8984))
+
+
+
+
+**Full Changelog**: [0.3.0...0.4.0](https://github.com/beeb/lintspec/compare/v0.3.0...v0.4.0)
+
 ## [0.3.0] - 2025-02-25
 
 ### Added
