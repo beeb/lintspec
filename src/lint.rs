@@ -11,7 +11,7 @@ use serde::Serialize;
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    config::Config,
+    config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent},
     error::Result,
     natspec::NatSpec,
@@ -140,46 +140,47 @@ where
 }
 
 /// Validation options to control which lints generate a diagnostic
-#[derive(Debug, Clone, bon::Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
 #[non_exhaustive]
-#[allow(clippy::struct_excessive_bools)]
 pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
-
-    /// Whether to check that constructors have documented params
-    #[builder(default = false)]
-    pub constructor: bool,
-
-    /// Whether to check that each member of structs is documented with `@param`
-    ///
-    /// Not standard practice, the Solidity spec does not consider `@param` for structs or provide any other way to
-    /// document each member.
-    #[builder(default = false)]
-    pub struct_params: bool,
-
-    /// Whether to check that each variant of enums is documented with `@param`
-    ///
-    /// Not standard practice, the Solidity spec does not consider `@param` for enums or provide any other way to
-    /// document each variant.
-    #[builder(default = false)]
-    pub enum_params: bool,
-
-    /// Which item types should have at least some [`NatSpec`] even if they have no param/return/member.
-    #[builder(default = vec![])]
-    pub enforce: Vec<ItemType>,
+    /// Whether to enforce either `@notice` or `@dev` if either or both are required
+    #[builder(default)]
+    pub notice_or_dev: bool,
+    #[builder(default = WithParamsRules::default_constructor())]
+    pub constructors: WithParamsRules,
+    #[builder(default)]
+    pub enums: WithParamsRules,
+    #[builder(default = WithParamsRules::required())]
+    pub errors: WithParamsRules,
+    #[builder(default = WithParamsRules::required())]
+    pub events: WithParamsRules,
+    #[builder(default)]
+    pub functions: FunctionConfig,
+    #[builder(default = WithParamsRules::required())]
+    pub modifiers: WithParamsRules,
+    #[builder(default)]
+    pub structs: WithParamsRules,
+    #[builder(default)]
+    pub variables: VariableConfig,
 }
 
 impl Default for ValidationOptions {
-    /// Get default validation options (`inheritdoc` is true, the others are false)
+    /// Get default validation options
     fn default() -> Self {
         Self {
             inheritdoc: true,
-            constructor: false,
-            struct_params: false,
-            enum_params: false,
-            enforce: vec![],
+            notice_or_dev: false,
+            constructors: WithParamsRules::default_constructor(),
+            enums: WithParamsRules::default(),
+            errors: WithParamsRules::required(),
+            events: WithParamsRules::required(),
+            functions: FunctionConfig::default(),
+            modifiers: WithParamsRules::required(),
+            structs: WithParamsRules::default(),
+            variables: VariableConfig::default(),
         }
     }
 }
@@ -187,11 +188,16 @@ impl Default for ValidationOptions {
 impl From<&Config> for ValidationOptions {
     fn from(value: &Config) -> Self {
         Self {
-            inheritdoc: value.inheritdoc,
-            constructor: value.constructor,
-            struct_params: value.struct_params,
-            enum_params: value.enum_params,
-            enforce: value.enforce.clone(),
+            inheritdoc: value.lintspec.inheritdoc,
+            notice_or_dev: value.lintspec.notice_or_dev,
+            constructors: value.constructors.clone(),
+            enums: value.enums.clone(),
+            errors: value.errors.clone(),
+            events: value.events.clone(),
+            functions: value.functions.clone(),
+            modifiers: value.modifiers.clone(),
+            structs: value.structs.clone(),
+            variables: value.variables.clone(),
         }
     }
 }
@@ -205,24 +211,51 @@ pub trait Validate {
 /// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
 #[must_use]
-pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic> {
+pub fn check_params(
+    natspec: &Option<NatSpec>,
+    rule: Req,
+    params: &[Identifier],
+    default_span: TextRange,
+) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    for param in params {
-        let Some(name) = &param.name else {
-            // no need to document unused params
-            continue;
+    if rule.is_ignored() || (rule.is_required() && params.is_empty()) {
+        return res;
+    }
+    if rule.is_required() {
+        let Some(natspec) = natspec else {
+            res.extend(params.iter().filter_map(|p| {
+                p.name.as_ref().map(|name| Diagnostic {
+                    span: p.span.clone(),
+                    message: format!("@param {name} is missing"),
+                })
+            }));
+            return res;
         };
-        let message = match natspec.count_param(param) {
-            0 => format!("@param {name} is missing"),
-            2.. => format!("@param {name} is present more than once"),
-            _ => {
+        for param in params {
+            let Some(name) = &param.name else {
+                // no need to document unused params
                 continue;
-            }
-        };
-        res.push(Diagnostic {
-            span: param.span.clone(),
-            message,
-        });
+            };
+            let message = match natspec.count_param(param) {
+                0 => format!("@param {name} is missing"),
+                2.. => format!("@param {name} is present more than once"),
+                _ => {
+                    continue;
+                }
+            };
+            res.push(Diagnostic {
+                span: param.span.clone(),
+                message,
+            });
+        }
+    } else if let Some(natspec) = natspec {
+        // the rule is to forbid `@param`
+        if natspec.has_param() {
+            res.push(Diagnostic {
+                span: default_span,
+                message: "@param is forbidden".to_string(),
+            });
+        }
     }
     res
 }
@@ -232,40 +265,220 @@ pub fn check_params(natspec: &NatSpec, params: &[Identifier]) -> Vec<Diagnostic>
 #[allow(clippy::cast_possible_wrap)]
 #[must_use]
 pub fn check_returns(
-    natspec: &NatSpec,
+    natspec: &Option<NatSpec>,
+    rule: Req,
     returns: &[Identifier],
     default_span: TextRange,
+    is_var: bool,
 ) -> Vec<Diagnostic> {
     let mut res = Vec::new();
-    let mut unnamed_returns = 0;
-    let returns_count = natspec.count_all_returns() as isize;
-    for (idx, ret) in returns.iter().enumerate() {
-        let message = if let Some(name) = &ret.name {
-            match natspec.count_return(ret) {
-                0 => format!("@return {name} is missing"),
-                2.. => format!("@return {name} is present more than once"),
-                _ => {
+    if rule.is_ignored() || (rule.is_required() && returns.is_empty()) {
+        return res;
+    }
+    if rule.is_required() {
+        let Some(natspec) = natspec else {
+            res.extend(returns.iter().enumerate().map(|(idx, r)| {
+                let message = if let Some(name) = &r.name {
+                    format!("@return {name} is missing")
+                } else if is_var {
+                    "@return is missing".to_string()
+                } else {
+                    format!("@return missing for unnamed return #{}", idx + 1)
+                };
+                Diagnostic {
+                    span: r.span.clone(),
+                    message,
+                }
+            }));
+            return res;
+        };
+        let mut unnamed_returns = 0;
+        let returns_count = natspec.count_all_returns() as isize;
+        for (idx, ret) in returns.iter().enumerate() {
+            let message = if let Some(name) = &ret.name {
+                match natspec.count_return(ret) {
+                    0 => format!("@return {name} is missing"),
+                    2.. => {
+                        format!("@return {name} is present more than once")
+                    }
+                    _ => {
+                        continue;
+                    }
+                }
+            } else {
+                unnamed_returns += 1;
+                if idx as isize > returns_count - 1 {
+                    if is_var {
+                        "@return is missing".to_string()
+                    } else {
+                        format!("@return missing for unnamed return #{}", idx + 1)
+                    }
+                } else {
                     continue;
                 }
-            }
-        } else {
-            unnamed_returns += 1;
-            if idx as isize > returns_count - 1 {
-                format!("@return missing for unnamed return #{}", idx + 1)
-            } else {
-                continue;
-            }
-        };
-        res.push(Diagnostic {
-            span: ret.span.clone(),
-            message,
-        });
-    }
-    if natspec.count_unnamed_returns() > unnamed_returns {
-        res.push(Diagnostic {
-            span: returns.last().cloned().map_or(default_span, |r| r.span),
-            message: "too many unnamed returns".to_string(),
-        });
+            };
+            res.push(Diagnostic {
+                span: ret.span.clone(),
+                message,
+            });
+        }
+        if natspec.count_unnamed_returns() > unnamed_returns {
+            res.push(Diagnostic {
+                span: returns.last().cloned().map_or(default_span, |r| r.span),
+                message: "too many unnamed returns".to_string(),
+            });
+        }
+    } else if let Some(natspec) = natspec {
+        // the rule is to forbid `@return`
+        if natspec.has_return() {
+            res.push(Diagnostic {
+                span: default_span,
+                message: "@return is forbidden".to_string(),
+            });
+        }
     }
     res
+}
+
+#[must_use]
+pub fn check_notice(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_notice() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@notice is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
+            span,
+            message: "@notice is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
+#[must_use]
+pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no dev
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_dev() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@dev is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
+            span,
+            message: "@dev is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
+#[must_use]
+pub fn check_notice_and_dev(
+    natspec: &Option<NatSpec>,
+    notice_rule: Req,
+    dev_rule: Req,
+    notice_or_dev: bool,
+    span: TextRange,
+) -> Vec<Diagnostic> {
+    let mut res = Vec::new();
+    match (notice_or_dev, notice_rule, dev_rule) {
+        (true, Req::Required, Req::Ignored | Req::Required)
+        | (true, Req::Ignored, Req::Required) => {
+            if natspec.is_none()
+                || (!natspec.as_ref().unwrap().has_notice() && !natspec.as_ref().unwrap().has_dev())
+            {
+                res.push(Diagnostic {
+                    span,
+                    message: "@notice or @dev is missing".to_string(),
+                });
+            }
+        }
+        (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
+            res.extend(check_notice(natspec, notice_rule, span.clone()));
+            res.extend(check_dev(natspec, dev_rule, span));
+        }
+        (true, Req::Ignored, Req::Ignored) => {}
+    }
+    res
+}
+
+#[cfg(test)]
+mod tests {
+    use similar_asserts::assert_eq;
+
+    use crate::config::{BaseConfig, FunctionRules, NoticeDevRules};
+
+    use super::*;
+
+    #[test]
+    fn test_validation_options_default() {
+        assert_eq!(
+            ValidationOptions::default(),
+            ValidationOptions::builder().build()
+        );
+
+        let default_config = Config::default();
+        let options = ValidationOptions::from(&default_config);
+        assert_eq!(ValidationOptions::default(), options);
+    }
+
+    #[test]
+    fn test_validation_options_conversion() {
+        let config = Config::builder().build();
+        let options = ValidationOptions::from(&config);
+        assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
+        assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.constructors, options.constructors);
+        assert_eq!(config.enums, options.enums);
+        assert_eq!(config.errors, options.errors);
+        assert_eq!(config.events, options.events);
+        assert_eq!(config.functions, options.functions);
+        assert_eq!(config.modifiers, options.modifiers);
+        assert_eq!(config.structs, options.structs);
+        assert_eq!(config.variables, options.variables);
+
+        let config = Config::builder()
+            .lintspec(
+                BaseConfig::builder()
+                    .inheritdoc(false)
+                    .notice_or_dev(true)
+                    .build(),
+            )
+            .constructors(WithParamsRules::builder().dev(Req::Required).build())
+            .enums(WithParamsRules::builder().param(Req::Required).build())
+            .errors(WithParamsRules::builder().notice(Req::Forbidden).build())
+            .events(WithParamsRules::builder().param(Req::Forbidden).build())
+            .functions(
+                FunctionConfig::builder()
+                    .private(FunctionRules::builder().dev(Req::Required).build())
+                    .build(),
+            )
+            .modifiers(WithParamsRules::builder().dev(Req::Forbidden).build())
+            .structs(WithParamsRules::builder().notice(Req::Ignored).build())
+            .variables(
+                VariableConfig::builder()
+                    .private(NoticeDevRules::builder().dev(Req::Required).build())
+                    .build(),
+            )
+            .build();
+        let options = ValidationOptions::from(&config);
+        assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
+        assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.constructors, options.constructors);
+        assert_eq!(config.enums, options.enums);
+        assert_eq!(config.errors, options.errors);
+        assert_eq!(config.events, options.events);
+        assert_eq!(config.functions, options.functions);
+        assert_eq!(config.modifiers, options.modifiers);
+        assert_eq!(config.structs, options.structs);
+        assert_eq!(config.variables, options.variables);
+    }
 }

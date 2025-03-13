@@ -641,6 +641,7 @@ dependencies = [
  "similar-asserts",
  "slang_solidity",
  "thiserror 2.0.11",
+ "toml",
  "winnow",
 ]
 

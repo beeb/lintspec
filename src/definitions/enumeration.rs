@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, Diagnostic, ItemDiagnostics},
+    lint::{check_notice_and_dev, check_params, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -30,7 +30,7 @@ pub struct EnumDefinition {
 }
 
 impl SourceItem for EnumDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Enum
     }
 
@@ -49,49 +49,52 @@ impl SourceItem for EnumDefinition {
 
 impl Validate for EnumDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let opts = &options.enums;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available
-        let Some(natspec) = &self.natspec else {
-            if !options.enum_params && !options.enforce.contains(&Self::item_type()) {
-                return out;
-            }
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        if !options.enum_params {
-            return out;
-        }
-        out.diags = check_params(natspec, &self.members);
+        out.diags.extend(check_notice_and_dev(
+            &self.natspec,
+            opts.notice,
+            opts.dev,
+            options.notice_or_dev,
+            self.span(),
+        ));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.members,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Req, WithParamsRules},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: false,
-        enum_params: true,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(|| {
+        ValidationOptions::builder()
+            .enums(WithParamsRules::required())
+            .inheritdoc(false)
+            .build()
+    });
 
     fn parse_file(contents: &str) -> EnumDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -106,6 +109,7 @@ mod tests {
     #[test]
     fn test_enum() {
         let contents = "contract Test {
+            /// @notice The enum
             enum Foobar {
                 First,
                 Second
@@ -125,13 +129,16 @@ mod tests {
             }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param First is missing");
+        assert_eq!(res.diags[2].message, "@param Second is missing");
     }
 
     #[test]
     fn test_enum_params() {
         let contents = "contract Test {
+            /// @notice The notice
             /// @param First The first
             /// @param Second The second
             enum Foobar {
@@ -177,6 +184,7 @@ mod tests {
     fn test_enum_multiline() {
         let contents = "contract Test {
             /**
+             * @notice The enum
              * @param First The first
              * @param Second The second
              */
@@ -192,6 +200,7 @@ mod tests {
     #[test]
     fn test_enum_duplicate() {
         let contents = "contract Test {
+            /// @notice The enum
             /// @param First The first
             /// @param First The first twice
             enum Foobar {
@@ -208,32 +217,36 @@ mod tests {
 
     #[test]
     fn test_enum_inheritdoc() {
+        // inheritdoc should be ignored as it doesn't apply to enums
         let contents = "contract Test {
-            /// @inheritdoc
+            /// @inheritdoc Something
             enum Foobar {
                 First
             }
         }";
         let res =
-            parse_file(contents).validate(&ValidationOptions::builder().enum_params(true).build());
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(true).build());
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param First is missing");
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
     fn test_enum_enforce() {
+        let opts = ValidationOptions::builder()
+            .enums(WithParamsRules {
+                notice: Req::Required,
+                dev: Req::default(),
+                param: Req::default(),
+            })
+            .build();
         let contents = "contract Test {
             enum Foobar {
                 First
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Enum])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
@@ -241,17 +254,14 @@ mod tests {
                 First
             }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Enum])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
     #[test]
     fn test_enum_no_contract() {
         let contents = "
+            /// @notice An enum
             /// @param First The first
             /// @param Second The second
             enum Foobar {
@@ -269,13 +279,16 @@ mod tests {
                 Second
             }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 3);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param First is missing");
+        assert_eq!(res.diags[2].message, "@param Second is missing");
     }
 
     #[test]
     fn test_enum_no_contract_one_missing() {
         let contents = "
+            /// @notice The enum
             /// @param First The first
             enum Foobar {
                 First,

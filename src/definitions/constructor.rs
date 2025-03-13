@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, Diagnostic, ItemDiagnostics},
+    lint::{check_notice_and_dev, check_params, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -26,7 +26,7 @@ pub struct ConstructorDefinition {
 }
 
 impl SourceItem for ConstructorDefinition {
-    fn item_type() -> ItemType {
+    fn item_type(&self) -> ItemType {
         ItemType::Constructor
     }
 
@@ -45,51 +45,48 @@ impl SourceItem for ConstructorDefinition {
 
 impl Validate for ConstructorDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let opts = &options.constructors;
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
-        let Some(natspec) = &self.natspec else {
-            if (!options.constructor || self.params.is_empty())
-                && !options.enforce.contains(&Self::item_type())
-            {
-                return out;
-            }
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        if !options.constructor || self.params.is_empty() {
-            return out;
-        }
-        // check params
-        out.diags.append(&mut check_params(natspec, &self.params));
+        out.diags.extend(check_notice_and_dev(
+            &self.natspec,
+            opts.notice,
+            opts.dev,
+            options.notice_or_dev,
+            self.span(),
+        ));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.params,
+            self.span(),
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        config::{Req, WithParamsRules},
+        parser::slang::Extract as _,
+    };
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: true,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> ConstructorDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -121,8 +118,9 @@ mod tests {
             constructor(uint256 param1, bytes calldata param2) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        assert_eq!(res.diags[1].message, "@param param2 is missing");
     }
 
     #[test]
@@ -186,39 +184,44 @@ mod tests {
     }
 
     #[test]
-    fn test_constructor_inheritdoc() {
+    fn test_constructor_notice() {
+        // inheritdoc should be ignored since it's a constructor
         let contents = "contract Test {
             /// @inheritdoc ITest
             constructor(uint256 param1) { }
         }";
-        let res =
-            parse_file(contents).validate(&ValidationOptions::builder().constructor(true).build());
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param param1 is missing");
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc(true)
+                .constructors(WithParamsRules::required())
+                .build(),
+        );
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param param1 is missing");
     }
 
     #[test]
     fn test_constructor_enforce() {
+        let opts = ValidationOptions::builder()
+            .constructors(WithParamsRules {
+                notice: Req::Required,
+                dev: Req::default(),
+                param: Req::default(),
+            })
+            .build();
         let contents = "contract Test {
             constructor() { }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Constructor])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags[0].message, "@notice is missing");
 
         let contents = "contract Test {
             /// @notice Some notice
             constructor() { }
         }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Constructor])
-                .build(),
-        );
+        let res = parse_file(contents).validate(&opts);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }

@@ -46,8 +46,10 @@ runs:
     shell: bash {0} # default github config uses `-e` flag which fails the step on exit code != 0
     working-directory: ${{ inputs.working-directory }}
     env:
-      LINTSPEC_PATHS: ${{ inputs.paths }}
-      LINTSPEC_EXCLUDE: ${{ inputs.exclude }}
+      LS_LINTSPEC_PATHS: ${{ inputs.paths }}
+      LS_LINTSPEC_EXCLUDE: ${{ inputs.exclude }}
+      LINTSPEC_PATHS: ${{ inputs.paths }} # for older version compatibility
+      LINTSPEC_EXCLUDE: ${{ inputs.exclude }} # for older version compatibility
       VERSION: ${{ inputs.version }}
       EXTRA_ARGS: ${{ inputs.extra-args }}
     run: |

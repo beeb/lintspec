@@ -16,14 +16,32 @@ event IParserTest.SimpleEvent
 function IParserTest.SOME_CONSTANT
   @return _returned is missing
 
+./test-data/ParserTest.sol:120:1
+struct ParserTestFunny.SimpleStruct
+  @notice is missing
+
+./test-data/ParserTest.sol:128:12
+modifier ParserTestFunny.someModifier
+  @notice is missing
+
+./test-data/ParserTest.sol:135:1
+variable ParserTestFunny.SOME_CONSTANT
+  @notice is missing
+  @return is missing
+
 ./test-data/ParserTest.sol:145:3
 function ParserTestFunny.viewFunctionWithParams
-  missing NatSpec
+  @notice is missing
+  @param _param1 is missing
+  @param _param2 is missing
+  @return missing for unnamed return #1
 
 ./test-data/ParserTest.sol:150:3
 function ParserTestFunny._viewInternal
-  missing NatSpec
+  @notice is missing
+  @return missing for unnamed return #1
 
 ./test-data/ParserTest.sol:184:3
 function ParserTestFunny._viewInternal
+  @notice is missing
   @param _paramName is missing

@@ -2,11 +2,13 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{Diagnostic, ItemDiagnostics},
+    lint::{check_notice_and_dev, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
-use super::{Attributes, ItemType, Parent, SourceItem, Validate, ValidationOptions, Visibility};
+use super::{
+    Attributes, Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions, Visibility,
+};
 
 /// A state variable declaration
 #[derive(Debug, Clone, bon::Builder)]
@@ -41,8 +43,13 @@ impl VariableDeclaration {
 }
 
 impl SourceItem for VariableDeclaration {
-    fn item_type() -> ItemType {
-        ItemType::Variable
+    fn item_type(&self) -> ItemType {
+        match self.attributes.visibility {
+            Visibility::External => unreachable!("variables cannot be external"),
+            Visibility::Internal => ItemType::InternalVariable,
+            Visibility::Private => ItemType::PrivateVariable,
+            Visibility::Public => ItemType::PublicVariable,
+        }
     }
 
     fn parent(&self) -> Option<Parent> {
@@ -60,40 +67,71 @@ impl SourceItem for VariableDeclaration {
 
 impl Validate for VariableDeclaration {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let (notice, dev, returns) = match self.attributes.visibility {
+            Visibility::External => unreachable!("variables cannot be external"),
+            Visibility::Internal => (
+                options.variables.internal.notice,
+                options.variables.internal.dev,
+                None,
+            ),
+            Visibility::Private => (
+                options.variables.private.notice,
+                options.variables.private.dev,
+                None,
+            ),
+            Visibility::Public => (
+                options.variables.public.notice,
+                options.variables.public.dev,
+                Some(options.variables.public.returns),
+            ),
+        };
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
         };
-        // raise error if no NatSpec is available
-        let Some(natspec) = &self.natspec else {
-            if options.inheritdoc && self.requires_inheritdoc() {
+        if let Some(natspec) = &self.natspec {
+            // if there is `inheritdoc`, no further validation is required
+            if natspec
+                .items
+                .iter()
+                .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
+            {
+                return out;
+            } else if options.inheritdoc && self.requires_inheritdoc() {
                 out.diags.push(Diagnostic {
                     span: self.span(),
                     message: "@inheritdoc is missing".to_string(),
                 });
-            } else if options.enforce.contains(&Self::item_type()) {
-                out.diags.push(Diagnostic {
-                    span: self.span(),
-                    message: "missing NatSpec".to_string(),
-                });
+                return out;
             }
-            return out;
-        };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
         } else if options.inheritdoc && self.requires_inheritdoc() {
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "@inheritdoc is missing".to_string(),
             });
+            return out;
+        }
+        out.diags.extend(check_notice_and_dev(
+            &self.natspec,
+            notice,
+            dev,
+            options.notice_or_dev,
+            self.span(),
+        ));
+        if let Some(returns) = returns {
+            out.diags.extend(check_returns(
+                &self.natspec,
+                returns,
+                &[Identifier {
+                    name: None,
+                    span: self.span(),
+                }],
+                self.span(),
+                true,
+            ));
         }
         out
     }
@@ -101,6 +139,8 @@ impl Validate for VariableDeclaration {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
@@ -109,13 +149,7 @@ mod tests {
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: true,
-        constructor: false,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> = LazyLock::new(Default::default);
 
     fn parse_file(contents: &str) -> VariableDeclaration {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -138,6 +172,18 @@ mod tests {
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
+    }
+
+    #[test]
+    fn test_variable_no_natspec() {
+        let contents = "contract Test {
+            uint256 public a;
+        }";
+        let res =
+            parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@return is missing");
     }
 
     #[test]
@@ -191,37 +237,11 @@ mod tests {
     #[test]
     fn test_variable_no_inheritdoc() {
         let contents = "contract Test {
+            /// @notice A variable
             uint256 internal a;
         }";
         let res =
             parse_file(contents).validate(&ValidationOptions::builder().inheritdoc(false).build());
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
-    }
-
-    #[test]
-    fn test_variable_enforce() {
-        let contents = "contract Test {
-            uint256 internal a;
-        }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .enforce(vec![ItemType::Variable])
-                .build(),
-        );
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
-
-        let contents = "contract Test {
-            /// @dev Some dev
-            uint256 internal a;
-        }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .inheritdoc(false)
-                .enforce(vec![ItemType::Variable])
-                .build(),
-        );
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 }

@@ -2,7 +2,7 @@
 use slang_solidity::cst::TextRange;
 
 use crate::{
-    lint::{check_params, check_returns, Diagnostic, ItemDiagnostics},
+    lint::{check_notice_and_dev, check_params, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -54,8 +54,13 @@ impl FunctionDefinition {
 }
 
 impl SourceItem for FunctionDefinition {
-    fn item_type() -> ItemType {
-        ItemType::Function
+    fn item_type(&self) -> ItemType {
+        match self.attributes.visibility {
+            Visibility::External => ItemType::ExternalFunction,
+            Visibility::Internal => ItemType::InternalFunction,
+            Visibility::Private => ItemType::PrivateFunction,
+            Visibility::Public => ItemType::PublicFunction,
+        }
     }
 
     fn parent(&self) -> Option<Parent> {
@@ -75,7 +80,7 @@ impl Validate for FunctionDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
-            item_type: Self::item_type(),
+            item_type: self.item_type(),
             name: self.name(),
             span: self.span(),
             diags: vec![],
@@ -84,13 +89,18 @@ impl Validate for FunctionDefinition {
         if self.name == "receive" || self.name == "fallback" {
             return out;
         }
-        // raise error if no NatSpec is available (unless there are no params, no returns, and we don't enforce
-        // inheritdoc or natspec at all)
-        let Some(natspec) = &self.natspec else {
-            if self.returns.is_empty()
-                && self.params.is_empty()
-                && !options.enforce.contains(&Self::item_type())
-                && (!options.inheritdoc || !self.requires_inheritdoc())
+        let opts = match self.attributes.visibility {
+            Visibility::External => options.functions.external,
+            Visibility::Internal => options.functions.internal,
+            Visibility::Private => options.functions.private,
+            Visibility::Public => options.functions.public,
+        };
+        if let Some(natspec) = &self.natspec {
+            // if there is `inheritdoc`, no further validation is required
+            if natspec
+                .items
+                .iter()
+                .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
             {
                 return out;
             } else if options.inheritdoc && self.requires_inheritdoc() {
@@ -100,20 +110,6 @@ impl Validate for FunctionDefinition {
                 });
                 return out;
             }
-            // we require natspec
-            out.diags.push(Diagnostic {
-                span: self.span(),
-                message: "missing NatSpec".to_string(),
-            });
-            return out;
-        };
-        // if there is `inheritdoc`, no further validation is required
-        if natspec
-            .items
-            .iter()
-            .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-        {
-            return out;
         } else if options.inheritdoc && self.requires_inheritdoc() {
             out.diags.push(Diagnostic {
                 span: self.span(),
@@ -121,16 +117,34 @@ impl Validate for FunctionDefinition {
             });
             return out;
         }
-        // check params and returns
-        out.diags.append(&mut check_params(natspec, &self.params));
-        out.diags
-            .append(&mut check_returns(natspec, &self.returns, self.span()));
+        out.diags.extend(check_notice_and_dev(
+            &self.natspec,
+            opts.notice,
+            opts.dev,
+            options.notice_or_dev,
+            self.span(),
+        ));
+        out.diags.extend(check_params(
+            &self.natspec,
+            opts.param,
+            &self.params,
+            self.span(),
+        ));
+        out.diags.extend(check_returns(
+            &self.natspec,
+            opts.returns,
+            &self.returns,
+            self.span(),
+            false,
+        ));
         out
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use semver::Version;
     use similar_asserts::assert_eq;
     use slang_solidity::{cst::NonterminalKind, parser::Parser};
@@ -139,13 +153,8 @@ mod tests {
 
     use super::*;
 
-    static OPTIONS: ValidationOptions = ValidationOptions {
-        inheritdoc: false,
-        constructor: false,
-        struct_params: false,
-        enum_params: false,
-        enforce: vec![],
-    };
+    static OPTIONS: LazyLock<ValidationOptions> =
+        LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> FunctionDefinition {
         let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
@@ -163,11 +172,12 @@ mod tests {
     #[test]
     fn test_function() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 Test
             /// @param param2 Test2
             /// @return First output
             /// @return out Second output
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -176,18 +186,25 @@ mod tests {
     #[test]
     fn test_function_no_natspec() {
         let contents = "contract Test {
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
+        assert_eq!(res.diags.len(), 5);
+        assert_eq!(res.diags[0].message, "@notice is missing");
+        assert_eq!(res.diags[1].message, "@param param1 is missing");
+        assert_eq!(res.diags[2].message, "@param param2 is missing");
+        assert_eq!(
+            res.diags[3].message,
+            "@return missing for unnamed return #1"
+        );
+        assert_eq!(res.diags[4].message, "@return out is missing");
     }
 
     #[test]
     fn test_function_only_notice() {
         let contents = "contract Test {
             /// @notice The function
-            function foo(uint256 param1, bytes calldata param2) internal returns (uint256, uint256 out) { }
+            function foo(uint256 param1, bytes calldata param2) public returns (uint256, uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 4);
@@ -203,8 +220,9 @@ mod tests {
     #[test]
     fn test_function_one_missing() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 The first
-            function foo(uint256 param1, bytes calldata param2) internal { }
+            function foo(uint256 param1, bytes calldata param2) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -215,10 +233,11 @@ mod tests {
     fn test_function_multiline() {
         let contents = "contract Test {
             /**
+             * @notice A function
              * @param param1 Test
              * @param param2 Test2
              */
-            function foo(uint256 param1, bytes calldata param2) internal { }
+            function foo(uint256 param1, bytes calldata param2) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
@@ -227,9 +246,10 @@ mod tests {
     #[test]
     fn test_function_duplicate() {
         let contents = "contract Test {
+            /// @notice A function
             /// @param param1 The first
             /// @param param1 The first again
-            function foo(uint256 param1) internal { }
+            function foo(uint256 param1) public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -242,9 +262,10 @@ mod tests {
     #[test]
     fn test_function_duplicate_return() {
         let contents = "contract Test {
+            /// @notice A function
             /// @return out The output
             /// @return out The output again
-            function foo() internal returns (uint256 out) { }
+            function foo() public returns (uint256 out) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -257,9 +278,10 @@ mod tests {
     #[test]
     fn test_function_duplicate_unnamed_return() {
         let contents = "contract Test {
+            /// @notice A function
             /// @return The output
             /// @return The output again
-            function foo() internal returns (uint256) { }
+            function foo() public returns (uint256) { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
@@ -269,10 +291,11 @@ mod tests {
     #[test]
     fn test_function_no_params() {
         let contents = "contract Test {
-            function foo() internal { }
+            function foo() public { }
         }";
         let res = parse_file(contents).validate(&OPTIONS);
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "@notice is missing");
     }
 
     #[test]
@@ -327,43 +350,5 @@ mod tests {
         let res = parse_file(contents).validate(&ValidationOptions::default());
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
-    }
-
-    #[test]
-    fn test_function_enforce() {
-        let contents = "contract Test {
-            function foo() internal { }
-        }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Function])
-                .build(),
-        );
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
-
-        let contents = "contract Test {
-            /// @dev Some dev
-            function foo() internal { }
-        }";
-        let res = parse_file(contents).validate(
-            &ValidationOptions::builder()
-                .enforce(vec![ItemType::Function])
-                .build(),
-        );
-        assert!(res.diags.is_empty(), "{:#?}", res.diags);
-    }
-
-    #[test]
-    fn test_function_internal() {
-        let contents = "contract Test {
-            // @notice
-            function _viewInternal() internal view returns (uint256) {
-                return 1;
-            }
-        }";
-        let res = parse_file(contents).validate(&OPTIONS);
-        assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "missing NatSpec");
     }
 }

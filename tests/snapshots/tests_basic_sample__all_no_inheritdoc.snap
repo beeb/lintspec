@@ -12,6 +12,11 @@ struct BasicSample.TestStruct
   @param someAddress is missing
   @param someNumber is missing
 
+./test-data/BasicSample.sol:16:1
+enum BasicSample.TestEnum
+  @param First is missing
+  @param Second is missing
+
 ./test-data/BasicSample.sol:22:1
 error BasicSample.BasicSample_SomeError
   @param _param1 is missing
@@ -26,6 +31,7 @@ variable BasicSample.somePublicNumber
 
 ./test-data/BasicSample.sol:44:17
 constructor BasicSample.constructor
+  @notice is missing
   @param _randomFlag is missing
 
 ./test-data/BasicSample.sol:54:5

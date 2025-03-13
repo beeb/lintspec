@@ -1,16 +1,363 @@
 //! Tool configuration parsing and validation
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand};
+use derive_more::IsVariant;
 use figment::{
-    providers::{Env, Format as _, Serialized, Toml},
-    Figment,
+    providers::{Env, Format as _, Toml},
+    value::{Dict, Map},
+    Figment, Metadata, Profile, Provider,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 use crate::definitions::ItemType;
+
+/// Macro to implement the rule overrides from the CLI
+macro_rules! cli_rule_override {
+    ($config:expr, $items:expr, param, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::Constructor => $config.constructors.param = $req,
+                ItemType::Enum => $config.enums.param = $req,
+                ItemType::Error => $config.errors.param = $req,
+                ItemType::Event => $config.events.param = $req,
+                ItemType::PrivateFunction => $config.functions.private.param = $req,
+                ItemType::InternalFunction => $config.functions.internal.param = $req,
+                ItemType::PublicFunction => $config.functions.public.param = $req,
+                ItemType::ExternalFunction => $config.functions.external.param = $req,
+                ItemType::Modifier => $config.modifiers.param = $req,
+                ItemType::Struct => $config.structs.param = $req,
+                _ => {}
+            }
+        }
+    };
+    ($config:expr, $items:expr, return, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::PrivateFunction => $config.functions.private.returns = $req,
+                ItemType::InternalFunction => $config.functions.internal.returns = $req,
+                ItemType::PublicFunction => $config.functions.public.returns = $req,
+                ItemType::ExternalFunction => $config.functions.external.returns = $req,
+                ItemType::PublicVariable => $config.variables.public.returns = $req,
+                _ => {}
+            }
+        }
+    };
+    ($config:expr, $items:expr, $tag:ident, $req:expr) => {
+        for item in $items {
+            match item {
+                ItemType::Constructor => $config.constructors.$tag = $req,
+                ItemType::Enum => $config.enums.$tag = $req,
+                ItemType::Error => $config.errors.$tag = $req,
+                ItemType::Event => $config.events.$tag = $req,
+                ItemType::PrivateFunction => $config.functions.private.$tag = $req,
+                ItemType::InternalFunction => $config.functions.internal.$tag = $req,
+                ItemType::PublicFunction => $config.functions.public.$tag = $req,
+                ItemType::ExternalFunction => $config.functions.external.$tag = $req,
+                ItemType::Modifier => $config.modifiers.$tag = $req,
+                ItemType::Struct => $config.structs.$tag = $req,
+                ItemType::PrivateVariable => $config.variables.private.$tag = $req,
+                ItemType::InternalVariable => $config.variables.internal.$tag = $req,
+                ItemType::PublicVariable => $config.variables.public.$tag = $req,
+                ItemType::ParsingError => {}
+            }
+        }
+    };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, IsVariant)]
+#[serde(rename_all = "lowercase")]
+pub enum Req {
+    #[default]
+    Ignored,
+    Required,
+    Forbidden,
+}
+
+impl Req {
+    #[must_use]
+    pub fn is_required_or_ignored(&self) -> bool {
+        match self {
+            Req::Required | Req::Ignored => true,
+            Req::Forbidden => false,
+        }
+    }
+
+    #[must_use]
+    pub fn is_forbidden_or_ignored(&self) -> bool {
+        match self {
+            Req::Forbidden | Req::Ignored => true,
+            Req::Required => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct FunctionRules {
+    #[builder(default = Req::Required)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+    #[builder(default = Req::Required)]
+    pub param: Req,
+    #[serde(rename = "return")]
+    #[builder(default = Req::Required)]
+    pub returns: Req,
+}
+
+impl Default for FunctionRules {
+    fn default() -> Self {
+        Self {
+            notice: Req::Required,
+            dev: Req::default(),
+            param: Req::Required,
+            returns: Req::Required,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct FunctionConfig {
+    #[builder(default)]
+    pub private: FunctionRules,
+    #[builder(default)]
+    pub internal: FunctionRules,
+    #[builder(default)]
+    pub public: FunctionRules,
+    #[builder(default)]
+    pub external: FunctionRules,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct WithReturnsRules {
+    #[builder(default = Req::Required)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+    #[serde(rename = "return")]
+    #[builder(default = Req::Required)]
+    pub returns: Req,
+}
+
+impl Default for WithReturnsRules {
+    fn default() -> Self {
+        Self {
+            notice: Req::Required,
+            dev: Req::default(),
+            returns: Req::Required,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct NoticeDevRules {
+    #[builder(default = Req::Required)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+}
+
+impl Default for NoticeDevRules {
+    fn default() -> Self {
+        Self {
+            notice: Req::Required,
+            dev: Req::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct VariableConfig {
+    #[builder(default)]
+    pub private: NoticeDevRules,
+    #[builder(default)]
+    pub internal: NoticeDevRules,
+    #[builder(default)]
+    pub public: WithReturnsRules,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct WithParamsRules {
+    #[builder(default = Req::Required)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+    #[builder(default)]
+    pub param: Req,
+}
+
+impl Default for WithParamsRules {
+    fn default() -> Self {
+        Self {
+            notice: Req::Required,
+            dev: Req::default(),
+            param: Req::default(),
+        }
+    }
+}
+
+impl WithParamsRules {
+    #[must_use]
+    pub fn required() -> Self {
+        Self {
+            param: Req::Required,
+            ..Default::default()
+        }
+    }
+
+    #[must_use]
+    pub fn default_constructor() -> Self {
+        Self {
+            notice: Req::Ignored,
+            param: Req::Required,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct BaseConfig {
+    #[builder(default)]
+    pub paths: Vec<PathBuf>,
+    #[builder(default)]
+    pub exclude: Vec<PathBuf>,
+    #[builder(default = true)]
+    pub inheritdoc: bool,
+    #[builder(default)]
+    pub notice_or_dev: bool,
+}
+
+impl Default for BaseConfig {
+    fn default() -> Self {
+        Self {
+            paths: Vec::default(),
+            exclude: Vec::default(),
+            inheritdoc: true,
+            notice_or_dev: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct OutputConfig {
+    pub out: Option<PathBuf>,
+    #[builder(default)]
+    pub json: bool,
+    #[builder(default)]
+    pub compact: bool,
+    #[builder(default)]
+    pub sort: bool,
+}
+
+/// The parsed and validated config for the tool
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[skip_serializing_none]
+#[non_exhaustive]
+pub struct Config {
+    #[builder(default)]
+    pub lintspec: BaseConfig,
+
+    #[builder(default)]
+    pub output: OutputConfig,
+
+    #[serde(rename = "constructor")]
+    #[builder(default = WithParamsRules::default_constructor())]
+    pub constructors: WithParamsRules,
+
+    #[serde(rename = "enum")]
+    #[builder(default)]
+    pub enums: WithParamsRules,
+
+    #[serde(rename = "error")]
+    #[builder(default = WithParamsRules::required())]
+    pub errors: WithParamsRules,
+
+    #[serde(rename = "event")]
+    #[builder(default = WithParamsRules::required())]
+    pub events: WithParamsRules,
+
+    #[serde(rename = "function")]
+    #[builder(default)]
+    pub functions: FunctionConfig,
+
+    #[serde(rename = "modifier")]
+    #[builder(default = WithParamsRules::required())]
+    pub modifiers: WithParamsRules,
+
+    #[serde(rename = "struct")]
+    #[builder(default)]
+    pub structs: WithParamsRules,
+
+    #[serde(rename = "variable")]
+    #[builder(default)]
+    pub variables: VariableConfig,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            lintspec: BaseConfig::default(),
+            output: OutputConfig::default(),
+            constructors: WithParamsRules::default_constructor(),
+            enums: WithParamsRules::default(),
+            errors: WithParamsRules::required(),
+            events: WithParamsRules::required(),
+            functions: FunctionConfig::default(),
+            modifiers: WithParamsRules::required(),
+            structs: WithParamsRules::default(),
+            variables: VariableConfig::default(),
+        }
+    }
+}
+
+impl Config {
+    pub fn from(provider: impl Provider) -> Result<Config, figment::Error> {
+        Figment::from(provider).extract()
+    }
+
+    #[must_use]
+    pub fn figment() -> Figment {
+        Figment::from(Config::default())
+            .admerge(Toml::file(".lintspec.toml"))
+            .admerge(Env::prefixed("LS_").split("_").map(|k| {
+                // special case for parameters with an underscore in the name
+                if k == "LINTSPEC.NOTICE.OR.DEV" {
+                    "LINTSPEC.NOTICE_OR_DEV".into()
+                } else {
+                    k.into()
+                }
+            }))
+    }
+}
+
+impl Provider for Config {
+    fn metadata(&self) -> figment::Metadata {
+        Metadata::named("LintSpec Config")
+    }
+
+    fn data(&self) -> Result<Map<Profile, Dict>, figment::Error> {
+        figment::providers::Serialized::defaults(Config::default()).data()
+    }
+}
+
+#[derive(Subcommand, Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Commands {
+    /// Create a `.lintspec.toml` config file with default values
+    Init,
+}
 
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
@@ -35,45 +382,95 @@ pub struct Args {
     ///
     /// Functions which override a parent function also must have `@inheritdoc`.
     ///
-    /// Can be set with `--inheritdoc` (means true), `--inheritdoc true` or `--inheritdoc false`.
+    /// Can be set with `--inheritdoc` (means true), `--inheritdoc=true` or `--inheritdoc=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub inheritdoc: Option<bool>,
 
-    /// Enforce that constructors have NatSpec
+    /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules.
     ///
-    /// Can be set with `--constructor` (means true), `--constructor true` or `--constructor false`.
+    /// If either `dev = "required"` or `notice = "required"` (or both), this allows to enforce that at least one
+    /// `@dev` or one `@notice` is present, but not dictate which one it should be.
+    /// This flag has no effect if either `dev = "forbidden"` or `notice = "forbidden"`.
+    ///
+    /// Can be set with `--notice-or-dev` (means true), `--notice-or-dev=true` or `--notice-or-dev=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub constructor: Option<bool>,
+    pub notice_or_dev: Option<bool>,
 
-    /// Enforce that structs have `@param` for each member
-    ///
-    /// Can be set with `--struct_params` (means true), `--struct_params true` or `--struct_params false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub struct_params: Option<bool>,
+    /// Ignore `@notice` for these items (can be used more than once)
+    #[arg(long)]
+    pub notice_ignored: Vec<ItemType>,
 
-    /// Enforce that enums have `@param` for each variant
+    /// Enforce `@notice` for these items (can be used more than once)
     ///
-    /// Can be set with `--enum_params` (means true), `--enum_params true` or `--enum_params false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub enum_params: Option<bool>,
+    /// This takes precedence over `--notice-ignored`.
+    #[arg(long)]
+    pub notice_required: Vec<ItemType>,
 
-    /// Enforce NatSpec on items even if they don't have params/returns/members
-    /// (can be used more than once)
+    /// Forbid `@notice` for these items (can be used more than once)
     ///
-    /// To enforce for all types, you can use `--enforce-all`.
-    #[arg(short = 'f', long, name = "TYPE")]
-    pub enforce: Vec<ItemType>,
+    /// This takes precedence over `--notice-required`.
+    #[arg(long)]
+    pub notice_forbidden: Vec<ItemType>,
 
-    /// Enforce NatSpec for all item types, even if they don't have params/returns/members
+    /// Ignore `@dev` for these items (can be used more than once)
+    #[arg(long)]
+    pub dev_ignored: Vec<ItemType>,
+
+    /// Enforce `@dev` for these items (can be used more than once)
     ///
-    /// Setting this option overrides any previously set `--enforce` arguments.
-    /// Can be set with `--enforce-all` (means true), `--enforce-all true` or `--enforce-all false`.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
-    pub enforce_all: Option<bool>,
+    /// This takes precedence over `--dev-ignored`.
+    #[arg(long)]
+    pub dev_required: Vec<ItemType>,
+
+    /// Forbid `@dev` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--dev-required`.
+    #[arg(long)]
+    pub dev_forbidden: Vec<ItemType>,
+
+    /// Ignore `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    #[arg(long)]
+    pub param_ignored: Vec<ItemType>,
+
+    /// Enforce `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    /// This takes precedence over `--param-ignored`.
+    #[arg(long)]
+    pub param_required: Vec<ItemType>,
+
+    /// Forbid `@param` for these items (can be used more than once)
+    ///
+    /// Note that this setting is ignored for `*-variable`.
+    /// This takes precedence over `--param-required`.
+    #[arg(long)]
+    pub param_forbidden: Vec<ItemType>,
+
+    /// Ignore `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    #[arg(long)]
+    pub return_ignored: Vec<ItemType>,
+
+    /// Enforce `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    /// This takes precedence over `--return-ignored`.
+    #[arg(long)]
+    pub return_required: Vec<ItemType>,
+
+    /// Forbid `@return` for these items (can be used more than once)
+    ///
+    /// Note that this setting is only applicable for `*-function`, `public-variable`.
+    /// This takes precedence over `--return-required`.
+    #[arg(long)]
+    pub return_forbidden: Vec<ItemType>,
 
     /// Output diagnostics in JSON format
     ///
-    /// Can be set with `--json` (means true), `--json true` or `--json false`.
+    /// Can be set with `--json` (means true), `--json=true` or `--json=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub json: Option<bool>,
 
@@ -81,135 +478,100 @@ pub struct Args {
     ///
     /// If combined with `--json`, the output is minified.
     ///
-    /// Can be set with `--compact` (means true), `--compact true` or `--compact false`.
+    /// Can be set with `--compact` (means true), `--compact=true` or `--compact=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub compact: Option<bool>,
 
     /// Sort the results by file path
     ///
-    /// Can be set with `--sort` (means true), `--sort true` or `--sort false`.
+    /// Can be set with `--sort` (means true), `--sort=true` or `--sort=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub sort: Option<bool>,
-}
 
-/// The parsed and validated config for the tool
-#[derive(Debug, Clone, Serialize, Deserialize, bon::Builder)]
-#[non_exhaustive]
-#[builder(on(PathBuf, into))]
-#[allow(clippy::struct_excessive_bools)]
-pub struct Config {
-    /// The paths to search for Solidity files
-    pub paths: Vec<PathBuf>,
-
-    /// Some paths to ignore while searching for Solidity files
-    pub exclude: Vec<PathBuf>,
-
-    /// The file where to output the diagnostics (if `None`, then stderr is used)
-    pub out: Option<PathBuf>,
-
-    /// Whether to enforce the use of `@inheritdoc` on external/public/overridden items
-    pub inheritdoc: bool,
-
-    /// Whether to enforce documentation of constructors
-    pub constructor: bool,
-
-    /// Whether to enforce documentation of struct members
-    pub struct_params: bool,
-
-    /// Whether to enforce documentation of enum variants
-    pub enum_params: bool,
-
-    /// Whether to enforce documentation of items which have no params/returns/members
-    pub enforce: Vec<ItemType>,
-
-    /// Output JSON diagnostics
-    pub json: bool,
-
-    /// Output compact format (minified JSON or simple text output)
-    pub compact: bool,
-
-    /// Sort diagnostics by file path
-    pub sort: bool,
-}
-
-impl From<Args> for Config {
-    fn from(value: Args) -> Self {
-        Self {
-            paths: value.paths,
-            exclude: value.exclude,
-            out: value.out,
-            inheritdoc: value.inheritdoc.unwrap_or(true),
-            constructor: value.constructor.unwrap_or_default(),
-            struct_params: value.struct_params.unwrap_or_default(),
-            enum_params: value.enum_params.unwrap_or_default(),
-            enforce: value.enforce,
-            json: value.json.unwrap_or_default(),
-            compact: value.compact.unwrap_or_default(),
-            sort: value.sort.unwrap_or_default(),
-        }
-    }
+    #[command(subcommand)]
+    pub command: Option<Commands>,
 }
 
 /// Read the configuration from config file, environment variables and CLI arguments
-pub fn read_config() -> Result<Config> {
-    let args = Args::parse();
-    let mut temp: Args = Figment::new()
-        .admerge(Serialized::defaults(Args {
-            paths: args.paths,
-            exclude: args.exclude,
-            out: None,
-            inheritdoc: None,
-            constructor: None,
-            struct_params: None,
-            enum_params: None,
-            enforce: args.enforce,
-            enforce_all: None,
-            json: None,
-            compact: None,
-            sort: None,
-        }))
-        .admerge(Toml::file(".lintspec.toml"))
-        .admerge(Env::prefixed("LINTSPEC_"))
-        .extract()?;
+pub fn read_config(args: Args) -> Result<Config> {
+    let mut config: Config = Config::figment().extract()?;
+    // paths
+    config.lintspec.paths.extend(args.paths);
+    config.lintspec.exclude.extend(args.exclude);
+    // output
     if let Some(out) = args.out {
-        temp.out = Some(out);
-    }
-    if let Some(inheritdoc) = args.inheritdoc {
-        temp.inheritdoc = Some(inheritdoc);
-    }
-    if let Some(constructor) = args.constructor {
-        temp.constructor = Some(constructor);
-    }
-    if let Some(struct_params) = args.struct_params {
-        temp.struct_params = Some(struct_params);
-    }
-    if let Some(enum_params) = args.enum_params {
-        temp.enum_params = Some(enum_params);
-    }
-    // first look if enforce_all was set in a config file or env variable
-    if let Some(enforce_all) = temp.enforce_all {
-        if enforce_all {
-            temp.enforce = ItemType::value_variants().into();
-        } else {
-            temp.enforce = vec![];
-        }
-    }
-    // then look if it was set in the CLI args
-    if let Some(enforce_all) = args.enforce_all {
-        if enforce_all {
-            temp.enforce = ItemType::value_variants().into();
-        } else {
-            temp.enforce = vec![];
-        }
+        config.output.out = Some(out);
     }
     if let Some(json) = args.json {
-        temp.json = Some(json);
+        config.output.json = json;
     }
     if let Some(compact) = args.compact {
-        temp.compact = Some(compact);
+        config.output.compact = compact;
     }
     if let Some(sort) = args.sort {
-        temp.sort = Some(sort);
+        config.output.sort = sort;
     }
-    Ok(temp.into())
+    // natspec config
+    if let Some(inheritdoc) = args.inheritdoc {
+        config.lintspec.inheritdoc = inheritdoc;
+    }
+    if let Some(notice_or_dev) = args.notice_or_dev {
+        config.lintspec.notice_or_dev = notice_or_dev;
+    }
+
+    cli_rule_override!(config, args.notice_ignored, notice, Req::Ignored);
+    cli_rule_override!(config, args.notice_required, notice, Req::Required);
+    cli_rule_override!(config, args.notice_forbidden, notice, Req::Forbidden);
+    cli_rule_override!(config, args.dev_ignored, dev, Req::Ignored);
+    cli_rule_override!(config, args.dev_required, dev, Req::Required);
+    cli_rule_override!(config, args.dev_forbidden, dev, Req::Forbidden);
+    cli_rule_override!(config, args.param_ignored, param, Req::Ignored);
+    cli_rule_override!(config, args.param_required, param, Req::Required);
+    cli_rule_override!(config, args.param_forbidden, param, Req::Forbidden);
+    cli_rule_override!(config, args.return_ignored, return, Req::Ignored);
+    cli_rule_override!(config, args.return_required, return, Req::Required);
+    cli_rule_override!(config, args.return_forbidden, return, Req::Forbidden);
+
+    Ok(config)
+}
+
+/// Write the default configuration to a `.lintspec.toml` file in the current directory.
+///
+/// If a file already exists with the same name, it gets renamed to `.lintspec.bck.toml` before writing the default
+/// config.
+pub fn write_default_config() -> Result<PathBuf> {
+    let config = Config::default();
+    let path = PathBuf::from(".lintspec.toml");
+    if path.exists() {
+        fs::rename(&path, ".lintspec.bck.toml")?;
+        println!("Existing `.lintspec.toml` file was renamed to `.lintpsec.bck.toml`");
+    }
+    fs::write(&path, toml::to_string(&config)?)?;
+    Ok(dunce::canonicalize(path)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_default_builder() {
+        assert_eq!(FunctionRules::default(), FunctionRules::builder().build());
+        assert_eq!(FunctionConfig::default(), FunctionConfig::builder().build());
+        assert_eq!(
+            WithReturnsRules::default(),
+            WithReturnsRules::builder().build()
+        );
+        assert_eq!(NoticeDevRules::default(), NoticeDevRules::builder().build());
+        assert_eq!(VariableConfig::default(), VariableConfig::builder().build());
+        assert_eq!(
+            WithParamsRules::default(),
+            WithParamsRules::builder().build()
+        );
+        assert_eq!(BaseConfig::default(), BaseConfig::builder().build());
+        assert_eq!(OutputConfig::default(), OutputConfig::builder().build());
+        assert_eq!(Config::default(), Config::builder().build());
+    }
 }
