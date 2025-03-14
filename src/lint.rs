@@ -146,29 +146,49 @@ pub struct ValidationOptions {
     /// Whether overridden, public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     #[builder(default)]
     pub notice_or_dev: bool,
+
+    /// Validation options for constructors
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
+
+    /// Validation options for enums
     #[builder(default)]
     pub enums: WithParamsRules,
+
+    /// Validation options for errors
     #[builder(default = WithParamsRules::required())]
     pub errors: WithParamsRules,
+
+    /// Validation options for events
     #[builder(default = WithParamsRules::required())]
     pub events: WithParamsRules,
+
+    /// Validation options for functions
     #[builder(default)]
     pub functions: FunctionConfig,
+
+    /// Validation options for modifiers
     #[builder(default = WithParamsRules::required())]
     pub modifiers: WithParamsRules,
+
+    /// Validation options for structs
     #[builder(default)]
     pub structs: WithParamsRules,
+
+    /// Validation options for state variables
     #[builder(default)]
     pub variables: VariableConfig,
 }
 
 impl Default for ValidationOptions {
     /// Get default validation options
+    ///
+    /// It's important that these defaults match the default values in the builder and in the [`Config`] struct
+    /// (there is a test for this).
     fn default() -> Self {
         Self {
             inheritdoc: true,
@@ -185,6 +205,7 @@ impl Default for ValidationOptions {
     }
 }
 
+/// Create a [`ValidationOptions`] from a [`Config`] reference
 impl From<&Config> for ValidationOptions {
     fn from(value: &Config) -> Self {
         Self {
@@ -210,6 +231,9 @@ pub trait Validate {
 
 /// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
+///
+/// If the rule is [`Req::Forbidden`], it checks if `@param` is present in the [`NatSpec`] and generates a diagnostic
+/// if it is.
 #[must_use]
 pub fn check_params(
     natspec: &Option<NatSpec>,
@@ -262,6 +286,9 @@ pub fn check_params(
 
 /// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
 /// diagnostic for each missing one or if there are more than 1 entry per param.
+///
+/// If the rule is [`Req::Forbidden`], it checks if `@return` is present in the [`NatSpec`] and generates a diagnostic
+/// if it is.
 #[allow(clippy::cast_possible_wrap)]
 #[must_use]
 pub fn check_returns(
@@ -340,6 +367,8 @@ pub fn check_returns(
     res
 }
 
+/// Check if the `@notice` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
 #[must_use]
 pub fn check_notice(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
@@ -360,6 +389,8 @@ pub fn check_notice(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Op
     }
 }
 
+/// Check if the `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
 #[must_use]
 pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
     // add default `NatSpec` to avoid duplicate match arms for None vs Some with no dev
@@ -380,6 +411,14 @@ pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Optio
     }
 }
 
+/// Check if the `@notice` or `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and
+/// generate diagnostics if they don't.
+///
+/// This helper function should be used to honor the `notice_or_dev` option in the [`Config`]. If this option is
+/// enabled and one or both are required, it will check if either `@notice` or `@dev` is present in the `NatSpec`.
+///
+/// It will generate a diagnostic if neither is present. If either is forbidden, or the `notice_or_dev` option is
+/// disabled, it will check the `@notice` and `@dev` separately according to their respective rules.
 #[must_use]
 pub fn check_notice_and_dev(
     natspec: &Option<NatSpec>,
