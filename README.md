@@ -188,25 +188,21 @@ them for inspiring this project!
 ### Benchmark
 
 On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
-[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec is about 214x faster, or
-0.46% of the execution time:
+[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.4 is about 200x
+faster, or 0.5% of the execution time:
 
 ```text
 Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
-  Time (mean ± σ):     12.484 s ±  0.157 s    [User: 13.581 s, System: 0.594 s]
-  Range (min … max):   12.288 s … 12.817 s    10 runs
+  Time (mean ± σ):     13.034 s ±  0.138 s    [User: 13.349 s, System: 0.560 s]
+  Range (min … max):   12.810 s … 13.291 s    10 runs
 
-  Warning: Ignoring non-zero exit code.
-
-Benchmark 2: lintspec src --compact=true
-  Time (mean ± σ):      58.2 ms ±   1.3 ms    [User: 264.0 ms, System: 67.9 ms]
-  Range (min … max):    53.9 ms …  61.3 ms    50 runs
-
-  Warning: Ignoring non-zero exit code.
+Benchmark 2: lintspec src --compact --param-required struct
+  Time (mean ± σ):      62.9 ms ±   2.4 ms    [User: 261.9 ms, System: 69.6 ms]
+  Range (min … max):    55.1 ms …  66.5 ms    47 runs
 
 Summary
-  lintspec src --compact=true ran
-  214.55 ± 5.61 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
+  lintspec src --compact --param-required struct ran
+  207.34 ± 8.28 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
 ```
 
 ### Features
