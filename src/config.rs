@@ -67,16 +67,23 @@ macro_rules! cli_rule_override {
     };
 }
 
+/// The requirement for a specific tag in the natspec comment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, IsVariant)]
 #[serde(rename_all = "lowercase")]
 pub enum Req {
+    /// The tag is ignored, can be present or not
     #[default]
     Ignored,
+
+    /// The tag is required, must be present
     Required,
+
+    /// The tag is forbidden, must not be present
     Forbidden,
 }
 
 impl Req {
+    /// Helper function to check if the tag is required or ignored (not forbidden)
     #[must_use]
     pub fn is_required_or_ignored(&self) -> bool {
         match self {
@@ -85,6 +92,7 @@ impl Req {
         }
     }
 
+    /// Helper function to check if the tag is forbidden or ignored (not required)
     #[must_use]
     pub fn is_forbidden_or_ignored(&self) -> bool {
         match self {
@@ -94,15 +102,23 @@ impl Req {
     }
 }
 
+/// Validation rules for a function natspec comment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionRules {
+    /// Requirement for the `@notice` tag
     #[builder(default = Req::Required)]
     pub notice: Req,
+
+    /// Requirement for the `@dev` tag
     #[builder(default)]
     pub dev: Req,
+
+    /// Requirement for the `@param` tags
     #[builder(default = Req::Required)]
     pub param: Req,
+
+    /// Requirement for the `@return` tags
     #[serde(rename = "return")]
     #[builder(default = Req::Required)]
     pub returns: Req,
@@ -119,26 +135,40 @@ impl Default for FunctionRules {
     }
 }
 
+/// Validation rules for each function visibility (private, internal, public, external)
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct FunctionConfig {
+    /// Rules for private functions
     #[builder(default)]
     pub private: FunctionRules,
+
+    /// Rules for internal functions
     #[builder(default)]
     pub internal: FunctionRules,
+
+    /// Rules for public functions
     #[builder(default)]
     pub public: FunctionRules,
+
+    /// Rules for external functions
     #[builder(default)]
     pub external: FunctionRules,
 }
 
+/// Validation rules for items which have return values but no params (public state variables)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct WithReturnsRules {
+    /// Requirement for the `@notice` tag
     #[builder(default = Req::Required)]
     pub notice: Req,
+
+    /// Requirement for the `@dev` tag
     #[builder(default)]
     pub dev: Req,
+
+    /// Requirement for the `@param` tags
     #[serde(rename = "return")]
     #[builder(default = Req::Required)]
     pub returns: Req,
@@ -154,6 +184,7 @@ impl Default for WithReturnsRules {
     }
 }
 
+/// Validation rules for items which have no return values and no params (private and internal state variables)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct NoticeDevRules {
@@ -172,6 +203,7 @@ impl Default for NoticeDevRules {
     }
 }
 
+/// Validation rules for each state variable visibility (private, internal, public)
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct VariableConfig {
@@ -183,6 +215,10 @@ pub struct VariableConfig {
     pub public: WithReturnsRules,
 }
 
+/// Validation rules for items which have params but no returns (constructor, enum, error, event, modifier, struct)
+///
+/// The default value does not enforce that `@param` is present, because it's not part of the official spec for enums
+/// and structs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
 pub struct WithParamsRules {
@@ -205,6 +241,7 @@ impl Default for WithParamsRules {
 }
 
 impl WithParamsRules {
+    /// Helper function to get a set of rules which enforces params (default for error, event, modifier)
     #[must_use]
     pub fn required() -> Self {
         Self {
@@ -213,6 +250,7 @@ impl WithParamsRules {
         }
     }
 
+    /// Helper function to get a default set of rules for constructors (`@notice` is not enforced, but `@param` is)
     #[must_use]
     pub fn default_constructor() -> Self {
         Self {
@@ -223,16 +261,24 @@ impl WithParamsRules {
     }
 }
 
+/// General config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct BaseConfig {
+    /// Paths to files and folders to analyze
     #[builder(default)]
     pub paths: Vec<PathBuf>,
+
+    /// Paths to files and folders to exclude
     #[builder(default)]
     pub exclude: Vec<PathBuf>,
+
+    /// Enforce that all public and external items have `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+
+    /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
     #[builder(default)]
     pub notice_or_dev: bool,
 }
@@ -248,15 +294,23 @@ impl Default for BaseConfig {
     }
 }
 
+/// Output config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct OutputConfig {
+    /// Path to a file to write the output to (instead of stderr)
     pub out: Option<PathBuf>,
+
+    /// Output diagnostics in JSON format
     #[builder(default)]
     pub json: bool,
+
+    /// Compact output (minified JSON or compact text representation)
     #[builder(default)]
     pub compact: bool,
+
+    /// Sort the results by file path
     #[builder(default)]
     pub sort: bool,
 }
@@ -266,40 +320,50 @@ pub struct OutputConfig {
 #[skip_serializing_none]
 #[non_exhaustive]
 pub struct Config {
+    /// General config for the tool
     #[builder(default)]
     pub lintspec: BaseConfig,
 
+    /// Output config for the tool
     #[builder(default)]
     pub output: OutputConfig,
 
+    /// Validation rules for constructors
     #[serde(rename = "constructor")]
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
 
+    /// Validation rules for enums
     #[serde(rename = "enum")]
     #[builder(default)]
     pub enums: WithParamsRules,
 
+    /// Validation rules for errors
     #[serde(rename = "error")]
     #[builder(default = WithParamsRules::required())]
     pub errors: WithParamsRules,
 
+    /// Validation rules for events
     #[serde(rename = "event")]
     #[builder(default = WithParamsRules::required())]
     pub events: WithParamsRules,
 
+    /// Validation rules for functions
     #[serde(rename = "function")]
     #[builder(default)]
     pub functions: FunctionConfig,
 
+    /// Validation rules for modifiers
     #[serde(rename = "modifier")]
     #[builder(default = WithParamsRules::required())]
     pub modifiers: WithParamsRules,
 
+    /// Validation rules for structs
     #[serde(rename = "struct")]
     #[builder(default)]
     pub structs: WithParamsRules,
 
+    /// Validation rules for state variables
     #[serde(rename = "variable")]
     #[builder(default)]
     pub variables: VariableConfig,
@@ -327,6 +391,7 @@ impl Config {
         Figment::from(provider).extract()
     }
 
+    /// Create a Figment which reads the config from the default file and environment variables
     #[must_use]
     pub fn figment() -> Figment {
         Figment::from(Config::default())
@@ -342,6 +407,7 @@ impl Config {
     }
 }
 
+/// Implement [`Provider`] for composability
 impl Provider for Config {
     fn metadata(&self) -> figment::Metadata {
         Metadata::named("LintSpec Config")
@@ -492,7 +558,7 @@ pub struct Args {
     pub command: Option<Commands>,
 }
 
-/// Read the configuration from config file, environment variables and CLI arguments
+/// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
 pub fn read_config(args: Args) -> Result<Config> {
     let mut config: Config = Config::figment().extract()?;
     // paths

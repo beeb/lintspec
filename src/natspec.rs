@@ -153,7 +153,7 @@ pub enum NatSpecKind {
     Param {
         name: String,
     },
-    /// For return items, [`parse_comment`] does not include the return name automatically. The [`NatSpecItem::populate_return`] must be called to retrieve the name, if any.
+    /// For return items, [`parse_comment`] does not include the return name automatically. The [`NatSpecItem::populate_return`] function must be called to retrieve the name, if any.
     Return {
         name: Option<String>,
     },
@@ -176,12 +176,17 @@ pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
     alt((single_line_comment, multiline_comment, empty_multiline)).parse_next(input)
 }
 
+/// Parse an identifier (contiguous non-whitespace characters)
 fn ident(input: &mut &str) -> Result<String> {
     take_till(1.., |c: char| c.is_whitespace())
         .map(|ident: &str| ident.to_owned())
         .parse_next(input)
 }
 
+/// Parse a [`NatSpecKind`] (tag followed by an optional identifier)"
+///
+/// For `@return`, the identifier, if present, is not included in the `NatSpecItem` for now. A post-processing
+/// step ([`NatSpecItem::populate_return`]) is needed to extract the name.
 fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
     alt((
         "@title".map(|_| NatSpecKind::Title),
@@ -207,12 +212,14 @@ fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
     .parse_next(input)
 }
 
+/// Parse the end of a multiline comment (one or more `*` followed by `/`)
 #[allow(clippy::unnecessary_wraps)]
 fn end_of_comment(input: &mut &str) -> Result<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())
 }
 
+/// Parse a single `NatSpec` item (line) in a multiline comment
 fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
@@ -225,6 +232,7 @@ fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
     .parse_next(input)
 }
 
+/// Parse a multiline `NatSpec` comment
 fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         (
@@ -240,6 +248,7 @@ fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
     .parse_next(input)
 }
 
+/// Parse an empty multiline comment (without any text in the body)
 fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
     let _ = (
         '/',
@@ -252,6 +261,7 @@ fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
     Ok(NatSpec::default())
 }
 
+/// Parse a single line comment `NatSpec` item
 fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
@@ -262,6 +272,7 @@ fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
     .parse_next(input)
 }
 
+/// Parse a single line `NatSpec` comment
 fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
     let item = delimited(
         repeat::<_, _, (), _, _>(3.., '/'),
