@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.1] - 2025-03-19
+
+### Changed
+
+
+-  update readme benchmark ([#59](https://github.com/beeb/lintspec/pull/59)) - ([a27384a](https://github.com/beeb/lintspec/commit/a27384a9dc280940a6987b6266f03a117747cee1))
+-  contributing guide ([#60](https://github.com/beeb/lintspec/pull/60)) - ([93e52d7](https://github.com/beeb/lintspec/commit/93e52d7379c7aa7990af478b45facca6b2bfc863))
+
+### Documentation
+
+
+-  add missing documentation ([#57](https://github.com/beeb/lintspec/pull/57)) - ([013d524](https://github.com/beeb/lintspec/commit/013d5244c3719be81330393f1d4ec6dc3e8a02ab))
+
+### Fixed
+
+
+-  undesirable print-out of config ([#62](https://github.com/beeb/lintspec/pull/62)) - ([d09bc4e](https://github.com/beeb/lintspec/commit/d09bc4e9841cc1bbf56596303de72174bc023e85))
+
+
+
+
+**Full Changelog**: [0.4.0...0.4.1](https://github.com/beeb/lintspec/compare/v0.4.0...v0.4.1)
+
 ## [0.4.0] - 2025-03-13
 
 ### Added
