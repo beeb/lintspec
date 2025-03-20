@@ -7,7 +7,7 @@ use lintspec::{
     error::Error,
     files::find_sol_files,
     lint::{lint, ValidationOptions},
-    parser::slang::SlangParser,
+    parser::{slang::SlangParser, solar::SolarParser},
     print_reports,
 };
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
@@ -23,6 +23,7 @@ fn main() -> Result<()> {
         println!("Exiting");
         return Ok(());
     }
+
     let config = read_config(args)?;
 
     // identify Solidity files to parse
@@ -40,9 +41,15 @@ fn main() -> Result<()> {
     let diagnostics = paths
         .par_iter()
         .filter_map(|p| {
-            lint::<SlangParser>(p, &options, !config.output.compact && !config.output.json)
-                .map_err(Into::into)
-                .transpose()
+            if config.lintspec.use_solar {
+                lint::<SolarParser>(p, &options, !config.output.compact && !config.output.json)
+                    .map_err(Into::into)
+                    .transpose()
+            } else {
+                lint::<SlangParser>(p, &options, !config.output.compact && !config.output.json)
+                    .map_err(Into::into)
+                    .transpose()
+            }
         })
         .collect::<Result<Vec<_>>>()?;
 

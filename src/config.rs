@@ -281,6 +281,10 @@ pub struct BaseConfig {
     /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
     #[builder(default)]
     pub notice_or_dev: bool,
+
+    /// Use Solar for lexing, parsing and tree traversal
+    #[builder(default = false)]
+    pub use_solar: bool,
 }
 
 impl Default for BaseConfig {
@@ -290,6 +294,7 @@ impl Default for BaseConfig {
             exclude: Vec::default(),
             inheritdoc: true,
             notice_or_dev: false,
+            use_solar: false,
         }
     }
 }
@@ -556,6 +561,10 @@ pub struct Args {
 
     #[command(subcommand)]
     pub command: Option<Commands>,
+
+    /// Use Solar as parser
+    #[arg(long, num_args = 0, default_missing_value = "true")]
+    pub solar: Option<bool>,
 }
 
 /// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
@@ -583,6 +592,9 @@ pub fn read_config(args: Args) -> Result<Config> {
     }
     if let Some(notice_or_dev) = args.notice_or_dev {
         config.lintspec.notice_or_dev = notice_or_dev;
+    }
+    if let Some(use_solar) = args.solar {
+        config.lintspec.use_solar = use_solar;
     }
 
     cli_rule_override!(config, args.notice_ignored, notice, Req::Ignored);

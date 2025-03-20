@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::{definitions::Definition, error::Result};
 
 pub mod slang;
+pub mod solar;
 
 /// The result of parsing and identifying source items in a document
 pub struct ParsedDocument {
