@@ -41,15 +41,14 @@ fn main() -> Result<()> {
     let diagnostics = paths
         .par_iter()
         .filter_map(|p| {
-            if config.lintspec.use_solar {
-                lint::<SolarParser>(p, &options, !config.output.compact && !config.output.json)
-                    .map_err(Into::into)
-                    .transpose()
+            let parser = if config.lintspec.use_solar {
+                lint::<SolarParser>
             } else {
-                lint::<SlangParser>(p, &options, !config.output.compact && !config.output.json)
+                lint::<SlangParser>
+            };
+            parser(p, &options, !config.output.compact && !config.output.json)
                     .map_err(Into::into)
                     .transpose()
-            }
         })
         .collect::<Result<Vec<_>>>()?;
 
