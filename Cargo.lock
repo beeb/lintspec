@@ -1336,6 +1336,7 @@ dependencies = [
  "serde_with",
  "similar-asserts",
  "slang_solidity",
+ "solar-data-structures",
  "solar-parse",
  "thiserror 2.0.12",
  "toml",
