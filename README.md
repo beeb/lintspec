@@ -150,7 +150,7 @@ The following options are available for the action (all are optional if a config
 | `working-directory` | `"./"` | Working directory path | `"./src"` |
 | `paths` | `"[]"` | Paths to scan, relative to the working directory, in square brackets and separated by commas. Required unless a `.lintspec.toml` file is present in the working directory. | `"[path/to/file.sol,test/test.sol]"` |
 | `exclude` | `"[]"` | Paths to exclude, relative to the working directory, in square brackets and separated by commas | `"[path/to/exclude,other/path.sol]"` | 
-| `extra-args` | | Extra arguments passed to the `lintspec` command | `"--constructor=true"` |
+| `extra-args` | | Extra arguments passed to the `lintspec` command | `"--inheritdoc=false"` |
 | `version` | `"latest"` | Version of lintspec to use. For enhanced security, you can pin this to a fixed version | `"0.4.1"` |
 | `fail-on-problem` | `"true"` | Whether the action should fail when `NatSpec` problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
 
