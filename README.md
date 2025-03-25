@@ -223,4 +223,5 @@ Summary
 | JSON output                     | ✅          | ❌                |
 | Output to file                  | ✅          | ❌                |
 | Multithreaded                   | ✅          | ❌                |
+| Built-in CI action              | ✅          | ❌                |
 | No pre-requisites (node/npm)    | ✅          | ❌                |
