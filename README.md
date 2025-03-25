@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@main
+      - uses: beeb/lintspec@v0.4.1
         # all the lines below are optional
         with:
           working-directory: "./"
