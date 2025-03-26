@@ -86,17 +86,15 @@ impl Parse for SolarParser {
 impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
     type BreakValue = ();
 
-    fn visit_source_unit(&mut self, source_unit: &SourceUnit) -> ControlFlow<Self::BreakValue> {
-        let source_unit = unsafe { trustme::decouple_lt(source_unit) };
-        let SourceUnit { items } = source_unit;
-        for item in items.iter() {
-            self.visit_item(item)?;
-        }
+    // fn visit_source_unit(&mut self, source_unit: &SourceUnit) -> ControlFlow<Self::BreakValue> {
+    //     let source_unit = unsafe { trustme::decouple_lt(source_unit) };
+    //     let SourceUnit { items } = source_unit;
+    //     for item in items.iter() {
+    //         self.visit_item(item)?;
+    //     }
 
-        dbg!(&self.definitions);
-
-        ControlFlow::Continue(())
-    }
+    //     ControlFlow::Continue(())
+    // }
 
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         let Item { docs, span, kind } = item;
@@ -282,6 +280,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
         ControlFlow::Continue(())
     }
 
+    // Needed to track parent:
     fn visit_item_contract(
         &mut self,
         contract: &'ast ItemContract<'ast>,
