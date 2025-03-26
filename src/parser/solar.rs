@@ -53,7 +53,7 @@ impl Parse for SolarParser {
             contents: None,
         };
 
-        let _ = sess.enter(|| -> solar_parse::interface::Result<()> {
+        let definitions = sess.enter(|| -> solar_parse::interface::Result<Vec<Definition>> {
             let arena = solar_parse::ast::Arena::new();
 
             let mut parser =
@@ -73,11 +73,11 @@ impl Parse for SolarParser {
 
             // dbg!(&ast);
 
-            Ok(())
+            Ok(visitor.definitions)
         });
 
         Ok(ParsedDocument {
-            definitions: vec![],
+            definitions: definitions.unwrap(), // unwrap error guaranteed from the session
             contents: None,
         })
     }
@@ -85,16 +85,6 @@ impl Parse for SolarParser {
 
 impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
     type BreakValue = ();
-
-    // fn visit_source_unit(&mut self, source_unit: &SourceUnit) -> ControlFlow<Self::BreakValue> {
-    //     let source_unit = unsafe { trustme::decouple_lt(source_unit) };
-    //     let SourceUnit { items } = source_unit;
-    //     for item in items.iter() {
-    //         self.visit_item(item)?;
-    //     }
-
-    //     ControlFlow::Continue(())
-    // }
 
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         let Item { docs, span, kind } = item;
