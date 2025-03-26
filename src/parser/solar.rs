@@ -1,17 +1,24 @@
 //! Solidity parser interface
-use std::{num::NonZeroI128, path::Path};
 use std::fs;
+use std::{num::NonZeroI128, path::Path};
 
 use slang_solidity::cst::TextIndex;
+use solar_data_structures::trustme;
 use solar_parse::{
-    ast::{interface::{source_map::{FileName, SourceMap}, Session}, visit::Visit, PragmaDirective, Item, ItemKind, SourceUnit,
-ContractKind, ItemContract, Span, VariableDefinition},
+    ast::{
+        interface::{
+            source_map::{FileName, SourceMap},
+            Session,
+        },
+        visit::Visit,
+        ContractKind, DocComments, Item, ItemContract, ItemKind, PragmaDirective, SourceUnit, Span,
+        VariableDefinition,
+    },
     Parser,
 };
-use solar_data_structures::trustme;
 
-use std::ops::ControlFlow;
 use slang_solidity::cst::TextRange;
+use std::ops::ControlFlow;
 
 use crate::{
     definitions::{
@@ -19,15 +26,19 @@ use crate::{
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
         structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
         Identifier, Parent, Visibility,
-    }, error::{Error, Result}, natspec::{self, parse_comment, NatSpec}, parser::{Parse, ParsedDocument}, utils::detect_solidity_version
+    },
+    error::{Error, Result},
+    natspec::{self, parse_comment, NatSpec},
+    parser::{Parse, ParsedDocument},
+    utils::detect_solidity_version,
 };
 
 pub struct SolarParser {}
 
-pub struct LintspecVisitor<'a> {
-    current_parent: Vec<&'a ItemContract<'a>>,
+pub struct LintspecVisitor<'ast> {
+    current_parent: Vec<Parent>,
     definitions: Vec<Definition>,
-    source_map: &'a SourceMap
+    source_map: &'ast SourceMap,
 }
 
 impl Parse for SolarParser {
@@ -37,7 +48,10 @@ impl Parse for SolarParser {
         let sess = Session::builder().with_silent_emitter(None).build();
         let source_map = sess.source_map();
 
-        let mut parsed_document: ParsedDocument = ParsedDocument { definitions: Vec::new(), contents: None };
+        let parsed_document: ParsedDocument = ParsedDocument {
+            definitions: Vec::new(),
+            contents: None,
+        };
 
         let _ = sess.enter(|| -> solar_parse::interface::Result<()> {
             let arena = solar_parse::ast::Arena::new();
@@ -49,10 +63,10 @@ impl Parse for SolarParser {
 
             let ast = parser.parse_file().map_err(|e| e.emit())?;
 
-            let mut visitor = LintspecVisitor { 
-                current_parent: Vec::new(), 
+            let mut visitor = LintspecVisitor {
+                current_parent: Vec::new(),
                 definitions: Vec::new(),
-                source_map
+                source_map,
             };
 
             let result = visitor.visit_source_unit(&ast);
@@ -62,7 +76,10 @@ impl Parse for SolarParser {
             Ok(())
         });
 
-        Ok(ParsedDocument { definitions: vec![], contents: None })
+        Ok(ParsedDocument {
+            definitions: vec![],
+            contents: None,
+        })
     }
 }
 
@@ -75,12 +92,13 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
         for item in items.iter() {
             self.visit_item(item)?;
         }
+
+        dbg!(&self.definitions);
+
         ControlFlow::Continue(())
     }
 
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
-        dbg!(&self.current_parent);
-
         let Item { docs, span, kind } = item;
         self.visit_span(span)?;
         self.visit_doc_comments(docs)?;
@@ -97,20 +115,25 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
                         self.current_parent.last().cloned()
                     };
 
-                    let params = parameters_list_to_identifiers(item_function.header.parameters, self.source_map);
+                    let params = parameters_list_to_identifiers(
+                        item_function.header.parameters,
+                        self.source_map,
+                    );
 
-                    self.definitions.push(Definition::Constructor(
-                        ConstructorDefinition {
-                            parent,
+                    let natspec =
+                        extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                    self.definitions
+                        .push(Definition::Constructor(ConstructorDefinition {
+                            parent: parent.clone(),
                             span: span_to_text_range(span, self.source_map),
                             params,
-                            natspec: todo!()
-                        }
-                    ))
+                            natspec,
+                        }))
                 }
-                
+
                 self.visit_item_function(item_function)?
-            },
+            }
             ItemKind::Variable(item) => self.visit_variable_definition(item)?,
             ItemKind::Struct(item) => self.visit_item_struct(item)?,
             ItemKind::Enum(item) => self.visit_item_enum(item)?,
@@ -122,11 +145,19 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
         ControlFlow::Continue(())
     }
 
+    fn visit_item_contract(
+        &mut self,
+        contract: &'ast ItemContract<'ast>,
+    ) -> ControlFlow<Self::BreakValue> {
+        let ItemContract {
+            kind: _,
+            name,
+            bases,
+            body,
+        } = contract;
 
-    fn visit_item_contract(&mut self, contract: &'ast ItemContract<'ast>) -> ControlFlow<Self::BreakValue> {
-        let ItemContract { kind: _, name, bases, body } = contract;
-
-        self.current_parent.push(contract);
+        self.current_parent
+            .push(item_contract_to_parent(contract, self.source_map));
 
         self.visit_ident(name)?;
         for base in bases.iter() {
@@ -140,40 +171,78 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
 
         ControlFlow::Continue(())
     }
-
 }
 
-// @todo build the utf16 representation too? 
+// @todo build the utf16 representation too?
 fn span_to_text_range(span: &Span, source_map: &SourceMap) -> TextRange {
     let (_, lo_line, lo_col, hi_line, hi_col) = source_map.span_to_location_info(*span);
-    
+
     let mut start = TextIndex::ZERO;
     start.utf8 = span.lo().to_usize();
-    start.line = lo_line - 1;  // Convert from 1-based to 0-based
+    start.line = lo_line - 1; // Convert from 1-based to 0-based
     start.column = lo_col - 1;
-    
+
     let mut end = TextIndex::ZERO;
     end.utf8 = span.hi().to_usize();
-    end.line = hi_line - 1; 
+    end.line = hi_line - 1;
     end.column = hi_col - 1;
-    
+
     start..end
 }
 
-fn parameters_list_to_identifiers<'ast> (variable_definitions: &[VariableDefinition<'ast>], source_map: &SourceMap) -> Vec<Identifier> {
-    variable_definitions.into_iter()
-        .map(|var|
-            Identifier {
-                name: var.name.map(|name| name.to_string()),
-                span: span_to_text_range(&var.span, source_map)
-            })
+fn parameters_list_to_identifiers<'ast>(
+    variable_definitions: &[VariableDefinition<'ast>],
+    source_map: &SourceMap,
+) -> Vec<Identifier> {
+    variable_definitions
+        .into_iter()
+        .map(|var| Identifier {
+            name: var.name.map(|name| name.to_string()),
+            span: span_to_text_range(&var.span, source_map),
+        })
         .collect()
 }
 
 fn item_contract_to_parent(contract: &ItemContract, source_map: &SourceMap) -> Parent {
-        match contract.kind {
-            ContractKind::Contract | ContractKind::AbstractContract => Parent::Contract(contract.name.to_string()),
-            ContractKind::Library => Parent::Library(contract.name.to_string()),
-            ContractKind::Interface => Parent::Interface(contract.name.to_string())
+    match contract.kind {
+        ContractKind::Contract | ContractKind::AbstractContract => {
+            Parent::Contract(contract.name.to_string())
         }
+        ContractKind::Library => Parent::Library(contract.name.to_string()),
+        ContractKind::Interface => Parent::Interface(contract.name.to_string()),
+    }
+}
+
+fn extract_natspec(
+    docs: &DocComments,
+    source_map: &SourceMap,
+    parent: Option<Parent>,
+    span: &Span,
+) -> Result<Option<NatSpec>> {
+    let mut combined = NatSpec::default();
+
+    for doc in docs.iter() {
+        let snippet =
+            source_map
+                .span_to_snippet(doc.span)
+                .map_err(|e| Error::NatspecParsingError {
+                    parent: parent.clone(),
+                    span: span_to_text_range(&doc.span, source_map),
+                    message: format!("{e:?}"), //.to_string(),
+                })?;
+
+        combined.append(&mut parse_comment(&mut snippet.as_str()).map_err(|e| {
+            Error::NatspecParsingError {
+                parent: parent.clone(),
+                span: span_to_text_range(&doc.span, source_map),
+                message: format!("{e:?}"), //.to_string(),
+            }
+        })?);
+    }
+
+    if combined == NatSpec::default() {
+        Ok(None)
+    } else {
+        Ok(Some(combined))
+    }
 }

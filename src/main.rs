@@ -46,9 +46,10 @@ fn main() -> Result<()> {
             } else {
                 lint::<SlangParser>
             };
+
             parser(p, &options, !config.output.compact && !config.output.json)
-                    .map_err(Into::into)
-                    .transpose()
+                .map_err(Into::into)
+                .transpose()
         })
         .collect::<Result<Vec<_>>>()?;
 
