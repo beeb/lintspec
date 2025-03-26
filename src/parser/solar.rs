@@ -136,7 +136,34 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
             }
             ItemKind::Variable(item) => self.visit_variable_definition(item)?,
             ItemKind::Struct(item) => self.visit_item_struct(item)?,
-            ItemKind::Enum(item) => self.visit_item_enum(item)?,
+            ItemKind::Enum(item) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let members = item
+                    .variants
+                    .iter()
+                    .map(|v| Identifier {
+                        name: Some(v.name.to_string()),
+                        span: span_to_text_range(&v.span, self.source_map),
+                    })
+                    .collect();
+
+                self.definitions
+                    .push(Definition::Enumeration(EnumDefinition {
+                        parent: parent.clone(),
+                        name: item.name.to_string(),
+                        span: span_to_text_range(span, self.source_map),
+                        members,
+                        natspec: extract_natspec(docs, self.source_map, parent.clone(), span)
+                            .unwrap(),
+                    }));
+
+                self.visit_item_enum(item)?
+            }
             ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
             ItemKind::Error(item) => self.visit_item_error(item)?,
             ItemKind::Event(item) => self.visit_item_event(item)?,
