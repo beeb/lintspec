@@ -108,34 +108,104 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
             ItemKind::Using(item) => self.visit_using_directive(item)?,
             ItemKind::Contract(item) => self.visit_item_contract(item)?,
             ItemKind::Function(item_function) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let params = parameters_list_to_identifiers(
+                    item_function.header.parameters,
+                    self.source_map,
+                );
+
+                let natspec = extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                let span = span_to_text_range(span, self.source_map);
+
                 if item_function.kind.is_constructor() {
-                    let parent = if self.current_parent.is_empty() {
-                        None
-                    } else {
-                        self.current_parent.last().cloned()
-                    };
-
-                    let params = parameters_list_to_identifiers(
-                        item_function.header.parameters,
-                        self.source_map,
-                    );
-
-                    let natspec =
-                        extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
-
                     self.definitions
                         .push(Definition::Constructor(ConstructorDefinition {
                             parent: parent.clone(),
-                            span: span_to_text_range(span, self.source_map),
+                            span,
                             params,
                             natspec,
+                        }))
+                } else if item_function.kind.is_function() {
+                    self.definitions
+                        .push(Definition::Function(FunctionDefinition {
+                            parent: parent.clone(),
+                            name: item_function.header.name.unwrap().to_string(),
+                            returns: returns_to_identifiers(
+                                item_function.header.returns,
+                                self.source_map,
+                            ),
+                            attributes: Attributes {
+                                visibility: item_function.header.visibility.into(),
+                                r#override: item_function.header.override_.is_some(),
+                            },
+                            span,
+                            params,
+                            natspec,
+                        }))
+                } else if item_function.kind.is_modifier() {
+                    self.definitions
+                        .push(Definition::Modifier(ModifierDefinition {
+                            parent: parent.clone(),
+                            span,
+                            params,
+                            natspec,
+                            name: item_function.header.name.unwrap().to_string(),
+                            attributes: Attributes {
+                                visibility: item_function.header.visibility.into(),
+                                r#override: item_function.header.override_.is_some(),
+                            },
                         }))
                 }
 
                 self.visit_item_function(item_function)?
             }
-            ItemKind::Variable(item) => self.visit_variable_definition(item)?,
-            ItemKind::Struct(item) => self.visit_item_struct(item)?,
+            ItemKind::Variable(item) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let span = span_to_text_range(span, self.source_map);
+
+                self.visit_variable_definition(item)?
+            }
+            ItemKind::Struct(item) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let name = item.name.to_string();
+
+                let members = item
+                    .fields
+                    .iter()
+                    .map(|m| Identifier {
+                        name: Some(m.name.expect("name").to_string()),
+                        span: span_to_text_range(&m.span, self.source_map),
+                    })
+                    .collect();
+
+                let natspec = extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                self.definitions.push(Definition::Struct(StructDefinition {
+                    parent,
+                    name,
+                    span: span_to_text_range(span, self.source_map),
+                    members,
+                    natspec,
+                }));
+
+                self.visit_item_struct(item)?
+            }
             ItemKind::Enum(item) => {
                 let parent = if self.current_parent.is_empty() {
                     None
@@ -165,8 +235,48 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
                 self.visit_item_enum(item)?
             }
             ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
-            ItemKind::Error(item) => self.visit_item_error(item)?,
-            ItemKind::Event(item) => self.visit_item_event(item)?,
+            ItemKind::Error(item) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let params = parameters_list_to_identifiers(item.parameters, self.source_map);
+
+                let natspec = extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                self.definitions.push(Definition::Error(ErrorDefinition {
+                    parent: parent.clone(),
+                    span: span_to_text_range(span, self.source_map),
+                    name: item.name.to_string(),
+                    params,
+                    natspec,
+                }));
+
+                self.visit_item_error(item)?
+            }
+            ItemKind::Event(item) => {
+                let parent = if self.current_parent.is_empty() {
+                    None
+                } else {
+                    self.current_parent.last().cloned()
+                };
+
+                let params = parameters_list_to_identifiers(item.parameters, self.source_map);
+
+                let natspec = extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                self.definitions.push(Definition::Event(EventDefinition {
+                    parent: parent.clone(),
+                    name: item.name.to_string(),
+                    span: span_to_text_range(span, self.source_map),
+                    params,
+                    natspec,
+                }));
+
+                self.visit_item_event(item)?
+            }
         }
 
         ControlFlow::Continue(())
@@ -271,5 +381,30 @@ fn extract_natspec(
         Ok(None)
     } else {
         Ok(Some(combined))
+    }
+}
+
+fn returns_to_identifiers(
+    returns: &[VariableDefinition],
+    source_map: &SourceMap,
+) -> Vec<Identifier> {
+    returns
+        .iter()
+        .map(|r| Identifier {
+            name: Some(r.name.unwrap().to_string()), // @todo FIX this (along all the others)
+            span: span_to_text_range(&r.span, source_map),
+        })
+        .collect()
+}
+
+impl From<Option<solar_parse::ast::Visibility>> for Visibility {
+    fn from(visibility: Option<solar_parse::ast::Visibility>) -> Self {
+        match visibility {
+            Some(solar_parse::ast::Visibility::Public) => Visibility::Public,
+            Some(solar_parse::ast::Visibility::Internal) => Visibility::Internal,
+            Some(solar_parse::ast::Visibility::Private) => Visibility::Private,
+            Some(solar_parse::ast::Visibility::External) => Visibility::External,
+            None => Visibility::Internal,
+        }
     }
 }
