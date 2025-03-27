@@ -46,6 +46,7 @@ winnow = "0.7.2"
 
 [dev-dependencies]
 insta = "1.42.1"
+pretty_assertions = "1.4.1"
 similar-asserts = "1.6.1"
 
 [profile.release]

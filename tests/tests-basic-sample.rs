@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use lintspec::{
     config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::{lint, FileDiagnostics, ValidationOptions},
-    parser::slang::SlangParser,
+    parser::{slang::SlangParser, solar::SolarParser},
     print_reports,
 };
+use pretty_assertions::assert_eq;
 
 fn generate_output(diags: FileDiagnostics) -> String {
     let mut buf = Vec::new();
@@ -13,78 +14,108 @@ fn generate_output(diags: FileDiagnostics) -> String {
     String::from_utf8(buf).unwrap()
 }
 
+fn multi_lint_handler(
+    path: &str,
+    options: &ValidationOptions,
+    keep_contents: bool,
+) -> (FileDiagnostics, FileDiagnostics) {
+    let diags_slang = lint::<SlangParser>(path, options, keep_contents)
+        .unwrap()
+        .unwrap();
+    let diags_solar = lint::<SolarParser>(path, options, keep_contents)
+        .unwrap()
+        .unwrap();
+    (diags_slang, diags_solar)
+}
+
 #[test]
 fn test_basic() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+
+    insta::assert_snapshot!("basic", generate_output(diags_slang));
 }
 
 #[test]
 fn test_inheritdoc() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::default(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
 
 #[test]
 fn test_constructor() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
             .constructors(WithParamsRules::required())
             .build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
 
 #[test]
 fn test_struct() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
             .structs(WithParamsRules::required())
             .build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
 
 #[test]
 fn test_enum() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
             .enums(WithParamsRules::required())
             .build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
 
 #[test]
 fn test_all() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .constructors(WithParamsRules::required())
@@ -109,15 +140,18 @@ fn test_all() {
             )
             .build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
 
 #[test]
 fn test_all_no_inheritdoc() {
-    let diags = lint::<SlangParser>(
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -143,8 +177,11 @@ fn test_all_no_inheritdoc() {
             )
             .build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+    insta::assert_snapshot!(generate_output(diags_slang));
 }

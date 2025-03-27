@@ -2,11 +2,7 @@
 pragma solidity =0.8.19;
 
 abstract contract AbstractBasic {
-    function overriddenFunction()
-        internal
-        pure
-        virtual
-        returns (uint256 _returned);
+    function overriddenFunction() internal pure virtual returns (uint256 _returned);
 }
 
 contract BasicSample is AbstractBasic {
@@ -38,17 +34,13 @@ contract BasicSample is AbstractBasic {
      * @notice Empty string for revert checks
      * @dev result of doing keccak256(bytes(''))
      */
-    bytes32 internal constant _EMPTY_STRING =
-        0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+    bytes32 internal constant _EMPTY_STRING = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
     /**
      * @notice A public state variable
      */
     uint256 public somePublicNumber;
 
-    /// @notice A constructor
-    /// @param _randomFlag a flag
-    ///
     constructor(bool _randomFlag) {}
 
     /**
@@ -59,10 +51,7 @@ contract BasicSample is AbstractBasic {
      * @param _name Another parameter description
      * @return _isMagic Some return data
      */
-    function externalSimple(
-        uint256 _magicNumber,
-        string memory _name
-    ) external pure returns (bool _isMagic) {
+    function externalSimple(uint256 _magicNumber, string memory _name) external pure returns (bool _isMagic) {
         return true;
     }
 
@@ -93,10 +82,11 @@ contract BasicSample is AbstractBasic {
      * @return _isMagic Some return data
      * @return Test test
      */
-    function externalSimpleMultipleReturn(
-        uint256 _magicNumber,
-        string memory _name
-    ) external pure returns (bool _isMagic, uint256) {
+    function externalSimpleMultipleReturn(uint256 _magicNumber, string memory _name)
+        external
+        pure
+        returns (bool _isMagic, uint256)
+    {
         return (true, 111);
     }
 
@@ -105,32 +95,18 @@ contract BasicSample is AbstractBasic {
      * @dev A dev comment
      * @return Some return data
      */
-    function externalSimpleMultipleUnnamedReturn()
-        external
-        pure
-        returns (bool, uint256)
-    {
+    function externalSimpleMultipleUnnamedReturn() external pure returns (bool, uint256) {
         return (true, 111);
     }
 
     /**
      * @notice This function should have an inheritdoc tag
      */
-    function overriddenFunction()
-        internal
-        pure
-        override
-        returns (uint256 _returned)
-    {
+    function overriddenFunction() internal pure override returns (uint256 _returned) {
         return 1;
     }
 
-    function virtualFunction()
-        public
-        pure
-        virtual
-        returns (uint256 _returned)
-    {}
+    function virtualFunction() public pure virtual returns (uint256 _returned) {}
 
     /**
      * @notice Modifier notice

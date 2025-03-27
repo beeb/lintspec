@@ -203,7 +203,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
                 self.definitions.push(Definition::Struct(StructDefinition {
                     parent,
                     name,
-                    span: span_to_text_range(span, self.source_map),
+                    span: span_to_text_range(&docs.span(), self.source_map),
                     members,
                     natspec,
                 }));
@@ -396,7 +396,7 @@ fn returns_to_identifiers(
     returns
         .iter()
         .map(|r| Identifier {
-            name: Some(r.name.unwrap().to_string()), // @todo FIX this (along all the others)
+            name: Some(r.name.unwrap_or_default().to_string()), // @todo anonymous return are empty?
             span: span_to_text_range(&r.span, source_map),
         })
         .collect()
