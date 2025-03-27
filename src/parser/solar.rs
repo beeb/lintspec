@@ -160,7 +160,23 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'_> {
                     self.current_parent.last().cloned()
                 };
 
-                let span = span_to_text_range(span, self.source_map);
+                let text_range = span_to_text_range(span, self.source_map);
+
+                let natspec = extract_natspec(docs, self.source_map, parent.clone(), span).unwrap();
+
+                let attributes = Attributes {
+                    visibility: item.visibility.into(),
+                    r#override: item.override_.is_some(),
+                };
+
+                self.definitions
+                    .push(Definition::Variable(VariableDeclaration {
+                        parent,
+                        name: item.name.unwrap().to_string(),
+                        span: text_range,
+                        natspec,
+                        attributes,
+                    }));
 
                 self.visit_variable_definition(item)?
             }
