@@ -678,6 +678,13 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
         {
             continue;
         }
+        // special case for state variables, since the doc-comment is inside of the type node for some reason
+        if cursor.node().is_nonterminal_with_kinds(&[
+            NonterminalKind::TypeName,
+            NonterminalKind::ElementaryType,
+        ]) {
+            continue;
+        }
         return Some(cursor.text_range());
     }
     None

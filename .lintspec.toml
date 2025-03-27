@@ -5,7 +5,7 @@ inheritdoc = true     # enforce that all overridden, public and external items h
 notice_or_dev = false # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
 
 [output]
-out = ""        # if provided, redirects output to this file
+# out = ""        # if provided, redirects output to this file
 json = false    # output diagnostics as JSON
 compact = false # compact output (minified JSON or compact text)
 sort = false    # sort results by file path
