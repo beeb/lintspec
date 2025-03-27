@@ -15,7 +15,7 @@ error BasicSample.BasicSample_SomeError
 event BasicSample.BasicSample_BasicEvent
   @param _param1 is missing
 
-./test-data/BasicSample.sol:38:1
+./test-data/BasicSample.sol:39:5
 variable BasicSample.somePublicNumber
   @inheritdoc is missing
 

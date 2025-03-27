@@ -30,7 +30,7 @@ struct ParserTestFunny.SimpleStruct
 modifier ParserTestFunny.someModifier
   @notice is missing
 
-./test-data/ParserTest.sol:135:1
+./test-data/ParserTest.sol:136:3
 variable ParserTestFunny.SOME_CONSTANT
   @notice is missing
   @return is missing
