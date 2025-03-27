@@ -145,7 +145,6 @@ impl Extract for ConstructorDefinition {
 
     fn extract(m: QueryMatch) -> Result<Definition> {
         let constructor = capture(&m, "constructor")?;
-        println!("{:#?}", constructor.node());
         let params = capture(&m, "constructor_params")?;
         let attr = capture(&m, "constructor_attr")?;
 
