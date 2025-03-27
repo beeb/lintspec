@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.4.2] - 2025-03-27
+
+### Documentation
+
+
+-  pin action version in readme ([#63](https://github.com/beeb/lintspec/pull/63)) - ([dc97ea4](https://github.com/beeb/lintspec/commit/dc97ea456b503e8e258aa7c3ed723b66528491a3))
+-  fix example for action extra args ([#65](https://github.com/beeb/lintspec/pull/65)) - ([7970bc2](https://github.com/beeb/lintspec/commit/7970bc2dc27882f5752e3d493c3f63d4f894972f))
+
+### Fixed
+
+- **(slang)** normalize the span for definitions ([#66](https://github.com/beeb/lintspec/pull/66)) - ([314ba71](https://github.com/beeb/lintspec/commit/314ba711a06db426a0395daf56e2c8eb1b22ef13))
+
+
+
+
+
+
+**Full Changelog**: [0.4.1...0.4.2](https://github.com/beeb/lintspec/compare/v0.4.1...v0.4.2)
+
 ## [0.4.1] - 2025-03-19
 
 ### Changed
