@@ -7,11 +7,11 @@ function AbstractBasic.overriddenFunction
   @notice is missing
   @return _returned is missing
 
-./test-data/BasicSample.sol:22:1
+./test-data/BasicSample.sol:23:5
 error BasicSample.BasicSample_SomeError
   @param _param1 is missing
 
-./test-data/BasicSample.sol:27:1
+./test-data/BasicSample.sol:28:5
 event BasicSample.BasicSample_BasicEvent
   @param _param1 is missing
 
@@ -19,31 +19,31 @@ event BasicSample.BasicSample_BasicEvent
 variable BasicSample.somePublicNumber
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:44:17
+./test-data/BasicSample.sol:44:5
 constructor BasicSample.constructor
   @param _randomFlag is missing
 
-./test-data/BasicSample.sol:54:5
+./test-data/BasicSample.sol:46:5
 function BasicSample.externalSimple
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:69:5
+./test-data/BasicSample.sol:64:5
 function BasicSample.multiline
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:75:5
+./test-data/BasicSample.sol:71:5
 function BasicSample.multitag
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:85:5
+./test-data/BasicSample.sol:77:5
 function BasicSample.externalSimpleMultipleReturn
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:98:5
+./test-data/BasicSample.sol:93:5
 function BasicSample.externalSimpleMultipleUnnamedReturn
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:105:5
+./test-data/BasicSample.sol:102:5
 function BasicSample.overriddenFunction
   @inheritdoc is missing
 
@@ -51,6 +51,6 @@ function BasicSample.overriddenFunction
 function BasicSample.virtualFunction
   @inheritdoc is missing
 
-./test-data/BasicSample.sol:114:14
+./test-data/BasicSample.sol:111:5
 modifier BasicSample.transferFee
   @param _receiver is missing
