@@ -2,7 +2,7 @@
 use std::fs;
 
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind},
+    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange},
     parser::Parser,
 };
 use winnow::Parser as _;
@@ -137,6 +137,7 @@ impl Extract for ConstructorDefinition {
             parameters:[ParametersDeclaration
                 @constructor_params parameters:[Parameters]
             ]
+            @constructor_attr attributes:[ConstructorAttributes]
         ]",
         )
         .expect("query should compile")
@@ -145,8 +146,12 @@ impl Extract for ConstructorDefinition {
     fn extract(m: QueryMatch) -> Result<Definition> {
         let constructor = capture(&m, "constructor")?;
         let params = capture(&m, "constructor_params")?;
+        let attr = capture(&m, "constructor_attr")?;
 
-        let span = params.text_range();
+        let span = find_definition_start(&constructor).map_or_else(
+            || constructor.text_range(),
+            |start| start.start..attr.text_range().end,
+        );
         let params = extract_params(&params, NonterminalKind::Parameter);
         let natspec = extract_comment(&constructor.clone(), &[])?;
         let parent = extract_parent_name(constructor);
@@ -177,7 +182,10 @@ impl Extract for EnumDefinition {
         let name = capture(&m, "enum_name")?;
         let members = capture(&m, "enum_members")?;
 
-        let span = enumeration.text_range();
+        let span = find_definition_start(&enumeration).map_or_else(
+            || enumeration.text_range(),
+            |start| start.start..enumeration.text_range().end,
+        );
         let name = name.node().unparse().trim().to_string();
         let members = extract_enum_members(&members);
         let natspec = extract_comment(&enumeration.clone(), &[])?;
@@ -210,7 +218,10 @@ impl Extract for ErrorDefinition {
         let name = capture(&m, "err_name")?;
         let params = capture(&m, "err_params")?;
 
-        let span = err.text_range();
+        let span = find_definition_start(&err).map_or_else(
+            || err.text_range(),
+            |start| start.start..err.text_range().end,
+        );
         let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(&params);
         let natspec = extract_comment(&err.clone(), &[])?;
@@ -243,7 +254,10 @@ impl Extract for EventDefinition {
         let name = capture(&m, "event_name")?;
         let params = capture(&m, "event_params")?;
 
-        let span = event.text_range();
+        let span = find_definition_start(&event).map_or_else(
+            || event.text_range(),
+            |start| start.start..event.text_range().end,
+        );
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::EventParameter);
         let natspec = extract_comment(&event.clone(), &[])?;
@@ -282,17 +296,16 @@ impl Extract for FunctionDefinition {
 
     fn extract(m: QueryMatch) -> Result<Definition> {
         let func = capture(&m, "function")?;
-        let keyword = capture(&m, "keyword")?;
         let name = capture(&m, "function_name")?;
         let params = capture(&m, "function_params")?;
         let attributes = capture(&m, "function_attr")?;
         let returns = capture_opt(&m, "function_returns")?;
 
-        let span = if let Some(returns) = &returns {
-            keyword.text_range().start..returns.text_range().end
-        } else {
-            keyword.text_range().start..attributes.text_range().end
-        };
+        let start = find_definition_start(&func).unwrap_or_else(|| func.text_range());
+        let end = returns
+            .as_ref()
+            .map_or_else(|| attributes.text_range(), Cursor::text_range);
+        let span = start.start..end.end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::Parameter);
         let returns = returns
@@ -334,11 +347,11 @@ impl Extract for ModifierDefinition {
         let params = capture_opt(&m, "modifier_params")?;
         let attr = capture(&m, "modifier_attr")?;
 
-        let span = if let Some(params) = &params {
-            name.text_range().start..params.text_range().end
-        } else {
-            name.text_range().start..attr.text_range().end
-        };
+        let start = find_definition_start(&modifier).unwrap_or_else(|| modifier.text_range());
+        let end = params
+            .as_ref()
+            .map_or_else(|| attr.text_range(), Cursor::text_range);
+        let span = start.start..end.end;
         let name = name.node().unparse().trim().to_string();
         let params = params
             .map(|p| extract_params(&p, NonterminalKind::Parameter))
@@ -375,7 +388,10 @@ impl Extract for StructDefinition {
         let name = capture(&m, "struct_name")?;
         let members = capture(&m, "struct_members")?;
 
-        let span = structure.text_range();
+        let span = find_definition_start(&structure).map_or_else(
+            || structure.text_range(),
+            |start| start.start..structure.text_range().end,
+        );
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(&members)?;
         let natspec = extract_comment(&structure.clone(), &[])?;
@@ -396,7 +412,6 @@ impl Extract for VariableDeclaration {
     fn query() -> Query {
         Query::parse(
             "@variable [StateVariableDefinition
-            @variable_type type_name:[TypeName]
             @variable_attr attributes:[StateVariableAttributes]
             @variable_name name:[Identifier]
         ]",
@@ -406,11 +421,13 @@ impl Extract for VariableDeclaration {
 
     fn extract(m: QueryMatch) -> Result<Definition> {
         let variable = capture(&m, "variable")?;
-        let var_type = capture(&m, "variable_type")?;
         let attributes = capture(&m, "variable_attr")?;
         let name = capture(&m, "variable_name")?;
 
-        let span = var_type.text_range().start..variable.text_range().end;
+        let span = find_definition_start(&variable).map_or_else(
+            || variable.text_range(),
+            |start| start.start..variable.text_range().end,
+        );
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(&variable.clone(), &[])?;
         let parent = extract_parent_name(variable);
@@ -648,6 +665,29 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
         });
     }
     Ok(out)
+}
+
+/// Find the start of the definition node by ignoring any leading whitespace trivia
+#[must_use]
+pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
+    let mut cursor = cursor.spawn();
+    while cursor.go_to_next() {
+        if cursor
+            .node()
+            .is_terminal_with_kinds(&[TerminalKind::Whitespace, TerminalKind::EndOfLine])
+        {
+            continue;
+        }
+        // special case for state variables, since the doc-comment is inside of the type node for some reason
+        if cursor.node().is_nonterminal_with_kinds(&[
+            NonterminalKind::TypeName,
+            NonterminalKind::ElementaryType,
+        ]) {
+            continue;
+        }
+        return Some(cursor.text_range());
+    }
+    None
 }
 
 #[cfg(test)]
