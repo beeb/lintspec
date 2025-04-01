@@ -102,6 +102,11 @@ impl Parse for SlangParser {
                 path: path.as_ref().to_path_buf(),
                 err,
             })?;
+            // let solidity_version = if self.skip_version_detection {
+            //     get_latest_supported_version()
+            // } else {
+            //     detect_solidity_version(&contents)?
+            // };
             let solidity_version = detect_solidity_version(&contents)?;
             let parser = Parser::create(solidity_version).expect("parser should initialize");
             let output = parser.parse(NonterminalKind::SourceUnit, &contents);

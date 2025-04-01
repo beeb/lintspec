@@ -58,13 +58,8 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
         return Ok(Version::new(0, 8, 0));
     };
 
-    let parser = Parser::create(
-        Parser::SUPPORTED_VERSIONS
-            .last()
-            .expect("the SUPPORTED_VERSIONS list should not be empty")
-            .to_owned(),
-    )
-    .expect("the Parser should be initialized correctly with a supported solidity version");
+    let parser = Parser::create(get_latest_supported_version())
+        .expect("the Parser should be initialized correctly with a supported solidity version");
 
     let parse_result = parser.parse(NonterminalKind::PragmaDirective, pragma.as_str());
     if !parse_result.is_valid() {
@@ -136,4 +131,13 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
         .max()
         .cloned()
         .ok_or_else(|| Error::SolidityUnsupportedVersion(pragma.as_str().to_string()))
+}
+
+/// Get the latest Solidity version supported by the [`slang_solidity`] parser
+#[must_use]
+pub fn get_latest_supported_version() -> Version {
+    Parser::SUPPORTED_VERSIONS
+        .last()
+        .expect("the SUPPORTED_VERSIONS list should not be empty")
+        .to_owned()
 }

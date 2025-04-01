@@ -281,6 +281,10 @@ pub struct BaseConfig {
     /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
     #[builder(default)]
     pub notice_or_dev: bool,
+
+    /// Skip the detection of the Solidity version and use the latest version supported by [`slang_solididty`]
+    #[builder(default)]
+    pub skip_version_detection: bool,
 }
 
 impl Default for BaseConfig {
@@ -290,6 +294,7 @@ impl Default for BaseConfig {
             exclude: Vec::default(),
             inheritdoc: true,
             notice_or_dev: false,
+            skip_version_detection: false,
         }
     }
 }
@@ -398,10 +403,10 @@ impl Config {
             .admerge(Toml::file(".lintspec.toml"))
             .admerge(Env::prefixed("LS_").split("_").map(|k| {
                 // special case for parameters with an underscore in the name
-                if k == "LINTSPEC.NOTICE.OR.DEV" {
-                    "LINTSPEC.NOTICE_OR_DEV".into()
-                } else {
-                    k.into()
+                match k.as_str() {
+                    "LINTSPEC.NOTICE.OR.DEV" => "LINTSPEC.NOTICE_OR_DEV".into(),
+                    "LINTSPEC.SKIP.VERSION.DETECTION" => "LINTSPEC.SKIP_VERSION_DETECTION".into(),
+                    _ => k.into(),
                 }
             }))
     }
@@ -461,6 +466,15 @@ pub struct Args {
     /// Can be set with `--notice-or-dev` (means true), `--notice-or-dev=true` or `--notice-or-dev=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub notice_or_dev: Option<bool>,
+
+    /// Skip the detection of the Solidity version from pragma statements and use the latest supported version.
+    ///
+    /// This is useful to speed up parsing slightly, or if the Solidity version is newer than the latest version
+    /// supported by the parser.
+    ///
+    /// Can be set with `--skip-version-detection` (means true), `--skip-version-detection=true` or `--skip-version-detection=false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub skip_version_detection: Option<bool>,
 
     /// Ignore `@notice` for these items (can be used more than once)
     #[arg(long)]
@@ -576,6 +590,10 @@ pub fn read_config(args: Args) -> Result<Config> {
     }
     if let Some(sort) = args.sort {
         config.output.sort = sort;
+    }
+    // parser
+    if let Some(skip_version_detection) = args.skip_version_detection {
+        config.lintspec.skip_version_detection = skip_version_detection;
     }
     // natspec config
     if let Some(inheritdoc) = args.inheritdoc {
