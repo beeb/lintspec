@@ -14,7 +14,8 @@ fn generate_output(diags: FileDiagnostics) -> String {
 
 #[test]
 fn test_basic() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/LibrarySample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,

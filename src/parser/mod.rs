@@ -17,5 +17,11 @@ pub struct ParsedDocument {
 /// The trait implemented by all parsers
 pub trait Parse {
     /// Parse a document at `path` and identify the relevant source items
-    fn parse_document(path: impl AsRef<Path>, keep_contents: bool) -> Result<ParsedDocument>;
+    ///
+    /// The fact that this takes in a mutable reference to the parser allows for stateful parsers.
+    fn parse_document(
+        &mut self,
+        path: impl AsRef<Path>,
+        keep_contents: bool,
+    ) -> Result<ParsedDocument>;
 }

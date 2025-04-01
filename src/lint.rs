@@ -106,15 +106,13 @@ pub struct Diagnostic {
 /// provided, and a compatible Solidity version will be inferred from the first version pragma statement (if any) to
 /// inform the parsing. [`ValidationOptions`] can be provided to control whether some of the lints get reported.
 /// The `keep_contents` parameter controls if the returned [`FileDiagnostics`] contains the original source code.
-pub fn lint<T>(
+pub fn lint(
+    mut parser: impl Parse,
     path: impl AsRef<Path>,
     options: &ValidationOptions,
     keep_contents: bool,
-) -> Result<Option<FileDiagnostics>>
-where
-    T: Parse,
-{
-    let document = T::parse_document(&path, keep_contents)?;
+) -> Result<Option<FileDiagnostics>> {
+    let document = parser.parse_document(&path, keep_contents)?;
     let mut items: Vec<_> = document
         .definitions
         .into_iter()
@@ -201,6 +199,24 @@ impl Default for ValidationOptions {
             modifiers: WithParamsRules::required(),
             structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
+        }
+    }
+}
+
+/// Create a [`ValidationOptions`] from a [`Config`]
+impl From<Config> for ValidationOptions {
+    fn from(value: Config) -> Self {
+        Self {
+            inheritdoc: value.lintspec.inheritdoc,
+            notice_or_dev: value.lintspec.notice_or_dev,
+            constructors: value.constructors,
+            enums: value.enums,
+            errors: value.errors,
+            events: value.events,
+            functions: value.functions,
+            modifiers: value.modifiers,
+            structs: value.structs,
+            variables: value.variables,
         }
     }
 }

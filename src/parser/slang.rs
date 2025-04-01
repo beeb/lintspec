@@ -16,13 +16,18 @@ use crate::{
     },
     error::{Error, Result},
     natspec::{parse_comment, NatSpec},
-    utils::detect_solidity_version,
+    utils::{detect_solidity_version, get_latest_supported_version},
 };
 
 use super::{Parse, ParsedDocument};
 
 /// A parser that uses [`slang_solidity`] to identify source items
-pub struct SlangParser {}
+#[derive(Debug, Clone, Default, bon::Builder)]
+#[non_exhaustive]
+pub struct SlangParser {
+    #[builder(default)]
+    pub skip_version_detection: bool,
+}
 
 impl SlangParser {
     /// The `slang` queries for all source items
@@ -94,6 +99,7 @@ impl SlangParser {
 
 impl Parse for SlangParser {
     fn parse_document(
+        &mut self,
         path: impl AsRef<std::path::Path>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
@@ -102,12 +108,11 @@ impl Parse for SlangParser {
                 path: path.as_ref().to_path_buf(),
                 err,
             })?;
-            // let solidity_version = if self.skip_version_detection {
-            //     get_latest_supported_version()
-            // } else {
-            //     detect_solidity_version(&contents)?
-            // };
-            let solidity_version = detect_solidity_version(&contents)?;
+            let solidity_version = if self.skip_version_detection {
+                get_latest_supported_version()
+            } else {
+                detect_solidity_version(&contents)?
+            };
             let parser = Parser::create(solidity_version).expect("parser should initialize");
             let output = parser.parse(NonterminalKind::SourceUnit, &contents);
             (keep_contents.then_some(contents), output)

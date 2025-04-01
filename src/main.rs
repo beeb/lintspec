@@ -37,12 +37,20 @@ fn main() -> Result<()> {
 
     // lint all the requested Solidity files
     let options: ValidationOptions = (&config).into();
+    let parser = SlangParser::builder()
+        .skip_version_detection(config.lintspec.skip_version_detection)
+        .build();
     let diagnostics = paths
         .par_iter()
         .filter_map(|p| {
-            lint::<SlangParser>(p, &options, !config.output.compact && !config.output.json)
-                .map_err(Into::into)
-                .transpose()
+            lint(
+                parser.clone(),
+                p,
+                &options,
+                !config.output.compact && !config.output.json,
+            )
+            .map_err(Into::into)
+            .transpose()
         })
         .collect::<Result<Vec<_>>>()?;
 
