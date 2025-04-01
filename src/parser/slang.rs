@@ -1282,4 +1282,11 @@ mod tests {
         let output = parser.parse(NonterminalKind::SourceUnit, contents);
         assert!(output.is_valid(), "{:?}", output.errors());
     }
+
+    #[test]
+    fn test_parse_solidity_unsupported() {
+        let mut parser = SlangParser::builder().skip_version_detection(true).build();
+        let output = parser.parse_document("test-data/UnsupportedVersion.sol", false);
+        assert!(output.is_ok(), "{output:?}");
+    }
 }

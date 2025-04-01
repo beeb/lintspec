@@ -6,6 +6,7 @@ use crate::{definitions::Definition, error::Result};
 pub mod slang;
 
 /// The result of parsing and identifying source items in a document
+#[derive(Debug)]
 pub struct ParsedDocument {
     /// The list of definitions found in the document
     pub definitions: Vec<Definition>,
