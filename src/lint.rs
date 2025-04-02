@@ -15,7 +15,7 @@ use crate::{
     definitions::{Identifier, ItemType, Parent},
     error::Result,
     natspec::NatSpec,
-    parser::Parse,
+    parser::{Parse, ParsedDocument},
 };
 
 /// Diagnostics for a single Solidity file
@@ -112,29 +112,36 @@ pub fn lint(
     options: &ValidationOptions,
     keep_contents: bool,
 ) -> Result<Option<FileDiagnostics>> {
-    let document = parser.parse_document(&path, keep_contents)?;
-    let mut items: Vec<_> = document
-        .definitions
-        .into_iter()
-        .filter_map(|item| {
-            let mut item_diags = item.validate(options);
-            if item_diags.diags.is_empty() {
-                None
-            } else {
-                item_diags.diags.sort_unstable_by_key(|d| d.span.start);
-                Some(item_diags)
-            }
+    fn inner(
+        path: &Path,
+        document: ParsedDocument,
+        options: &ValidationOptions,
+    ) -> Option<FileDiagnostics> {
+        let mut items: Vec<_> = document
+            .definitions
+            .into_iter()
+            .filter_map(|item| {
+                let mut item_diags = item.validate(options);
+                if item_diags.diags.is_empty() {
+                    None
+                } else {
+                    item_diags.diags.sort_unstable_by_key(|d| d.span.start);
+                    Some(item_diags)
+                }
+            })
+            .collect();
+        if items.is_empty() {
+            return None;
+        }
+        items.sort_unstable_by_key(|i| i.span.start);
+        Some(FileDiagnostics {
+            path: path.to_path_buf(),
+            contents: document.contents,
+            items,
         })
-        .collect();
-    if items.is_empty() {
-        return Ok(None);
     }
-    items.sort_unstable_by_key(|i| i.span.start);
-    Ok(Some(FileDiagnostics {
-        path: path.as_ref().to_path_buf(),
-        contents: document.contents,
-        items,
-    }))
+    let document = parser.parse_document(&path, keep_contents)?;
+    Ok(inner(path.as_ref(), document, options))
 }
 
 /// Validation options to control which lints generate a diagnostic
