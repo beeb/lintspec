@@ -1,8 +1,9 @@
 [lintspec]
-paths = []            # paths to files and folders to analyze
-exclude = []          # paths to files or folders to exclude, see also `.nsignore`
-inheritdoc = true     # enforce that all overridden, public and external items have `@inheritdoc`
-notice_or_dev = false # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
+paths = []                     # paths to files and folders to analyze
+exclude = []                   # paths to files or folders to exclude, see also `.nsignore`
+inheritdoc = true              # enforce that all overridden, public and external items have `@inheritdoc`
+notice_or_dev = false          # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
+skip_version_detection = false # skip detection of the Solidity version from pragma statements and use the latest
 
 [output]
 # out = ""        # if provided, redirects output to this file

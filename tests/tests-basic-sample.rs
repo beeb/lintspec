@@ -15,7 +15,8 @@ fn generate_output(diags: FileDiagnostics) -> String {
 
 #[test]
 fn test_basic() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
@@ -27,7 +28,8 @@ fn test_basic() {
 
 #[test]
 fn test_inheritdoc() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::default(),
         true,
@@ -39,7 +41,8 @@ fn test_inheritdoc() {
 
 #[test]
 fn test_constructor() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -54,7 +57,8 @@ fn test_constructor() {
 
 #[test]
 fn test_struct() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -69,7 +73,8 @@ fn test_struct() {
 
 #[test]
 fn test_enum() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -84,7 +89,8 @@ fn test_enum() {
 
 #[test]
 fn test_all() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .constructors(WithParamsRules::required())
@@ -117,7 +123,8 @@ fn test_all() {
 
 #[test]
 fn test_all_no_inheritdoc() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)

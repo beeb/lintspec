@@ -15,7 +15,7 @@ use crate::{
     definitions::{Identifier, ItemType, Parent},
     error::Result,
     natspec::NatSpec,
-    parser::Parse,
+    parser::{Parse, ParsedDocument},
 };
 
 /// Diagnostics for a single Solidity file
@@ -106,37 +106,42 @@ pub struct Diagnostic {
 /// provided, and a compatible Solidity version will be inferred from the first version pragma statement (if any) to
 /// inform the parsing. [`ValidationOptions`] can be provided to control whether some of the lints get reported.
 /// The `keep_contents` parameter controls if the returned [`FileDiagnostics`] contains the original source code.
-pub fn lint<T>(
+pub fn lint(
+    mut parser: impl Parse,
     path: impl AsRef<Path>,
     options: &ValidationOptions,
     keep_contents: bool,
-) -> Result<Option<FileDiagnostics>>
-where
-    T: Parse,
-{
-    let document = T::parse_document(&path, keep_contents)?;
-    let mut items: Vec<_> = document
-        .definitions
-        .into_iter()
-        .filter_map(|item| {
-            let mut item_diags = item.validate(options);
-            if item_diags.diags.is_empty() {
-                None
-            } else {
-                item_diags.diags.sort_unstable_by_key(|d| d.span.start);
-                Some(item_diags)
-            }
+) -> Result<Option<FileDiagnostics>> {
+    fn inner(
+        path: &Path,
+        document: ParsedDocument,
+        options: &ValidationOptions,
+    ) -> Option<FileDiagnostics> {
+        let mut items: Vec<_> = document
+            .definitions
+            .into_iter()
+            .filter_map(|item| {
+                let mut item_diags = item.validate(options);
+                if item_diags.diags.is_empty() {
+                    None
+                } else {
+                    item_diags.diags.sort_unstable_by_key(|d| d.span.start);
+                    Some(item_diags)
+                }
+            })
+            .collect();
+        if items.is_empty() {
+            return None;
+        }
+        items.sort_unstable_by_key(|i| i.span.start);
+        Some(FileDiagnostics {
+            path: path.to_path_buf(),
+            contents: document.contents,
+            items,
         })
-        .collect();
-    if items.is_empty() {
-        return Ok(None);
     }
-    items.sort_unstable_by_key(|i| i.span.start);
-    Ok(Some(FileDiagnostics {
-        path: path.as_ref().to_path_buf(),
-        contents: document.contents,
-        items,
-    }))
+    let document = parser.parse_document(&path, keep_contents)?;
+    Ok(inner(path.as_ref(), document, options))
 }
 
 /// Validation options to control which lints generate a diagnostic
@@ -201,6 +206,24 @@ impl Default for ValidationOptions {
             modifiers: WithParamsRules::required(),
             structs: WithParamsRules::default(),
             variables: VariableConfig::default(),
+        }
+    }
+}
+
+/// Create a [`ValidationOptions`] from a [`Config`]
+impl From<Config> for ValidationOptions {
+    fn from(value: Config) -> Self {
+        Self {
+            inheritdoc: value.lintspec.inheritdoc,
+            notice_or_dev: value.lintspec.notice_or_dev,
+            constructors: value.constructors,
+            enums: value.enums,
+            errors: value.errors,
+            events: value.events,
+            functions: value.functions,
+            modifiers: value.modifiers,
+            structs: value.structs,
+            variables: value.variables,
         }
     }
 }
