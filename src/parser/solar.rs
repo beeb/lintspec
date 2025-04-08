@@ -35,10 +35,153 @@ use crate::{
 
 pub struct SolarParser {}
 
+impl Parse for SolarParser {
+    fn parse_document(path: impl AsRef<Path>, keep_contents: bool) -> Result<ParsedDocument> {
+        let path = path.as_ref().to_path_buf();
+
+        let sess = Session::builder().with_silent_emitter(None).build();
+        let source_map = sess.source_map();
+
+        let definitions = sess.enter(|| -> solar_parse::interface::Result<Vec<Definition>> {
+            let arena = solar_parse::ast::Arena::new();
+
+            let mut parser =
+                Parser::from_lazy_source_code(&sess, &arena, FileName::from(path.clone()), || {
+                    fs::read_to_string(&path)
+                })?;
+
+            let ast = parser.parse_file().map_err(|e| e.emit())?;
+
+            let mut visitor = LintspecVisitor {
+                current_parent: Vec::new(),
+                definitions: Vec::new(),
+                source_map,
+            };
+
+            let result = visitor.visit_source_unit(&ast);
+
+            // dbg!(&ast);
+
+            Ok(visitor.definitions)
+        });
+
+        Ok(ParsedDocument {
+            definitions: definitions.unwrap(), // unwrap error guaranteed from the session
+            contents: None,
+        })
+    }
+}
+
 pub struct LintspecVisitor<'ast> {
     current_parent: Vec<Parent>,
     definitions: Vec<Definition>,
     source_map: &'ast SourceMap,
+}
+
+impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
+    type BreakValue = ();
+
+    fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
+        let Item { docs, span, kind } = item;
+        self.visit_span(span)?;
+        self.visit_doc_comments(docs)?;
+
+        let parent = self.current_parent.last().cloned();
+
+        match kind {
+            ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
+            ItemKind::Import(item) => self.visit_import_directive(item)?,
+            ItemKind::Using(item) => self.visit_using_directive(item)?,
+            ItemKind::Contract(item) => self.visit_item_contract(item)?,
+            ItemKind::Function(item_function) => {
+                if let Some(def) =
+                    <solar_parse::ast::ItemFunction as Extract>::extract_definition(self, item)
+                {
+                    self.definitions.push(def);
+                }
+
+                self.visit_item_function(item_function)?
+            }
+            ItemKind::Variable(var_def) => {
+                if let Some(def) =
+                    <solar_parse::ast::VariableDefinition as Extract>::extract_definition(
+                        self, item,
+                    )
+                {
+                    self.definitions.push(def);
+                }
+
+                self.visit_variable_definition(var_def)?
+            }
+            ItemKind::Struct(strukt) => {
+                if let Some(struct_def) =
+                    <solar_parse::ast::ItemStruct as Extract>::extract_definition(self, item)
+                {
+                    self.definitions.push(struct_def);
+                }
+
+                self.visit_item_struct(item)?
+            }
+            ItemKind::Enum(item_enum) => {
+                if let Some(enum_def) =
+                    <solar_parse::ast::ItemEnum as Extract>::extract_definition(self, item)
+                {
+                    self.definitions.push(enum_def);
+                }
+
+                self.visit_item_enum(item_enum)?
+            }
+            ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
+            ItemKind::Error(item_error) => {
+                if let Some(def) =
+                    <solar_parse::ast::ItemError as Extract>::extract_definition(self, item)
+                {
+                    self.definitions.push(def);
+                }
+
+                self.visit_item_error(item_error)?
+            }
+            ItemKind::Event(item_event) => {
+                if let Some(def) =
+                    <solar_parse::ast::ItemEvent as Extract>::extract_definition(self, item)
+                {
+                    self.definitions.push(def);
+                }
+
+                self.visit_item_event(item_event)?
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    // Needed to track parent:
+    fn visit_item_contract(
+        &mut self,
+        contract: &'ast ItemContract<'ast>,
+    ) -> ControlFlow<Self::BreakValue> {
+        let ItemContract {
+            kind: _,
+            name,
+            bases,
+            body,
+        } = contract;
+
+        self.current_parent
+            .push(item_contract_to_parent(contract, self.source_map));
+
+        self.visit_ident(name)?;
+        for base in bases.iter() {
+            self.visit_modifier(base)?;
+        }
+        for item in body.iter() {
+            self.visit_item(item)?;
+        }
+
+        self.current_parent.pop();
+
+        ControlFlow::Continue(())
+    }
 }
 
 trait Extract<'ast> {
@@ -254,149 +397,6 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
         } else {
             None
         }
-    }
-}
-
-impl Parse for SolarParser {
-    fn parse_document(path: impl AsRef<Path>, keep_contents: bool) -> Result<ParsedDocument> {
-        let path = path.as_ref().to_path_buf();
-
-        let sess = Session::builder().with_silent_emitter(None).build();
-        let source_map = sess.source_map();
-
-        let definitions = sess.enter(|| -> solar_parse::interface::Result<Vec<Definition>> {
-            let arena = solar_parse::ast::Arena::new();
-
-            let mut parser =
-                Parser::from_lazy_source_code(&sess, &arena, FileName::from(path.clone()), || {
-                    fs::read_to_string(&path)
-                })?;
-
-            let ast = parser.parse_file().map_err(|e| e.emit())?;
-
-            let mut visitor = LintspecVisitor {
-                current_parent: Vec::new(),
-                definitions: Vec::new(),
-                source_map,
-            };
-
-            let result = visitor.visit_source_unit(&ast);
-
-            // dbg!(&ast);
-
-            Ok(visitor.definitions)
-        });
-
-        Ok(ParsedDocument {
-            definitions: definitions.unwrap(), // unwrap error guaranteed from the session
-            contents: None,
-        })
-    }
-}
-
-impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
-    type BreakValue = ();
-
-    fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
-        let Item { docs, span, kind } = item;
-        self.visit_span(span)?;
-        self.visit_doc_comments(docs)?;
-
-        let parent = self.current_parent.last().cloned();
-
-        match kind {
-            ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
-            ItemKind::Import(item) => self.visit_import_directive(item)?,
-            ItemKind::Using(item) => self.visit_using_directive(item)?,
-            ItemKind::Contract(item) => self.visit_item_contract(item)?,
-            ItemKind::Function(item_function) => {
-                if let Some(def) =
-                    <solar_parse::ast::ItemFunction as Extract>::extract_definition(self, item)
-                {
-                    self.definitions.push(def);
-                }
-
-                self.visit_item_function(item_function)?
-            }
-            ItemKind::Variable(var_def) => {
-                if let Some(def) =
-                    <solar_parse::ast::VariableDefinition as Extract>::extract_definition(
-                        self, item,
-                    )
-                {
-                    self.definitions.push(def);
-                }
-
-                self.visit_variable_definition(var_def)?
-            }
-            ItemKind::Struct(strukt) => {
-                if let Some(struct_def) =
-                    <solar_parse::ast::ItemStruct as Extract>::extract_definition(self, item)
-                {
-                    self.definitions.push(struct_def);
-                }
-
-                self.visit_item_struct(item)?
-            }
-            ItemKind::Enum(item_enum) => {
-                if let Some(enum_def) =
-                    <solar_parse::ast::ItemEnum as Extract>::extract_definition(self, item)
-                {
-                    self.definitions.push(enum_def);
-                }
-
-                self.visit_item_enum(item_enum)?
-            }
-            ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
-            ItemKind::Error(item_error) => {
-                if let Some(def) =
-                    <solar_parse::ast::ItemError as Extract>::extract_definition(self, item)
-                {
-                    self.definitions.push(def);
-                }
-
-                self.visit_item_error(item_error)?
-            }
-            ItemKind::Event(item_event) => {
-                if let Some(def) =
-                    <solar_parse::ast::ItemEvent as Extract>::extract_definition(self, item)
-                {
-                    self.definitions.push(def);
-                }
-
-                self.visit_item_event(item_event)?
-            }
-        }
-
-        ControlFlow::Continue(())
-    }
-
-    // Needed to track parent:
-    fn visit_item_contract(
-        &mut self,
-        contract: &'ast ItemContract<'ast>,
-    ) -> ControlFlow<Self::BreakValue> {
-        let ItemContract {
-            kind: _,
-            name,
-            bases,
-            body,
-        } = contract;
-
-        self.current_parent
-            .push(item_contract_to_parent(contract, self.source_map));
-
-        self.visit_ident(name)?;
-        for base in bases.iter() {
-            self.visit_modifier(base)?;
-        }
-        for item in body.iter() {
-            self.visit_item(item)?;
-        }
-
-        self.current_parent.pop();
-
-        ControlFlow::Continue(())
     }
 }
 
