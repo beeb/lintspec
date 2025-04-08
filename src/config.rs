@@ -570,10 +570,6 @@ pub struct Args {
 
     #[command(subcommand)]
     pub command: Option<Commands>,
-
-    /// Use Solar as parser
-    #[arg(long, num_args = 0, default_missing_value = "true")]
-    pub solar: Option<bool>,
 }
 
 /// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
