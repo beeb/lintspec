@@ -5,7 +5,8 @@ use lintspec::{
 
 #[test]
 fn test_basic() {
-    let diags = lint::<SlangParser>(
+    let diags = lint(
+        SlangParser::default(),
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,

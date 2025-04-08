@@ -7,42 +7,42 @@ function AbstractBasic.overriddenFunction
   @notice is missing
   @return _returned is missing
 
-./test-data/BasicSample.sol:9:1
+./test-data/BasicSample.sol:9:5
 struct BasicSample.TestStruct
   @param someAddress is missing
   @param someNumber is missing
 
-./test-data/BasicSample.sol:16:1
+./test-data/BasicSample.sol:17:5
 enum BasicSample.TestEnum
   @param First is missing
   @param Second is missing
 
-./test-data/BasicSample.sol:22:1
+./test-data/BasicSample.sol:23:5
 error BasicSample.BasicSample_SomeError
   @param _param1 is missing
 
-./test-data/BasicSample.sol:27:1
+./test-data/BasicSample.sol:28:5
 event BasicSample.BasicSample_BasicEvent
   @param _param1 is missing
 
-./test-data/BasicSample.sol:38:1
+./test-data/BasicSample.sol:39:5
 variable BasicSample.somePublicNumber
   @return is missing
 
-./test-data/BasicSample.sol:44:17
+./test-data/BasicSample.sol:44:5
 constructor BasicSample.constructor
   @notice is missing
   @param _randomFlag is missing
 
-./test-data/BasicSample.sol:54:5
+./test-data/BasicSample.sol:46:5
 function BasicSample.externalSimple
   @param _name is present more than once
 
-./test-data/BasicSample.sol:98:5
+./test-data/BasicSample.sol:93:5
 function BasicSample.externalSimpleMultipleUnnamedReturn
   @return missing for unnamed return #2
 
-./test-data/BasicSample.sol:105:5
+./test-data/BasicSample.sol:102:5
 function BasicSample.overriddenFunction
   @return _returned is missing
 
@@ -51,6 +51,6 @@ function BasicSample.virtualFunction
   @notice is missing
   @return _returned is missing
 
-./test-data/BasicSample.sol:114:14
+./test-data/BasicSample.sol:111:5
 modifier BasicSample.transferFee
   @param _receiver is missing
