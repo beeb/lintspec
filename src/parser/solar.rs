@@ -78,6 +78,12 @@ impl Parse for SolarParser {
     }
 }
 
+impl<'ast> Clone for SolarParser {
+    fn clone(&self) -> Self {
+        Self {}
+    }
+}
+
 pub struct LintspecVisitor<'ast> {
     current_parent: Vec<Parent>,
     definitions: Vec<Definition>,
@@ -171,6 +177,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
             name,
             bases,
             body,
+            ..
         } = contract;
 
         self.current_parent
