@@ -1,9 +1,12 @@
 use std::path::PathBuf;
 
+#[cfg(feature = "solar")]
+use lintspec::parser::solar::SolarParser;
+
 use lintspec::{
     config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::{lint, FileDiagnostics, ValidationOptions},
-    parser::{slang::SlangParser, solar::SolarParser},
+    parser::slang::SlangParser,
     print_reports,
 };
 use pretty_assertions::assert_eq;

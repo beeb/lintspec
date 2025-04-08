@@ -1,3 +1,5 @@
+#![cfg(feature = "solar")]
+
 //! Solidity parser interface
 use std::fs;
 use std::{num::NonZeroI128, path::Path};
@@ -36,7 +38,11 @@ use crate::{
 pub struct SolarParser {}
 
 impl Parse for SolarParser {
-    fn parse_document(path: impl AsRef<Path>, keep_contents: bool) -> Result<ParsedDocument> {
+    fn parse_document(
+        &mut self,
+        path: impl AsRef<Path>,
+        keep_contents: bool,
+    ) -> Result<ParsedDocument> {
         let path = path.as_ref().to_path_buf();
 
         let sess = Session::builder().with_silent_emitter(None).build();
@@ -120,7 +126,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
                     self.definitions.push(struct_def);
                 }
 
-                self.visit_item_struct(item)?
+                self.visit_item_struct(strukt)?
             }
             ItemKind::Enum(item_enum) => {
                 if let Some(enum_def) =
@@ -382,8 +388,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Event(item_event) = &item.kind {
-            let params =
-                parameters_list_to_identifiers(item_eventitem.parameters, visitor.source_map);
+            let params = parameters_list_to_identifiers(item_event.parameters, visitor.source_map);
 
             let natspec = extract_natspec(docs, visitor.source_map, parent.clone(), span).unwrap();
 

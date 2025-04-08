@@ -285,10 +285,6 @@ pub struct BaseConfig {
     /// Skip the detection of the Solidity version and use the latest version supported by [`slang_solidity`]
     #[builder(default)]
     pub skip_version_detection: bool,
-
-    /// Use Solar for lexing, parsing and tree traversal
-    #[builder(default = false)]
-    pub use_solar: bool,
 }
 
 impl Default for BaseConfig {
@@ -299,7 +295,6 @@ impl Default for BaseConfig {
             inheritdoc: true,
             notice_or_dev: false,
             skip_version_detection: false,
-            use_solar: false,
         }
     }
 }
@@ -610,9 +605,6 @@ pub fn read_config(args: Args) -> Result<Config> {
     }
     if let Some(notice_or_dev) = args.notice_or_dev {
         config.lintspec.notice_or_dev = notice_or_dev;
-    }
-    if let Some(use_solar) = args.solar {
-        config.lintspec.use_solar = use_solar;
     }
 
     cli_rule_override!(config, args.notice_ignored, notice, Req::Ignored);
