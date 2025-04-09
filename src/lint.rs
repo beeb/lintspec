@@ -8,11 +8,10 @@ use std::{
 };
 
 use serde::Serialize;
-use slang_solidity::cst::TextRange;
 
 use crate::{
     config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
-    definitions::{Identifier, ItemType, Parent},
+    definitions::{Identifier, ItemType, Parent, TextRange},
     error::Result,
     natspec::NatSpec,
     parser::{Parse, ParsedDocument},
