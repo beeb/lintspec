@@ -5,6 +5,9 @@ use crate::{definitions::Definition, error::Result};
 
 pub mod slang;
 
+#[cfg(feature = "solar")]
+pub mod solar;
+
 /// The result of parsing and identifying source items in a document
 #[derive(Debug)]
 pub struct ParsedDocument {
