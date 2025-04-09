@@ -103,7 +103,6 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
                     .last_mut()
                     .expect("version expression should be inside an expression set");
                 let _ = write!(v, ",>={},<={}", start.trim(), end.trim());
-                // v.push_str(&format!(",>={},<={}", start.trim(), end.trim()));
             } else {
                 let v = version_reqs
                     .last_mut()
