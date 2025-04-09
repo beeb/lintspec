@@ -1,12 +1,10 @@
 //! Parsing and validation of event definitions.
-use slang_solidity::cst::TextRange;
-
 use crate::{
     lint::{check_notice_and_dev, check_params, ItemDiagnostics},
     natspec::NatSpec,
 };
 
-use super::{Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions};
+use super::{Identifier, ItemType, Parent, SourceItem, TextRange, Validate, ValidationOptions};
 
 /// An event definition
 #[derive(Debug, Clone, bon::Builder)]
