@@ -44,8 +44,12 @@ pub trait SourceItem {
     fn span(&self) -> TextRange;
 }
 
+/// A span of source code
 pub type TextRange = Range<TextIndex>;
 
+/// A position inside of the source code
+///
+/// Lines and columns start at 0.
 #[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize)]
 pub struct TextIndex {
     pub utf8: usize,
