@@ -3,6 +3,7 @@
 //! The [`lint`] function parsers the source file and contained items, validates them according to the configured
 //! rules and emits a list of diagnostics, grouped by source item.
 use std::{
+    fs::File,
     io,
     path::{Path, PathBuf},
 };
@@ -12,7 +13,7 @@ use serde::Serialize;
 use crate::{
     config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent, TextRange},
-    error::Result,
+    error::{Error, Result},
     natspec::NatSpec,
     parser::{Parse, ParsedDocument},
 };
@@ -139,7 +140,11 @@ pub fn lint(
             items,
         })
     }
-    let document = parser.parse_document(&path, keep_contents)?;
+    let file = File::open(&path).map_err(|err| Error::IOError {
+        path: path.as_ref().to_path_buf(),
+        err,
+    })?;
+    let document = parser.parse_document(file, keep_contents)?;
     Ok(inner(path.as_ref(), document, options))
 }
 
