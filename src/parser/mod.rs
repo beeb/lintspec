@@ -17,7 +17,7 @@ pub struct ParsedDocument {
 
 /// The trait implemented by all parsers
 pub trait Parse {
-    /// Parse a document at `path` and identify the relevant source items
+    /// Parse a document from a reader and identify the relevant source items
     ///
     /// The fact that this takes in a mutable reference to the parser allows for stateful parsers.
     fn parse_document(
