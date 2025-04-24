@@ -1,5 +1,5 @@
 //! Solidity parser interface
-use std::path::Path;
+use std::io;
 
 use crate::{definitions::Definition, error::Result};
 
@@ -22,7 +22,7 @@ pub trait Parse {
     /// The fact that this takes in a mutable reference to the parser allows for stateful parsers.
     fn parse_document(
         &mut self,
-        path: impl AsRef<Path>,
+        input: impl io::Read,
         keep_contents: bool,
     ) -> Result<ParsedDocument>;
 }

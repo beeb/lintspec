@@ -1,5 +1,5 @@
 //! A parser with `[slang_solidity]` backend
-use std::fs;
+use std::{io, path::PathBuf};
 
 use slang_solidity::{
     cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange as SlangTextRange},
@@ -100,14 +100,17 @@ impl SlangParser {
 impl Parse for SlangParser {
     fn parse_document(
         &mut self,
-        path: impl AsRef<std::path::Path>,
+        mut input: impl io::Read,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
         let (contents, output) = {
-            let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
-                path: path.as_ref().to_path_buf(),
-                err,
-            })?;
+            let mut contents = String::new();
+            input
+                .read_to_string(&mut contents)
+                .map_err(|err| Error::IOError {
+                    path: PathBuf::new(),
+                    err,
+                })?;
             let solidity_version = if self.skip_version_detection {
                 get_latest_supported_version()
             } else {
@@ -713,6 +716,8 @@ pub fn textrange(value: SlangTextRange) -> TextRange {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+
     use similar_asserts::assert_eq;
     use slang_solidity::{
         cst::{Cursor, NonterminalKind},
@@ -1297,7 +1302,8 @@ mod tests {
     #[test]
     fn test_parse_solidity_unsupported() {
         let mut parser = SlangParser::builder().skip_version_detection(true).build();
-        let output = parser.parse_document("test-data/UnsupportedVersion.sol", false);
+        let file = File::open("test-data/UnsupportedVersion.sol").unwrap();
+        let output = parser.parse_document(file, false);
         assert!(output.is_ok(), "{output:?}");
     }
 }
