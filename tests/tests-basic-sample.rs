@@ -9,7 +9,7 @@ use lintspec::{
     parser::slang::SlangParser,
     print_reports,
 };
-use pretty_assertions::assert_eq;
+use similar_asserts::assert_eq;
 
 fn generate_output(diags: FileDiagnostics) -> String {
     let mut buf = Vec::new();
@@ -22,12 +22,14 @@ fn multi_lint_handler(
     options: &ValidationOptions,
     keep_contents: bool,
 ) -> (FileDiagnostics, FileDiagnostics) {
-    let diags_slang = lint::<SlangParser>(path, options, keep_contents)
+    let diags_slang = lint(SlangParser::builder().build(), path, options, keep_contents)
         .unwrap()
         .unwrap();
-    let diags_solar = lint::<SolarParser>(path, options, keep_contents)
+
+    let diags_solar = lint(SolarParser {}, path, options, keep_contents)
         .unwrap()
         .unwrap();
+
     (diags_slang, diags_solar)
 }
 

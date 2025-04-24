@@ -1,11 +1,8 @@
-#![cfg(feature = "solar")]
-
 //! Solidity parser interface
 use std::fs;
-use std::{num::NonZeroI128, path::Path};
+use std::path::Path;
 
 use slang_solidity::cst::TextIndex;
-use solar_data_structures::trustme;
 use solar_parse::{
     ast::{
         interface::{
@@ -30,7 +27,7 @@ use crate::{
         Identifier, Parent, Visibility,
     },
     error::{Error, Result},
-    natspec::{self, parse_comment, NatSpec},
+    natspec::{parse_comment, NatSpec},
     parser::{Parse, ParsedDocument},
     utils::detect_solidity_version,
 };
