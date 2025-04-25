@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-#[cfg(feature = "solar")]
 use lintspec::parser::solar::SolarParser;
 
 use lintspec::{
