@@ -1,5 +1,5 @@
 //! Utils for parsing Solidity source code.
-use std::sync::LazyLock;
+use std::{fmt::Write as _, sync::LazyLock};
 
 use regex::Regex;
 pub use semver;
@@ -102,7 +102,7 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
                 let v = version_reqs
                     .last_mut()
                     .expect("version expression should be inside an expression set");
-                v.push_str(&format!(",>={},<={}", start.trim(), end.trim()));
+                let _ = write!(v, ",>={},<={}", start.trim(), end.trim());
             } else {
                 let v = version_reqs
                     .last_mut()
@@ -110,9 +110,9 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
                 // for `semver`, the different specifiers should be combined with a comma if they must all match
                 if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
                     // for `semver`, no comparator is the same as the caret comparator, but for solidity is means `=`
-                    v.push_str(&format!(",={text}"));
+                    let _ = write!(v, ",={text}");
                 } else {
-                    v.push_str(&format!(",{text}"));
+                    let _ = write!(v, ",{text}");
                 }
             }
         }

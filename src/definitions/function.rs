@@ -1,13 +1,12 @@
 //! Parsing and validation of function definitions.
-use slang_solidity::cst::TextRange;
-
 use crate::{
     lint::{check_notice_and_dev, check_params, check_returns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
 use super::{
-    Attributes, Identifier, ItemType, Parent, SourceItem, Validate, ValidationOptions, Visibility,
+    Attributes, Identifier, ItemType, Parent, SourceItem, TextRange, Validate, ValidationOptions,
+    Visibility,
 };
 
 /// A function definition

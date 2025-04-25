@@ -2,6 +2,8 @@
 //!
 //! This module contains structs for each of the source item types that can be documented with `NatSpec`.
 //! The [`Definition`] type provides a unified interface to interact with the various types.
+use std::ops::Range;
+
 use constructor::ConstructorDefinition;
 use derive_more::{Display, From, IsVariant};
 use enumeration::EnumDefinition;
@@ -10,7 +12,7 @@ use event::EventDefinition;
 use function::FunctionDefinition;
 use modifier::ModifierDefinition;
 use serde::{Deserialize, Serialize};
-pub use slang_solidity::cst::TextRange;
+use slang_solidity::cst::TextIndex as SlangTextIndex;
 use structure::StructDefinition;
 use variable::VariableDeclaration;
 
@@ -40,6 +42,64 @@ pub trait SourceItem {
 
     /// Retrieve the span of the source item
     fn span(&self) -> TextRange;
+}
+
+/// A span of source code
+pub type TextRange = Range<TextIndex>;
+
+/// A position inside of the source code
+///
+/// Lines and columns start at 0.
+#[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize)]
+pub struct TextIndex {
+    pub utf8: usize,
+    pub utf16: usize,
+    pub line: usize,
+    pub column: usize,
+}
+
+impl TextIndex {
+    /// Shorthand for `TextIndex { utf8: 0, utf16: 0, line: 0, char: 0 }`.
+    pub const ZERO: TextIndex = TextIndex {
+        utf8: 0,
+        utf16: 0,
+        line: 0,
+        column: 0,
+    };
+}
+
+impl PartialOrd for TextIndex {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TextIndex {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.utf8.cmp(&other.utf8)
+    }
+}
+
+impl From<SlangTextIndex> for TextIndex {
+    fn from(value: SlangTextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
+}
+
+impl From<TextIndex> for SlangTextIndex {
+    fn from(value: TextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
 }
 
 /// An identifier (named or unnamed) and its span

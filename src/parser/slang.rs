@@ -1,8 +1,8 @@
 //! A parser with `[slang_solidity]` backend
-use std::fs;
+use std::{io, path::PathBuf};
 
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange},
+    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange as SlangTextRange},
     parser::Parser,
 };
 use winnow::Parser as _;
@@ -12,7 +12,7 @@ use crate::{
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
         structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, Visibility,
+        Identifier, Parent, TextRange, Visibility,
     },
     error::{Error, Result},
     natspec::{parse_comment, NatSpec},
@@ -100,14 +100,17 @@ impl SlangParser {
 impl Parse for SlangParser {
     fn parse_document(
         &mut self,
-        path: impl AsRef<std::path::Path>,
+        mut input: impl io::Read,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
         let (contents, output) = {
-            let contents = fs::read_to_string(&path).map_err(|err| Error::IOError {
-                path: path.as_ref().to_path_buf(),
-                err,
-            })?;
+            let mut contents = String::new();
+            input
+                .read_to_string(&mut contents)
+                .map_err(|err| Error::IOError {
+                    path: PathBuf::new(),
+                    err,
+                })?;
             let solidity_version = if self.skip_version_detection {
                 get_latest_supported_version()
             } else {
@@ -159,8 +162,8 @@ impl Extract for ConstructorDefinition {
         let attr = capture(&m, "constructor_attr")?;
 
         let span = find_definition_start(&constructor).map_or_else(
-            || constructor.text_range(),
-            |start| start.start..attr.text_range().end,
+            || textrange(constructor.text_range()),
+            |start| start.start..attr.text_range().end.into(),
         );
         let params = extract_params(&params, NonterminalKind::Parameter);
         let natspec = extract_comment(&constructor.clone(), &[])?;
@@ -193,8 +196,8 @@ impl Extract for EnumDefinition {
         let members = capture(&m, "enum_members")?;
 
         let span = find_definition_start(&enumeration).map_or_else(
-            || enumeration.text_range(),
-            |start| start.start..enumeration.text_range().end,
+            || textrange(enumeration.text_range()),
+            |start| start.start..enumeration.text_range().end.into(),
         );
         let name = name.node().unparse().trim().to_string();
         let members = extract_enum_members(&members);
@@ -229,8 +232,8 @@ impl Extract for ErrorDefinition {
         let params = capture(&m, "err_params")?;
 
         let span = find_definition_start(&err).map_or_else(
-            || err.text_range(),
-            |start| start.start..err.text_range().end,
+            || textrange(err.text_range()),
+            |start| start.start..err.text_range().end.into(),
         );
         let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(&params);
@@ -265,8 +268,8 @@ impl Extract for EventDefinition {
         let params = capture(&m, "event_params")?;
 
         let span = find_definition_start(&event).map_or_else(
-            || event.text_range(),
-            |start| start.start..event.text_range().end,
+            || textrange(event.text_range()),
+            |start| start.start..event.text_range().end.into(),
         );
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::EventParameter);
@@ -311,10 +314,12 @@ impl Extract for FunctionDefinition {
         let attributes = capture(&m, "function_attr")?;
         let returns = capture_opt(&m, "function_returns")?;
 
-        let start = find_definition_start(&func).unwrap_or_else(|| func.text_range());
-        let end = returns
-            .as_ref()
-            .map_or_else(|| attributes.text_range(), Cursor::text_range);
+        let start = find_definition_start(&func).unwrap_or_else(|| textrange(func.text_range()));
+        let end = textrange(
+            returns
+                .as_ref()
+                .map_or_else(|| attributes.text_range(), Cursor::text_range),
+        );
         let span = start.start..end.end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::Parameter);
@@ -357,10 +362,13 @@ impl Extract for ModifierDefinition {
         let params = capture_opt(&m, "modifier_params")?;
         let attr = capture(&m, "modifier_attr")?;
 
-        let start = find_definition_start(&modifier).unwrap_or_else(|| modifier.text_range());
-        let end = params
-            .as_ref()
-            .map_or_else(|| attr.text_range(), Cursor::text_range);
+        let start =
+            find_definition_start(&modifier).unwrap_or_else(|| textrange(modifier.text_range()));
+        let end = textrange(
+            params
+                .as_ref()
+                .map_or_else(|| attr.text_range(), Cursor::text_range),
+        );
         let span = start.start..end.end;
         let name = name.node().unparse().trim().to_string();
         let params = params
@@ -399,8 +407,8 @@ impl Extract for StructDefinition {
         let members = capture(&m, "struct_members")?;
 
         let span = find_definition_start(&structure).map_or_else(
-            || structure.text_range(),
-            |start| start.start..structure.text_range().end,
+            || textrange(structure.text_range()),
+            |start| start.start..structure.text_range().end.into(),
         );
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(&members)?;
@@ -435,8 +443,8 @@ impl Extract for VariableDeclaration {
         let name = capture(&m, "variable_name")?;
 
         let span = find_definition_start(&variable).map_or_else(
-            || variable.text_range(),
-            |start| start.start..variable.text_range().end,
+            || textrange(variable.text_range()),
+            |start| start.start..variable.text_range().end.into(),
         );
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(&variable.clone(), &[])?;
@@ -489,13 +497,13 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
             found = true;
             out.push(Identifier {
                 name: Some(sub_cursor.node().unparse().trim().to_string()),
-                span: sub_cursor.text_range(),
+                span: textrange(sub_cursor.text_range()),
             });
         }
         if !found {
             out.push(Identifier {
                 name: None,
-                span: cursor.text_range(),
+                span: textrange(cursor.text_range()),
             });
         }
     }
@@ -519,7 +527,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
                     .parse(comment)
                     .map_err(|e| Error::NatspecParsingError {
                         parent: extract_parent_name(cursor.clone()),
-                        span: cursor.text_range(),
+                        span: textrange(cursor.text_range()),
                         message: e.to_string(),
                     })?
                     .populate_returns(returns),
@@ -583,7 +591,7 @@ pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
         }
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),
-            span: cursor.text_range(),
+            span: textrange(cursor.text_range()),
         });
     }
     out
@@ -651,7 +659,7 @@ pub fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),
-            span: cursor.text_range(),
+            span: textrange(cursor.text_range()),
         });
     }
     out
@@ -671,7 +679,7 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
         let member_name = capture(&m, "member_name")?;
         out.push(Identifier {
             name: Some(member_name.node().unparse().trim().to_string()),
-            span: member_name.text_range(),
+            span: textrange(member_name.text_range()),
         });
     }
     Ok(out)
@@ -695,13 +703,21 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
         ]) {
             continue;
         }
-        return Some(cursor.text_range());
+        return Some(textrange(cursor.text_range()));
     }
     None
 }
 
+/// Convert from a slang `TextRange` to this crate's equivalent
+#[must_use]
+pub fn textrange(value: SlangTextRange) -> TextRange {
+    value.start.into()..value.end.into()
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+
     use similar_asserts::assert_eq;
     use slang_solidity::{
         cst::{Cursor, NonterminalKind},
@@ -1286,7 +1302,8 @@ mod tests {
     #[test]
     fn test_parse_solidity_unsupported() {
         let mut parser = SlangParser::builder().skip_version_detection(true).build();
-        let output = parser.parse_document("test-data/UnsupportedVersion.sol", false);
+        let file = File::open("test-data/UnsupportedVersion.sol").unwrap();
+        let output = parser.parse_document(file, false);
         assert!(output.is_ok(), "{output:?}");
     }
 }
