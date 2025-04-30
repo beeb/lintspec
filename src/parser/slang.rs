@@ -690,10 +690,12 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
 pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
     let mut cursor = cursor.spawn();
     while cursor.go_to_next() {
-        if cursor
-            .node()
-            .is_terminal_with_kinds(&[TerminalKind::Whitespace, TerminalKind::EndOfLine])
-        {
+        if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::Whitespace,
+            TerminalKind::EndOfLine,
+            TerminalKind::SingleLineComment,
+            TerminalKind::MultiLineComment,
+        ]) {
             continue;
         }
         // special case for state variables, since the doc-comment is inside of the type node for some reason
