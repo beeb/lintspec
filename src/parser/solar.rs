@@ -1,6 +1,5 @@
 //! Solidity parser interface
 use slang_solidity::cst::TextIndex;
-// use slang_solidity::cst::TextRange;
 use solar_parse::{
     ast::{
         interface::{
@@ -25,7 +24,7 @@ use crate::{
         Identifier, Parent, TextRange, Visibility,
     },
     error::{Error, Result},
-    natspec::{parse_comment, NatSpec},
+    natspec::{parse_comment, NatSpec, NatSpecKind},
     parser::{Parse, ParsedDocument},
     utils::detect_solidity_version,
 };
@@ -64,6 +63,8 @@ impl Parse for SolarParser {
                     err: io::Error::new(io::ErrorKind::Other, format!("Parse failed: {e:?}")),
                 }
             })?;
+
+            dbg!(&ast);
 
             let mut visitor = LintspecVisitor {
                 current_parent: Vec::new(),
@@ -215,7 +216,11 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                 extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
             let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
 
-            let span = span_to_text_range(&item.span, visitor.source_map);
+            let span = if let Some((_, span)) = extracted_natspec {
+                span_to_text_range(&span, visitor.source_map)
+            } else {
+                span_to_text_range(&item.span, visitor.source_map)
+            };
 
             let natspec = extracted_natspec.map(|(ns, _)| ns.populate_returns(&returns));
 
@@ -273,7 +278,11 @@ impl<'ast> Extract<'ast> for solar_parse::ast::VariableDefinition<'ast> {
             let extracted_natspec =
                 extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
 
-            let span = span_to_text_range(&item.span, visitor.source_map);
+            let span = if let Some((_, span)) = extracted_natspec {
+                span_to_text_range(&span, visitor.source_map)
+            } else {
+                span_to_text_range(&item.span, visitor.source_map)
+            };
 
             let natspec = if let Some((natspec, _)) = extracted_natspec {
                 Some(natspec)
@@ -397,11 +406,16 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
         if let ItemKind::Error(item_error) = &item.kind {
             let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
 
-            let span = span_to_text_range(&item.span, visitor.source_map);
+            let extracted_natspec =
+                extract_natspec(&docs, visitor.source_map, parent.clone()).ok()?;
 
-            let natspec = extract_natspec(&docs, visitor.source_map, parent.clone())
-                .unwrap_or(None)
-                .map(|(ns, _)| ns);
+            let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
+
+            let span = if let Some((_, span)) = extracted_natspec {
+                span_to_text_range(&span, visitor.source_map)
+            } else {
+                span_to_text_range(&item.span, visitor.source_map)
+            };
 
             Some(Definition::Error(ErrorDefinition {
                 parent: parent.clone(),
@@ -528,7 +542,12 @@ fn extract_natspec(
         }
     }
 
-    if combined == NatSpec::default() {
+    // Drop only empty @return tags
+    combined.items.retain(|item| {
+        !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
+    });
+
+    if combined.items.is_empty() {
         Ok(None)
     } else {
         Ok(Some((combined, span.unwrap())))
