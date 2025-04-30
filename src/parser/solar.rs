@@ -41,14 +41,33 @@ impl Parse for SolarParser {
         let sess = Session::builder().with_stderr_emitter().build();
         let source_map = sess.source_map();
 
-        let definitions = sess.enter(|| -> Result<Vec<Definition>> {
+        let (definitions, contents) = sess.enter(|| -> Result<(Vec<Definition>, String)> {
             let arena = solar_parse::ast::Arena::new();
+
+            let mut content = String::new();
+            let mut content_clone = String::new();
+
+            if keep_contents {
+                input
+                    .read_to_string(&mut content)
+                    .map_err(|_| Error::IOError {
+                        path: PathBuf::default(),
+                        err: io::Error::new(io::ErrorKind::Other, format!("Src file read error")),
+                    })?;
+                content_clone = content.clone();
+            }
 
             let mut parser =
                 Parser::from_lazy_source_code(&sess, &arena, FileName::Stdin, move || {
                     let mut buf = String::new();
-                    input.read_to_string(&mut buf)?;
-                    Ok(buf)
+
+                    match keep_contents {
+                        true => Ok(content),
+                        false => {
+                            input.read_to_string(&mut buf)?;
+                            Ok(buf)
+                        }
+                    }
                 })
                 .map_err(|_| Error::IOError {
                     path: PathBuf::default(),
@@ -74,13 +93,19 @@ impl Parse for SolarParser {
 
             let _ = visitor.visit_source_unit(&ast);
 
-            Ok(visitor.definitions)
+            Ok((visitor.definitions, content_clone))
         })?;
 
-        Ok(ParsedDocument {
-            definitions,
-            contents: None,
-        })
+        match keep_contents {
+            true => Ok(ParsedDocument {
+                definitions,
+                contents: Some(contents),
+            }),
+            false => Ok(ParsedDocument {
+                definitions,
+                contents: None,
+            }),
+        }
     }
 }
 
