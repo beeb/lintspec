@@ -7,8 +7,7 @@ use solar_parse::{
             Session,
         },
         visit::Visit,
-        ContractKind, DocComments, Item, ItemContract, ItemKind, PragmaDirective, SourceUnit, Span,
-        VariableDefinition,
+        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
     },
     Parser,
 };
@@ -26,7 +25,6 @@ use crate::{
     error::{Error, Result},
     natspec::{parse_comment, NatSpec, NatSpecKind},
     parser::{Parse, ParsedDocument},
-    utils::detect_solidity_version,
 };
 
 #[derive(Clone)]
@@ -47,6 +45,7 @@ impl Parse for SolarParser {
             let mut content = String::new();
             let mut content_clone = String::new();
 
+            // if keep_contents is true, we read and keep a clone (parsing is within a closure moving content ownership)
             if keep_contents {
                 input
                     .read_to_string(&mut content)
@@ -59,11 +58,12 @@ impl Parse for SolarParser {
 
             let mut parser =
                 Parser::from_lazy_source_code(&sess, &arena, FileName::Stdin, move || {
-                    let mut buf = String::new();
-
+                    // if keep_contents is true, we reuse the content already read,
+                    // otherwise we read the content
                     match keep_contents {
                         true => Ok(content),
                         false => {
+                            let mut buf = String::new();
                             input.read_to_string(&mut buf)?;
                             Ok(buf)
                         }
@@ -75,15 +75,13 @@ impl Parse for SolarParser {
                 })?;
 
             let ast = parser.parse_file().map_err(|e| {
-                // this might be the error from the get_src closure above!
+                // this might be the error from the get_src closure above, when the closure is evaluated
                 e.clone().emit();
                 Error::IOError {
                     path: PathBuf::new(),
                     err: io::Error::new(io::ErrorKind::Other, format!("Parse failed: {e:?}")),
                 }
             })?;
-
-            dbg!(&ast);
 
             let mut visitor = LintspecVisitor {
                 current_parent: Vec::new(),
@@ -115,9 +113,11 @@ pub struct LintspecVisitor<'ast> {
     source_map: &'ast SourceMap,
 }
 
+/// Custom visitor to extract definitions from the AST
 impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     type BreakValue = ();
 
+    /// Visit an item and extract definitions from it, using the corresponging trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         let Item { docs, span, kind } = item;
         self.visit_span(span)?;
@@ -190,7 +190,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
         ControlFlow::Continue(())
     }
 
-    // Needed to track parent:
+    // Needed to track parent
     fn visit_item_contract(
         &mut self,
         contract: &'ast ItemContract<'ast>,
@@ -220,6 +220,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     }
 }
 
+/// Extract each "component" (parent, params, span, etc) then build a definition from it
 trait Extract<'ast> {
     fn extract_definition(
         visitor: &mut LintspecVisitor<'ast>,
@@ -495,6 +496,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
 }
 
 // @todo build the utf16 representation too?
+/// Convert a Solar span to a TextRange
 fn span_to_text_range(span: &Span, source_map: &SourceMap) -> TextRange {
     let (_, lo_line, lo_col, hi_line, hi_col) = source_map.span_to_location_info(*span);
 
