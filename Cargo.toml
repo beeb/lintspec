@@ -51,8 +51,23 @@ similar-asserts = "1.6.1"
 solar = ["dep:solar-parse"]
 
 [[test]]
-name = "solar"
+name = "tests-basic-sample"
 path = "tests/tests-basic-sample.rs"
+required-features = ["solar"]   
+
+[[test]]
+name = "tests-interface-sample"
+path = "tests/tests-interface-sample.rs"
+required-features = ["solar"]
+
+[[test]]
+name = "tests-library-sample"
+path = "tests/tests-library-sample.rs"
+required-features = ["solar"]
+
+[[test]]
+name = "tests-parser-sample"
+path = "tests/tests-parser-test.rs"
 required-features = ["solar"]
 
 [profile.release]

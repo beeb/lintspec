@@ -1,44 +1,23 @@
-use std::path::PathBuf;
-
-use lintspec::parser::solar::SolarParser;
+#[path = "common.rs"]
+mod common;
+use common::*;
 
 use lintspec::{
     config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
-    lint::{lint, FileDiagnostics, ValidationOptions},
-    parser::slang::SlangParser,
-    print_reports,
+    lint::ValidationOptions,
 };
 use similar_asserts::assert_eq;
 
-fn generate_output(diags: FileDiagnostics) -> String {
-    let mut buf = Vec::new();
-    print_reports(&mut buf, PathBuf::new(), diags, true).unwrap();
-    String::from_utf8(buf).unwrap()
-}
-
-fn multi_lint_handler(
-    path: &str,
-    options: &ValidationOptions,
-    keep_contents: bool,
-) -> (FileDiagnostics, FileDiagnostics) {
-    let diags_slang = lint(SlangParser::builder().build(), path, options, keep_contents)
-        .unwrap()
-        .unwrap();
-
-    let diags_solar = lint(SolarParser {}, path, options, keep_contents)
-        .unwrap()
-        .unwrap();
-
-    (diags_slang, diags_solar)
-}
-
 #[test]
 fn test_basic() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),
@@ -50,11 +29,14 @@ fn test_basic() {
 
 #[test]
 fn test_inheritdoc() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::default(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),
@@ -65,7 +47,7 @@ fn test_inheritdoc() {
 
 #[test]
 fn test_constructor() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -73,6 +55,9 @@ fn test_constructor() {
             .build(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),
@@ -83,7 +68,7 @@ fn test_constructor() {
 
 #[test]
 fn test_struct() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -91,6 +76,9 @@ fn test_struct() {
             .build(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),
@@ -101,7 +89,7 @@ fn test_struct() {
 
 #[test]
 fn test_enum() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -109,6 +97,9 @@ fn test_enum() {
             .build(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),
@@ -119,7 +110,7 @@ fn test_enum() {
 
 #[test]
 fn test_all() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .constructors(WithParamsRules::required())
@@ -146,6 +137,9 @@ fn test_all() {
         true,
     );
 
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
+
     assert_eq!(
         generate_output(diags_slang.clone()),
         generate_output(diags_solar)
@@ -155,7 +149,7 @@ fn test_all() {
 
 #[test]
 fn test_all_no_inheritdoc() {
-    let (diags_slang, diags_solar) = multi_lint_handler(
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
@@ -182,6 +176,9 @@ fn test_all_no_inheritdoc() {
             .build(),
         true,
     );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
 
     assert_eq!(
         generate_output(diags_slang.clone()),

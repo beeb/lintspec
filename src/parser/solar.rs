@@ -13,7 +13,6 @@ use solar_parse::{
     },
     Parser,
 };
-use std::fs;
 use std::io;
 use std::ops::ControlFlow;
 use std::path::PathBuf;
@@ -214,18 +213,11 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
 
             let extracted_natspec =
                 extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+            let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
 
-            let span = if let Some((_, span)) = extracted_natspec {
-                span_to_text_range(&span, visitor.source_map)
-            } else {
-                span_to_text_range(&item.span, visitor.source_map)
-            };
+            let span = span_to_text_range(&item.span, visitor.source_map);
 
-            let natspec = if let Some((natspec, _)) = extracted_natspec {
-                Some(natspec)
-            } else {
-                None
-            };
+            let natspec = extracted_natspec.map(|(ns, _)| ns.populate_returns(&returns));
 
             let def = if item_function.kind.is_constructor() {
                 Definition::Constructor(ConstructorDefinition {
@@ -238,10 +230,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                 Definition::Function(FunctionDefinition {
                     parent,
                     name: item_function.header.name.unwrap().to_string(),
-                    returns: returns_to_identifiers(
-                        item_function.header.returns,
-                        visitor.source_map,
-                    ),
+                    returns: returns.clone(),
                     attributes: Attributes {
                         visibility: item_function.header.visibility.into(),
                         r#override: item_function.header.override_.is_some(),
@@ -278,18 +267,13 @@ impl<'ast> Extract<'ast> for solar_parse::ast::VariableDefinition<'ast> {
         visitor: &mut LintspecVisitor<'ast>,
         item: &'ast Item<'ast>,
     ) -> Option<Definition> {
-        let Item { docs, span, kind } = item;
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Variable(item_variable) = &item.kind {
             let extracted_natspec =
                 extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
 
-            let span = if let Some((_, span)) = extracted_natspec {
-                span_to_text_range(&span, visitor.source_map)
-            } else {
-                span_to_text_range(&item.span, visitor.source_map)
-            };
+            let span = span_to_text_range(&item.span, visitor.source_map);
 
             let natspec = if let Some((natspec, _)) = extracted_natspec {
                 Some(natspec)
@@ -336,19 +320,15 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
                 .collect();
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&docs, visitor.source_map, parent.clone()).ok()?;
 
-            let span = if let Some((_, span)) = extracted_natspec {
-                span_to_text_range(&span, visitor.source_map)
+            let span = if let Some((_, doc_span)) = &extracted_natspec {
+                span_to_text_range(doc_span, visitor.source_map)
             } else {
                 span_to_text_range(&item.span, visitor.source_map)
             };
 
-            let natspec = if let Some((natspec, _)) = extracted_natspec {
-                Some(natspec)
-            } else {
-                None
-            };
+            let natspec = extracted_natspec.map(|(ns, _)| ns);
 
             Some(Definition::Struct(StructDefinition {
                 parent,
@@ -381,20 +361,17 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
                 })
                 .collect();
 
-            let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+            let extracted = extract_natspec(&docs, visitor.source_map, parent.clone())
+                .ok()
+                .flatten();
 
-            let span = if let Some((_, span)) = extracted_natspec {
-                span_to_text_range(&span, visitor.source_map)
+            let span = if let Some((_, doc_span)) = &extracted {
+                span_to_text_range(doc_span, visitor.source_map)
             } else {
                 span_to_text_range(&item.span, visitor.source_map)
             };
 
-            let natspec = if let Some((natspec, _)) = extracted_natspec {
-                Some(natspec)
-            } else {
-                None
-            };
+            let natspec = extracted.map(|(ns, _)| ns);
 
             Some(Definition::Enumeration(EnumDefinition {
                 parent: parent.clone(),
@@ -420,20 +397,11 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
         if let ItemKind::Error(item_error) = &item.kind {
             let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
 
-            let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+            let span = span_to_text_range(&item.span, visitor.source_map);
 
-            let span = if let Some((_, span)) = extracted_natspec {
-                span_to_text_range(&span, visitor.source_map)
-            } else {
-                span_to_text_range(&item.span, visitor.source_map)
-            };
-
-            let natspec = if let Some((natspec, _)) = extracted_natspec {
-                Some(natspec)
-            } else {
-                None
-            };
+            let natspec = extract_natspec(&docs, visitor.source_map, parent.clone())
+                .unwrap_or(None)
+                .map(|(ns, _)| ns);
 
             Some(Definition::Error(ErrorDefinition {
                 parent: parent.clone(),
@@ -573,9 +541,13 @@ fn returns_to_identifiers(
 ) -> Vec<Identifier> {
     returns
         .iter()
-        .map(|r| Identifier {
-            name: Some(r.name.unwrap_or_default().to_string()), // @todo anonymous return are empty?
-            span: span_to_text_range(&r.span, source_map),
+        .map(|r| {
+            // Preserve named returns; leave unnamed returns as None
+            let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
+            Identifier {
+                name,
+                span: span_to_text_range(&r.span, source_map),
+            }
         })
         .collect()
 }
@@ -589,33 +561,5 @@ impl From<Option<solar_parse::ast::Visibility>> for Visibility {
             Some(solar_parse::ast::Visibility::External) => Visibility::External,
             None => Visibility::Internal,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::definitions::ItemType;
-
-    #[test]
-    fn test_extract_definition_for_function() {
-        let source = "
-/// @params a hey
-function foo(uint256 a) public {}
-        ";
-
-        let mut parser = SolarParser {};
-        let document = parser.parse_document(source.as_bytes(), false);
-
-        assert!(document.is_ok());
-
-        let document = document.unwrap();
-        assert_eq!(document.definitions.len(), 1);
-
-        // let definition = &document.definitions[0].to_function();
-
-        // assert!(definition.is_some());
-
-        dbg!(&document.definitions);
     }
 }

@@ -1,16 +1,17 @@
-use lintspec::{
-    lint::{lint, ValidationOptions},
-    parser::slang::SlangParser,
-};
+#[path = "common.rs"]
+mod common;
+use common::*;
+
+use lintspec::lint::ValidationOptions;
 
 #[test]
 fn test_basic() {
-    let diags = lint(
-        SlangParser::default(),
+    let (diags_slang, diags_solar) = multi_lint_handler(
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
-    )
-    .unwrap();
-    assert!(diags.is_none(), "{diags:?}");
+    );
+
+    assert!(diags_slang.is_none(), "{diags_slang:?}");
+    assert!(diags_solar.is_none(), "{diags_solar:?}");
 }
