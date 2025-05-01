@@ -44,13 +44,6 @@ ParsingError
 invalid delimiter
 expected ///
 
-./test-data/ParserTest.sol:182:3
-ParsingError 
-  //// @dev Too many slashes is also not a valid comment
-   ^
-invalid delimiter
-expected ///
-
 ./test-data/ParserTest.sol:187:4
 ParsingError 
   parse error at line 1, column 4
