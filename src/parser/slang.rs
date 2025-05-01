@@ -523,6 +523,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             items.push((
                 cursor.node().kind().to_string(), // the node type to differentiate multiline for single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
+                // TODO: ignore errors from badly formatted comments (skip comment)
                 parse_comment
                     .parse(comment)
                     .map_err(|e| Error::NatspecParsingError {

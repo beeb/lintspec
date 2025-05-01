@@ -2,13 +2,15 @@
 use derive_more::IsVariant;
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
-    combinator::{alt, delimited, opt, repeat, separated},
+    combinator::{alt, delimited, not, opt, repeat, separated},
+    error::{ContextError, FromExternalError, StrContext, StrContextValue},
     seq,
+    stream::Stream,
     token::{take_till, take_until},
     Parser as _, Result,
 };
 
-use crate::definitions::Identifier;
+use crate::{definitions::Identifier, error::Error};
 
 /// A collection of `NatSpec` items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -236,8 +238,9 @@ fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
 fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         (
-            '/',
-            repeat::<_, _, (), _, _>(2.., '*'),
+            ("/**", not('*'))
+                .context(StrContext::Label("delimiter"))
+                .context(StrContext::Expected(StrContextValue::Description("/**"))),
             space0,
             opt(line_ending),
         ),
@@ -250,19 +253,22 @@ fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
 
 /// Parse an empty multiline comment (without any text in the body)
 fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
-    let _ = (
-        '/',
-        repeat::<_, _, (), _, _>(2.., '*'),
-        space1,
-        repeat::<_, _, (), _, _>(1.., '*'),
-        '/',
-    )
-        .parse_next(input)?;
+    let _ = ("/**", space1, repeat::<_, _, (), _, _>(1.., '*'), '/').parse_next(input)?;
     Ok(NatSpec::default())
 }
 
 /// Parse a single line comment `NatSpec` item
 fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
+    // four slashes is not a valid doc-comment
+    // <https://github.com/ethereum/solidity/issues/9139>
+    if let Some('/') = input.peek_token() {
+        return Err(ContextError::from_external_error(
+            input,
+            Error::CommentParsingError(
+                "Single line doc-comments can only start with '///'".to_string(),
+            ),
+        ));
+    }
     seq! {NatSpecItem {
         _: space0,
         kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
@@ -274,12 +280,7 @@ fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
 
 /// Parse a single line `NatSpec` comment
 fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
-    let item = delimited(
-        repeat::<_, _, (), _, _>(3.., '/'),
-        single_line_natspec,
-        opt(line_ending),
-    )
-    .parse_next(input)?;
+    let item = delimited("///", single_line_natspec, opt(line_ending)).parse_next(input)?;
     if item.is_empty() {
         return Ok(NatSpec::default());
     }
@@ -289,6 +290,7 @@ fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
+    use winnow::error::ParseError;
 
     use super::*;
 
@@ -429,6 +431,12 @@ mod tests {
     }
 
     #[test]
+    fn test_single_line_weird() {
+        let res = single_line_comment.parse("//// Hello\n");
+        assert!(matches!(res, Err(ParseError { .. })));
+    }
+
+    #[test]
     fn test_multiline() {
         let comment = "/**
      * @notice Some notice text.
@@ -534,22 +542,25 @@ Another notice
         let comment = "/**** @notice Some text
     ** */";
         let res = parse_comment.parse(comment);
-        assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
-        assert_eq!(
-            res,
-            NatSpec {
-                items: vec![
-                    NatSpecItem {
-                        kind: NatSpecKind::Notice,
-                        comment: "Some text".to_string()
-                    },
-                    NatSpecItem {
-                        kind: NatSpecKind::Notice,
-                        comment: String::new()
-                    }
-                ]
-            }
-        );
+        let err = res.unwrap_err();
+        println!("{err}");
+        panic!()
+        // assert!(res.is_ok(), "{res:?}");
+        // let res = res.unwrap();
+        // assert_eq!(
+        //     res,
+        //     NatSpec {
+        //         items: vec![
+        //             NatSpecItem {
+        //                 kind: NatSpecKind::Notice,
+        //                 comment: "Some text".to_string()
+        //             },
+        //             NatSpecItem {
+        //                 kind: NatSpecKind::Notice,
+        //                 comment: String::new()
+        //             }
+        //         ]
+        //     }
+        // );
     }
 }

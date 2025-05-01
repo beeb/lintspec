@@ -29,6 +29,10 @@ pub enum Error {
         message: String,
     },
 
+    /// Error while parsing a Solidity comment
+    #[error("error parsing comment: {0}")]
+    CommentParsingError(String),
+
     /// IO error
     #[error("IO error for {path:?}: {err}")]
     IOError { path: PathBuf, err: std::io::Error },
