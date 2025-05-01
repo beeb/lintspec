@@ -239,7 +239,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                 parameters_list_to_identifiers(item_function.header.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
             let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
 
             let span = if let Some((_, span)) = extracted_natspec {
@@ -302,7 +302,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::VariableDefinition<'ast> {
 
         if let ItemKind::Variable(item_variable) = &item.kind {
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
@@ -355,7 +355,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
                 .collect();
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted_natspec {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -396,9 +396,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
                 })
                 .collect();
 
-            let extracted = extract_natspec(&docs, visitor.source_map, parent.clone())
-                .ok()
-                .flatten();
+            let extracted =
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -433,7 +432,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
             let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
 
@@ -468,7 +467,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
             let params = parameters_list_to_identifiers(item_event.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).ok()?;
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
