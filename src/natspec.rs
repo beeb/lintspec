@@ -2,10 +2,11 @@
 use derive_more::IsVariant;
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
-    combinator::{alt, delimited, opt, repeat, separated},
+    combinator::{alt, cut_err, delimited, not, opt, repeat, separated},
+    error::{StrContext, StrContextValue},
     seq,
     token::{take_till, take_until},
-    Parser as _, Result,
+    ModalResult, Parser as _,
 };
 
 use crate::definitions::Identifier;
@@ -172,12 +173,12 @@ impl From<NatSpecItem> for NatSpec {
 }
 
 /// Parse a Solidity doc-comment to extract the `NatSpec` information
-pub fn parse_comment(input: &mut &str) -> Result<NatSpec> {
+pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
     alt((single_line_comment, multiline_comment, empty_multiline)).parse_next(input)
 }
 
 /// Parse an identifier (contiguous non-whitespace characters)
-fn ident(input: &mut &str) -> Result<String> {
+fn ident(input: &mut &str) -> ModalResult<String> {
     take_till(1.., |c: char| c.is_whitespace())
         .map(|ident: &str| ident.to_owned())
         .parse_next(input)
@@ -187,7 +188,7 @@ fn ident(input: &mut &str) -> Result<String> {
 ///
 /// For `@return`, the identifier, if present, is not included in the `NatSpecItem` for now. A post-processing
 /// step ([`NatSpecItem::populate_return`]) is needed to extract the name.
-fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
+fn natspec_kind(input: &mut &str) -> ModalResult<NatSpecKind> {
     alt((
         "@title".map(|_| NatSpecKind::Title),
         "@author".map(|_| NatSpecKind::Author),
@@ -214,13 +215,13 @@ fn natspec_kind(input: &mut &str) -> Result<NatSpecKind> {
 
 /// Parse the end of a multiline comment (one or more `*` followed by `/`)
 #[allow(clippy::unnecessary_wraps)]
-fn end_of_comment(input: &mut &str) -> Result<()> {
+fn end_of_comment(input: &mut &str) -> ModalResult<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())
 }
 
 /// Parse a single `NatSpec` item (line) in a multiline comment
-fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
+fn one_multiline_natspec(input: &mut &str) -> ModalResult<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
         _: repeat::<_, _, (), _, _>(0.., '*'),
@@ -233,11 +234,17 @@ fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
 }
 
 /// Parse a multiline `NatSpec` comment
-fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
+fn multiline_comment(input: &mut &str) -> ModalResult<NatSpec> {
     delimited(
         (
-            '/',
-            repeat::<_, _, (), _, _>(2.., '*'),
+            (
+                "/**",
+                // three stars is not a valid doc-comment
+                // <https://github.com/ethereum/solidity/issues/9139>
+                cut_err(not('*'))
+                    .context(StrContext::Label("delimiter"))
+                    .context(StrContext::Expected(StrContextValue::Description("/**"))),
+            ),
             space0,
             opt(line_ending),
         ),
@@ -249,20 +256,13 @@ fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
 }
 
 /// Parse an empty multiline comment (without any text in the body)
-fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
-    let _ = (
-        '/',
-        repeat::<_, _, (), _, _>(2.., '*'),
-        space1,
-        repeat::<_, _, (), _, _>(1.., '*'),
-        '/',
-    )
-        .parse_next(input)?;
+fn empty_multiline(input: &mut &str) -> ModalResult<NatSpec> {
+    let _ = ("/**", space1, repeat::<_, _, (), _, _>(1.., '*'), '/').parse_next(input)?;
     Ok(NatSpec::default())
 }
 
 /// Parse a single line comment `NatSpec` item
-fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
+fn single_line_natspec(input: &mut &str) -> ModalResult<NatSpecItem> {
     seq! {NatSpecItem {
         _: space0,
         kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
@@ -273,9 +273,16 @@ fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
 }
 
 /// Parse a single line `NatSpec` comment
-fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
+fn single_line_comment(input: &mut &str) -> ModalResult<NatSpec> {
     let item = delimited(
-        repeat::<_, _, (), _, _>(3.., '/'),
+        (
+            "///",
+            // four slashes is not a valid doc-comment
+            // <https://github.com/ethereum/solidity/issues/9139>
+            cut_err(not('/'))
+                .context(StrContext::Label("delimiter"))
+                .context(StrContext::Expected(StrContextValue::Description("///"))),
+        ),
         single_line_natspec,
         opt(line_ending),
     )
@@ -289,6 +296,7 @@ fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
+    use winnow::error::ParseError;
 
     use super::*;
 
@@ -429,6 +437,12 @@ mod tests {
     }
 
     #[test]
+    fn test_single_line_weird() {
+        let res = single_line_comment.parse("//// Hello\n");
+        assert!(matches!(res, Err(ParseError { .. })));
+    }
+
+    #[test]
     fn test_multiline() {
         let comment = "/**
      * @notice Some notice text.
@@ -534,22 +548,6 @@ Another notice
         let comment = "/**** @notice Some text
     ** */";
         let res = parse_comment.parse(comment);
-        assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
-        assert_eq!(
-            res,
-            NatSpec {
-                items: vec![
-                    NatSpecItem {
-                        kind: NatSpecKind::Notice,
-                        comment: "Some text".to_string()
-                    },
-                    NatSpecItem {
-                        kind: NatSpecKind::Notice,
-                        comment: String::new()
-                    }
-                ]
-            }
-        );
+        assert!(matches!(res, Err(ParseError { .. })));
     }
 }

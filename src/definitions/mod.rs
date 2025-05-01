@@ -172,6 +172,13 @@ impl PartialEq for Definition {
             (Self::Modifier(a), Self::Modifier(b)) => a.span.start == b.span.start,
             (Self::Struct(a), Self::Struct(b)) => a.span.start == b.span.start,
             (Self::Variable(a), Self::Variable(b)) => a.span.start == b.span.start,
+            (
+                Self::NatspecParsingError(Error::NatspecParsingError { span: span_a, .. }),
+                Self::NatspecParsingError(Error::NatspecParsingError { span: span_b, .. }),
+            ) => span_a.start == span_b.start,
+            (Self::NatspecParsingError(a), Self::NatspecParsingError(b)) => {
+                a.to_string() == b.to_string() // try to compare on error message
+            }
             _ => false,
         }
     }
