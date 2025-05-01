@@ -179,14 +179,13 @@ contract ParserTestFunny is IParserTest {
   }
 
   // @notice Forgot one slash and it's not natspec anymore
-  //// @dev Too many slashes is fine though
-  //// @return _returned The returned value
+  //// @dev Too many slashes is also not a valid comment
   function _viewInternal(uint256 _paramName) internal pure returns (uint256 _returned) {
     return 1;
   }
 
-   /**
-    @notice Some text
+   /***
+    @notice Too many stars is not a valid comment
   */
   function _viewBlockLinterFail() internal pure {
   }

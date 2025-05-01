@@ -3,14 +3,13 @@ use derive_more::IsVariant;
 use winnow::{
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, delimited, not, opt, repeat, separated},
-    error::{ContextError, FromExternalError, StrContext, StrContextValue},
+    error::{StrContext, StrContextValue},
     seq,
-    stream::Stream,
     token::{take_till, take_until},
     Parser as _, Result,
 };
 
-use crate::{definitions::Identifier, error::Error};
+use crate::definitions::Identifier;
 
 /// A collection of `NatSpec` items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -238,9 +237,14 @@ fn one_multiline_natspec(input: &mut &str) -> Result<NatSpecItem> {
 fn multiline_comment(input: &mut &str) -> Result<NatSpec> {
     delimited(
         (
-            ("/**", not('*'))
-                .context(StrContext::Label("delimiter"))
-                .context(StrContext::Expected(StrContextValue::Description("/**"))),
+            (
+                "/**",
+                // three stars is not a valid doc-comment
+                // <https://github.com/ethereum/solidity/issues/9139>
+                not('*')
+                    .context(StrContext::Label("delimiter"))
+                    .context(StrContext::Expected(StrContextValue::Description("/**"))),
+            ),
             space0,
             opt(line_ending),
         ),
@@ -259,16 +263,6 @@ fn empty_multiline(input: &mut &str) -> Result<NatSpec> {
 
 /// Parse a single line comment `NatSpec` item
 fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
-    // four slashes is not a valid doc-comment
-    // <https://github.com/ethereum/solidity/issues/9139>
-    if let Some('/') = input.peek_token() {
-        return Err(ContextError::from_external_error(
-            input,
-            Error::CommentParsingError(
-                "Single line doc-comments can only start with '///'".to_string(),
-            ),
-        ));
-    }
     seq! {NatSpecItem {
         _: space0,
         kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
@@ -280,7 +274,19 @@ fn single_line_natspec(input: &mut &str) -> Result<NatSpecItem> {
 
 /// Parse a single line `NatSpec` comment
 fn single_line_comment(input: &mut &str) -> Result<NatSpec> {
-    let item = delimited("///", single_line_natspec, opt(line_ending)).parse_next(input)?;
+    let item = delimited(
+        (
+            "///",
+            // four slashes is not a valid doc-comment
+            // <https://github.com/ethereum/solidity/issues/9139>
+            not('/')
+                .context(StrContext::Label("delimiter"))
+                .context(StrContext::Expected(StrContextValue::Description("///"))),
+        ),
+        single_line_natspec,
+        opt(line_ending),
+    )
+    .parse_next(input)?;
     if item.is_empty() {
         return Ok(NatSpec::default());
     }
@@ -542,25 +548,6 @@ Another notice
         let comment = "/**** @notice Some text
     ** */";
         let res = parse_comment.parse(comment);
-        let err = res.unwrap_err();
-        println!("{err}");
-        panic!()
-        // assert!(res.is_ok(), "{res:?}");
-        // let res = res.unwrap();
-        // assert_eq!(
-        //     res,
-        //     NatSpec {
-        //         items: vec![
-        //             NatSpecItem {
-        //                 kind: NatSpecKind::Notice,
-        //                 comment: "Some text".to_string()
-        //             },
-        //             NatSpecItem {
-        //                 kind: NatSpecKind::Notice,
-        //                 comment: String::new()
-        //             }
-        //         ]
-        //     }
-        // );
+        assert!(matches!(res, Err(ParseError { .. })));
     }
 }

@@ -38,10 +38,25 @@ function ParserTestFunny._viewInternal
   @return missing for unnamed return #1
 
 ./test-data/ParserTest.sol:182:3
-function ParserTestFunny._viewInternal
-  @notice is missing
-  @param _paramName is missing
+ParsingError 
+  //// @dev Too many slashes is also not a valid comment
+^
 
-./test-data/ParserTest.sol:200:3
+
+./test-data/ParserTest.sol:182:3
+ParsingError 
+  //// @dev Too many slashes is also not a valid comment
+^
+
+
+./test-data/ParserTest.sol:187:4
+ParsingError 
+  parse error at line 1, column 4
+  |
+1 | /***
+  |    ^
+
+
+./test-data/ParserTest.sol:199:3
 function ParserTestFunny.functionUnnamedEmptyReturn
   @inheritdoc is missing
