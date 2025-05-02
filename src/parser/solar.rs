@@ -1,5 +1,4 @@
 //! Solidity parser interface
-use slang_solidity::cst::TextIndex;
 use solar_parse::{
     ast::{
         interface::{
@@ -20,7 +19,7 @@ use crate::{
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
         structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextRange, Visibility,
+        Identifier, Parent, TextIndex, TextRange, Visibility,
     },
     error::{Error, Result},
     natspec::{parse_comment, NatSpec, NatSpecKind},
@@ -509,7 +508,7 @@ fn span_to_text_range(span: &Span, source_map: &SourceMap) -> TextRange {
     end.line = hi_line - 1;
     end.column = hi_col - 1;
 
-    start.into()..end.into()
+    start..end
 }
 
 fn parameters_list_to_identifiers<'ast>(
@@ -540,6 +539,10 @@ fn extract_natspec(
     source_map: &SourceMap,
     parent: Option<Parent>,
 ) -> Result<Option<(NatSpec, Span)>> {
+    if docs.is_empty() {
+        return Ok(None);
+    }
+
     let mut combined = NatSpec::default();
     let mut span = None;
 
@@ -573,11 +576,7 @@ fn extract_natspec(
         !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
     });
 
-    if combined.items.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some((combined, span.unwrap())))
-    }
+    Ok(Some((combined, span.unwrap())))
 }
 
 fn returns_to_identifiers(
