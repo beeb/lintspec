@@ -41,18 +41,12 @@ function ParserTestFunny._viewInternal
   @notice is missing
   @return missing for unnamed return #1
 
-./test-data/ParserTest.sol:182:3
-ParsingError 
-  //// @dev Too many slashes is also not a valid comment
-   ^
-invalid delimiter
-expected ///
+./test-data/ParserTest.sol:183:3
+function ParserTestFunny._viewInternal
+  @notice is missing
+  @param _paramName is missing
+  @return _returned is missing
 
-./test-data/ParserTest.sol:187:4
-ParsingError 
-  parse error at line 1, column 4
-  |
-1 | /***
-  |    ^
-invalid delimiter
-expected /**
+./test-data/ParserTest.sol:190:3
+function ParserTestFunny._viewBlockLinterFail
+  @notice is missing

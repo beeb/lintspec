@@ -196,6 +196,9 @@ contract ParserTestFunny is IParserTest {
 
   }
 
+  ///////////
+  //  hello //
+  ///////////
   /// fun fact: there are extra spaces after the 1st return
   /// @return       
   /// @return
