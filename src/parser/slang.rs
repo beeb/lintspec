@@ -520,8 +520,13 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             TerminalKind::SingleLineNatSpecComment,
         ]) {
             let comment = &cursor.node().unparse();
+            let trimmed = comment.trim_start();
+            if trimmed.starts_with("////") || trimmed.starts_with("/***") {
+                // avoid a parsing error in those cases, we simply ignore those as if they were non-NatSpec comments
+                continue;
+            }
             items.push((
-                cursor.node().kind().to_string(), // the node type to differentiate multiline for single line
+                cursor.node().kind().to_string(), // the node type to differentiate multiline from single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
                 parse_comment
                     .parse(comment)
@@ -704,6 +709,17 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
             NonterminalKind::ElementaryType,
         ]) {
             continue;
+        }
+        if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::SingleLineNatSpecComment,
+            TerminalKind::MultiLineNatSpecComment,
+        ]) {
+            let comment = cursor.node().unparse();
+            let comment = comment.trim_start();
+            if comment.starts_with("////") || comment.starts_with("/***") {
+                // those should not be considered valid doc-comments, they are normal comments
+                continue;
+            }
         }
         return Some(textrange(cursor.text_range()));
     }
