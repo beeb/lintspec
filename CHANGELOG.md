@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.6.0] - 2025-05-02
+
+### Changed
+
+- **(parser)** [**breaking**] change input from path to reader ([#74](https://github.com/beeb/lintspec/pull/74)) - ([7f29a31](https://github.com/beeb/lintspec/commit/7f29a31890cbf960c4a9dcbe83dc7d1a5003e562))
+
+
+
+### Fixed
+
+- **(natspec)** [**breaking**] consider some comment delimiters as errors ([#77](https://github.com/beeb/lintspec/pull/77)) - ([3156ea0](https://github.com/beeb/lintspec/commit/3156ea0b384da29d3237bc0024624e728c129993))
+
+- **(slang)** ignore non-doc-comments in span ([#76](https://github.com/beeb/lintspec/pull/76)) - ([fbc2dce](https://github.com/beeb/lintspec/commit/fbc2dcef1a3e8ff9c2a32c4d2c496e2f97e57121))
+
+- **(slang)** ignore natspec comments which start with too many slashes or stars ([#78](https://github.com/beeb/lintspec/pull/78)) - ([fc411f0](https://github.com/beeb/lintspec/commit/fc411f0c0dbf49506e7450c9ee48694729dc1cb1))
+
+
+
+
+
+
+**Full Changelog**: [0.5.0...0.6.0](https://github.com/beeb/lintspec/compare/v0.5.0...v0.6.0)
+
 ## [0.5.0] - 2025-04-19
 
 ### Changed
