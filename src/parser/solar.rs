@@ -82,6 +82,8 @@ impl Parse for SolarParser {
                 }
             })?;
 
+            dbg!(&ast);
+
             let mut visitor = LintspecVisitor {
                 current_parent: Vec::new(),
                 definitions: Vec::new(),
@@ -567,7 +569,7 @@ fn extract_natspec(
         if span.is_none() {
             span = Some(doc.span);
         } else {
-            span = Some(Span::with_lo(span.unwrap(), doc.span.hi()));
+            span = Some(Span::with_hi(span.unwrap(), doc.span.lo()));
         }
     }
 
