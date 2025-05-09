@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+#[cfg(feature = "solar")]
 use lintspec::parser::solar::SolarParser;
 
 use lintspec::{
@@ -14,6 +15,7 @@ pub fn generate_output(diags: FileDiagnostics) -> String {
     String::from_utf8(buf).unwrap()
 }
 
+#[cfg(feature = "solar")]
 pub fn multi_lint_handler(
     path: &str,
     options: &ValidationOptions,
