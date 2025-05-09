@@ -566,7 +566,6 @@ fn extract_natspec(
     // end of temp fix
 
     let mut combined = NatSpec::default();
-    let mut span = None;
 
     for doc in docs.iter() {
         let snippet =
@@ -585,12 +584,6 @@ fn extract_natspec(
                 message: format!("{e:?}"),
             }
         })?);
-
-        if span.is_none() {
-            span = Some(doc.span);
-        } else {
-            span = Some(Span::with_hi(span.unwrap(), doc.span.lo()));
-        }
     }
 
     // Drop only empty @return tags
@@ -598,7 +591,6 @@ fn extract_natspec(
         !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
     });
 
-    // Ok(Some((combined, span.unwrap())))
     Ok(Some((combined, docs.span())))
 }
 
