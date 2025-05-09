@@ -598,7 +598,8 @@ fn extract_natspec(
         !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
     });
 
-    Ok(Some((combined, span.unwrap())))
+    // Ok(Some((combined, span.unwrap())))
+    Ok(Some((combined, docs.span())))
 }
 
 fn returns_to_identifiers(
