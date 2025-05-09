@@ -1,8 +1,11 @@
+#[path = "common.rs"]
+mod common;
+use common::*;
+
 use std::path::PathBuf;
 
 use lintspec::{
-    lint::{lint, FileDiagnostics, ValidationOptions},
-    parser::slang::SlangParser,
+    lint::{FileDiagnostics, ValidationOptions},
     print_reports,
 };
 
@@ -14,13 +17,19 @@ fn generate_output(diags: FileDiagnostics) -> String {
 
 #[test]
 fn test_basic() {
-    let diags = lint(
-        SlangParser::default(),
+    let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/LibrarySample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
-    )
-    .unwrap()
-    .unwrap();
-    insta::assert_snapshot!(generate_output(diags));
+    );
+
+    let diags_slang = opt_slang.unwrap();
+    let diags_solar = opt_solar.unwrap();
+
+    assert_eq!(
+        generate_output(diags_slang.clone()),
+        generate_output(diags_solar)
+    );
+
+    insta::assert_snapshot!(generate_output(diags_slang));
 }
