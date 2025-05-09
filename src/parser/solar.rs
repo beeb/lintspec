@@ -82,8 +82,6 @@ impl Parse for SolarParser {
                 }
             })?;
 
-            dbg!(&ast);
-
             let mut visitor = LintspecVisitor {
                 current_parent: Vec::new(),
                 definitions: Vec::new(),
@@ -121,8 +119,6 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     /// Visit an item and extract definitions from it, using the corresponging trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         let Item { docs, span, kind } = item;
-        self.visit_span(span)?;
-        self.visit_doc_comments(docs)?;
 
         match kind {
             ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
@@ -240,7 +236,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                 parameters_list_to_identifiers(item_function.header.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
+                    .unwrap_or(None);
             let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
 
             let span = if let Some((_, span)) = extracted_natspec {
@@ -258,6 +255,21 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                     params,
                     natspec,
                 })
+            } else if item_function.kind.is_modifier() {
+                // dbg!(&item_function);
+                // dbg!(&natspec);
+                // dbg!(&item.docs);
+                Definition::Modifier(ModifierDefinition {
+                    parent,
+                    span,
+                    params,
+                    natspec,
+                    name: item_function.header.name.unwrap().to_string(),
+                    attributes: Attributes {
+                        visibility: item_function.header.visibility.into(),
+                        r#override: item_function.header.override_.is_some(),
+                    },
+                })
             } else if item_function.kind.is_function() {
                 Definition::Function(FunctionDefinition {
                     parent,
@@ -270,18 +282,6 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                     span,
                     params,
                     natspec,
-                })
-            } else if item_function.kind.is_modifier() {
-                Definition::Modifier(ModifierDefinition {
-                    parent,
-                    span,
-                    params,
-                    natspec,
-                    name: item_function.header.name.unwrap().to_string(),
-                    attributes: Attributes {
-                        visibility: item_function.header.visibility.into(),
-                        r#override: item_function.header.override_.is_some(),
-                    },
                 })
             } else {
                 return None;
@@ -303,7 +303,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::VariableDefinition<'ast> {
 
         if let ItemKind::Variable(item_variable) = &item.kind {
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
+                    .unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
@@ -356,7 +357,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
                 .collect();
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
+                extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
+                    .unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted_natspec {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -397,8 +399,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
                 })
                 .collect();
 
-            let extracted =
-                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
+            let extracted = extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
+                .unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -433,7 +435,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
             let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
+                extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
+                    .unwrap_or(None);
 
             let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
 
@@ -468,7 +471,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
             let params = parameters_list_to_identifiers(item_event.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
+                    .unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
@@ -539,11 +543,27 @@ fn item_contract_to_parent(contract: &ItemContract, source_map: &SourceMap) -> P
 fn extract_natspec(
     docs: &DocComments,
     source_map: &SourceMap,
+    item_span: Span,
     parent: Option<Parent>,
 ) -> Result<Option<(NatSpec, Span)>> {
     if docs.is_empty() {
         return Ok(None);
     }
+
+    // @todo this is a temporary fix, waiting for solar_parse to fix struct doc comments issue
+    // see https://github.com/paradigmxyz/solar/issues/308
+    // for now, we make sure there is no gap between doc and items (which would be the case if the doc
+    // comes from a previous item)
+    // Attention, this would then discard docs if there is/are regular comments between the doc and the item
+    // (solc behavior, unlike solang).
+    // Once fixed, remove this block as well as the item_span argument
+    let (_, _, _, doc_end_line, _) = source_map.span_to_location_info(docs.span());
+    let (_, item_start_line, _, _, _) = source_map.span_to_location_info(item_span);
+
+    if doc_end_line + 1 != item_start_line {
+        return Ok(None);
+    }
+    // end of temp fix
 
     let mut combined = NatSpec::default();
     let mut span = None;

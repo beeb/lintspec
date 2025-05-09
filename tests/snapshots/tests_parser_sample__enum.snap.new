@@ -1,0 +1,49 @@
+---
+source: tests/tests-parser-test.rs
+assertion_line: 96
+expression: generate_output(diags_slang)
+---
+./test-data/ParserTest.sol:8:3
+error IParserTest.SimpleError
+  @param _param1 is missing
+  @param _param2 is missing
+
+./test-data/ParserTest.sol:11:3
+event IParserTest.SimpleEvent
+  @param _param1 is missing
+  @param _param2 is missing
+
+./test-data/ParserTest.sol:47:3
+function IParserTest.SOME_CONSTANT
+  @return _returned is missing
+
+./test-data/ParserTest.sol:121:3
+struct ParserTestFunny.SimpleStruct
+  @notice is missing
+
+./test-data/ParserTest.sol:128:3
+modifier ParserTestFunny.someModifier
+  @notice is missing
+
+./test-data/ParserTest.sol:137:3
+variable ParserTestFunny.SOME_CONSTANT
+  @inheritdoc is missing
+
+./test-data/ParserTest.sol:145:3
+function ParserTestFunny.viewFunctionWithParams
+  @inheritdoc is missing
+
+./test-data/ParserTest.sol:150:3
+function ParserTestFunny._viewInternal
+  @notice is missing
+  @return missing for unnamed return #1
+
+./test-data/ParserTest.sol:184:3
+function ParserTestFunny._viewInternal
+  @notice is missing
+  @param _paramName is missing
+  @return _returned is missing
+
+./test-data/ParserTest.sol:200:3
+function ParserTestFunny.functionUnnamedEmptyReturn
+  @inheritdoc is missing
