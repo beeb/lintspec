@@ -1,12 +1,11 @@
-#[path = "common.rs"]
-mod common;
-use common::*;
-
 use lintspec::{
     config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::ValidationOptions,
 };
 use similar_asserts::assert_eq;
+
+mod common;
+use common::*;
 
 #[test]
 fn test_basic() {

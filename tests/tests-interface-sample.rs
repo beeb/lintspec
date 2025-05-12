@@ -1,8 +1,7 @@
-#[path = "common.rs"]
+use lintspec::lint::ValidationOptions;
+
 mod common;
 use common::*;
-
-use lintspec::lint::ValidationOptions;
 
 #[test]
 fn test_basic() {

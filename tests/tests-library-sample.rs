@@ -1,19 +1,7 @@
-#[path = "common.rs"]
+use lintspec::lint::ValidationOptions;
+
 mod common;
 use common::*;
-
-use std::path::PathBuf;
-
-use lintspec::{
-    lint::{FileDiagnostics, ValidationOptions},
-    print_reports,
-};
-
-fn generate_output(diags: FileDiagnostics) -> String {
-    let mut buf = Vec::new();
-    print_reports(&mut buf, PathBuf::new(), diags, true).unwrap();
-    String::from_utf8(buf).unwrap()
-}
 
 #[test]
 fn test_basic() {
