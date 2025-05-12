@@ -77,7 +77,10 @@ impl Parse for SolarParser {
         Ok(ParsedDocument {
             definitions,
             // retrieve the original source code if needed, without cloning
-            contents: keep_contents.then_some(Arc::into_inner(source_file.src.clone()).unwrap()),
+            contents: keep_contents.then_some(
+                Arc::into_inner(source_file.src.clone())
+                    .expect("all Arc references should have been dropped"),
+            ),
         })
     }
 }
