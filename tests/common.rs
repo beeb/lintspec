@@ -1,15 +1,14 @@
+use lintspec::{lint::FileDiagnostics, print_reports};
 use std::path::PathBuf;
 
 #[cfg(feature = "solar")]
-use lintspec::parser::solar::SolarParser;
-
 use lintspec::{
-    lint::{lint, FileDiagnostics, ValidationOptions},
-    parser::slang::SlangParser,
-    print_reports,
+    lint::{lint, ValidationOptions},
+    parser::{slang::SlangParser, solar::SolarParser},
 };
 
 #[must_use]
+#[allow(dead_code)]
 pub fn generate_output(diags: FileDiagnostics) -> String {
     let mut buf = Vec::new();
     print_reports(&mut buf, PathBuf::new(), diags, true).unwrap();

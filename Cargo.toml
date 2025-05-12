@@ -53,7 +53,7 @@ solar = ["dep:solar-parse"]
 [[test]]
 name = "tests-basic-sample"
 path = "tests/tests-basic-sample.rs"
-required-features = ["solar"]   
+required-features = ["solar"]
 
 [[test]]
 name = "tests-interface-sample"
