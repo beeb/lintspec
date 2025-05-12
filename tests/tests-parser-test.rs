@@ -2,7 +2,10 @@
 mod common;
 use common::*;
 
-use lintspec::lint::ValidationOptions;
+use lintspec::{
+    config::{VariableConfig, WithParamsRules},
+    lint::ValidationOptions,
+};
 
 use similar_asserts::assert_eq;
 
@@ -10,7 +13,7 @@ use similar_asserts::assert_eq;
 fn test_basic() {
     let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/ParserTest.sol",
-        &ValidationOptions::default(),
+        &ValidationOptions::builder().inheritdoc(false).build(),
         true,
     );
 
@@ -46,7 +49,10 @@ fn test_inheritdoc() {
 fn test_constructor() {
     let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/ParserTest.sol",
-        &ValidationOptions::default(),
+        &ValidationOptions::builder()
+            .inheritdoc(false)
+            .constructors(WithParamsRules::required())
+            .build(),
         true,
     );
 
@@ -64,7 +70,10 @@ fn test_constructor() {
 fn test_struct() {
     let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/ParserTest.sol",
-        &ValidationOptions::default(),
+        &ValidationOptions::builder()
+            .inheritdoc(false)
+            .structs(WithParamsRules::required())
+            .build(),
         true,
     );
 
@@ -82,7 +91,10 @@ fn test_struct() {
 fn test_enum() {
     let (opt_slang, opt_solar) = multi_lint_handler(
         "./test-data/ParserTest.sol",
-        &ValidationOptions::default(),
+        &ValidationOptions::builder()
+            .inheritdoc(false)
+            .enums(WithParamsRules::required())
+            .build(),
         true,
     );
 

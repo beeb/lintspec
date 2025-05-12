@@ -1,6 +1,6 @@
 ---
 source: tests/tests-parser-test.rs
-assertion_line: 42
+assertion_line: 45
 expression: generate_output(diags_slang)
 ---
 ./test-data/ParserTest.sol:8:3

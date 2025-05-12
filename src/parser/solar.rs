@@ -1,14 +1,14 @@
 //! Solidity parser interface
 use solar_parse::{
+    Parser,
     ast::{
+        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
         interface::{
-            source_map::{FileName, SourceMap},
             Session,
+            source_map::{FileName, SourceMap},
         },
         visit::Visit,
-        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
     },
-    Parser,
 };
 use std::io;
 use std::ops::ControlFlow;
@@ -16,13 +16,13 @@ use std::path::PathBuf;
 
 use crate::{
     definitions::{
+        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextIndex, TextRange, Visibility,
+        structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
-    natspec::{parse_comment, NatSpec, NatSpecKind},
+    natspec::{NatSpec, NatSpecKind, parse_comment},
     parser::{Parse, ParsedDocument},
 };
 
@@ -236,8 +236,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
                 parameters_list_to_identifiers(item_function.header.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
-                    .unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
             let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
 
             let span = if let Some((_, span)) = extracted_natspec {
@@ -303,8 +302,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::VariableDefinition<'ast> {
 
         if let ItemKind::Variable(item_variable) = &item.kind {
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
-                    .unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
@@ -357,8 +355,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
                 .collect();
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
-                    .unwrap_or(None);
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted_natspec {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -399,8 +396,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
                 })
                 .collect();
 
-            let extracted = extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
-                .unwrap_or(None);
+            let extracted =
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted {
                 span_to_text_range(doc_span, visitor.source_map)
@@ -435,8 +432,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
             let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&docs, visitor.source_map, item.span, parent.clone())
-                    .unwrap_or(None);
+                extract_natspec(&docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
 
@@ -471,8 +467,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
             let params = parameters_list_to_identifiers(item_event.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(&item.docs, visitor.source_map, item.span, parent.clone())
-                    .unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.clone()).unwrap_or(None);
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(&span, visitor.source_map)
@@ -543,27 +538,11 @@ fn item_contract_to_parent(contract: &ItemContract, source_map: &SourceMap) -> P
 fn extract_natspec(
     docs: &DocComments,
     source_map: &SourceMap,
-    item_span: Span,
     parent: Option<Parent>,
 ) -> Result<Option<(NatSpec, Span)>> {
     if docs.is_empty() {
         return Ok(None);
     }
-
-    // @todo this is a temporary fix, waiting for solar_parse to fix struct doc comments issue
-    // see https://github.com/paradigmxyz/solar/issues/308
-    // for now, we make sure there is no gap between doc and items (which would be the case if the doc
-    // comes from a previous item)
-    // Attention, this would then discard docs if there is/are regular comments between the doc and the item
-    // (solc behavior, unlike solang).
-    // Once fixed, remove this block as well as the item_span argument
-    let (_, _, _, doc_end_line, _) = source_map.span_to_location_info(docs.span());
-    let (_, item_start_line, _, _, _) = source_map.span_to_location_info(item_span);
-
-    if doc_end_line + 1 != item_start_line {
-        return Ok(None);
-    }
-    // end of temp fix
 
     let mut combined = NatSpec::default();
 
