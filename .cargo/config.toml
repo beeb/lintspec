@@ -1,8 +1,0 @@
-### Cargo build configuration
-[build]
-incremental = false
-
-[env]
-TMPDIR = "."
-TEMP = "."
-TMP = "."
