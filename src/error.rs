@@ -14,7 +14,7 @@ pub enum Error {
     #[error("the provided Solidity version is not supported: `{0}`")]
     SolidityUnsupportedVersion(String),
 
-    #[error("there was an error while parsing the version pragma: {0}")]
+    #[error("there was an error while parsing solidity: {0}")]
     ParsingError(String),
 
     /// Error during parsing of a version specifier string
