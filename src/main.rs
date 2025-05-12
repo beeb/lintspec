@@ -7,9 +7,11 @@ use lintspec::{
     error::Error,
     files::find_sol_files,
     lint::{lint, ValidationOptions},
-    parser::slang::SlangParser,
     print_reports,
 };
+
+#[cfg(not(feature = "solar"))]
+use lintspec::parser::slang::SlangParser;
 
 #[cfg(feature = "solar")]
 use lintspec::parser::solar::SolarParser;

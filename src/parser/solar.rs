@@ -1,4 +1,4 @@
-//! Solidity parser interface
+//! A parser with [`solar_parse`] backend
 use solar_parse::{
     ast::{
         interface::{
@@ -29,6 +29,7 @@ use crate::{
 #[derive(Clone)]
 pub struct SolarParser {}
 
+/// A parser using the [`solar_parse`] crate
 impl Parse for SolarParser {
     fn parse_document(
         &mut self,
@@ -38,29 +39,28 @@ impl Parse for SolarParser {
         let sess = Session::builder().with_stderr_emitter().build();
         let source_map = sess.source_map();
 
+        // if keep_contents is true, we read it upfront (parsing is within a move closure, during the session below)
+        let mut content = String::new();
+        if keep_contents {
+            input
+                .read_to_string(&mut content)
+                .map_err(|_| Error::IOError {
+                    path: PathBuf::default(),
+                    err: io::Error::new(io::ErrorKind::Other, "Src file read error"),
+                })?;
+        }
+
         let (definitions, contents) = sess.enter(|| -> Result<(Vec<Definition>, String)> {
             let arena = solar_parse::ast::Arena::new();
 
-            let mut content = String::new();
-            let mut content_clone = String::new();
-
-            // if keep_contents is true, we read and keep a clone (parsing is within a closure moving content ownership)
-            if keep_contents {
-                input
-                    .read_to_string(&mut content)
-                    .map_err(|_| Error::IOError {
-                        path: PathBuf::default(),
-                        err: io::Error::new(io::ErrorKind::Other, "Src file read error"),
-                    })?;
-                content_clone.clone_from(&content);
-            }
+            let content_for_parser = content.clone(); // either empty or the original content
 
             let mut parser =
                 Parser::from_lazy_source_code(&sess, &arena, FileName::Stdin, move || {
                     // if keep_contents is true, we reuse the content already read,
-                    // otherwise we read the content
+                    // otherwise we read the content for the first time here
                     if keep_contents {
-                        Ok(content)
+                        Ok(content_for_parser)
                     } else {
                         let mut buf = String::new();
                         input.read_to_string(&mut buf)?;
@@ -73,7 +73,7 @@ impl Parse for SolarParser {
                 })?;
 
             let ast = parser.parse_file().map_err(|e| {
-                // this might be the error from the get_src closure above, when the closure is evaluated
+                // this might be the error from the get_src closure above, when the closure is actually evaluated
                 e.clone().emit();
                 Error::IOError {
                     path: PathBuf::new(),
@@ -89,7 +89,7 @@ impl Parse for SolarParser {
 
             let _ = visitor.visit_source_unit(&ast);
 
-            Ok((visitor.definitions, content_clone))
+            Ok((visitor.definitions, content))
         })?;
 
         if keep_contents {
@@ -112,19 +112,14 @@ pub struct LintspecVisitor<'ast> {
     source_map: &'ast SourceMap,
 }
 
-/// Custom visitor to extract definitions from the AST
+/// A custom visitor to extract definitions from the AST (built with [`solar_parse`])
+/// most of the items are bisited using the Solar visitor
 impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     type BreakValue = ();
 
     /// Visit an item and extract definitions from it, using the corresponging trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
-        let Item {
-            docs: _,
-            span: _,
-            kind,
-        } = item;
-
-        match kind {
+        match &item.kind {
             ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
             ItemKind::Import(item) => self.visit_import_directive(item)?,
             ItemKind::Using(item) => self.visit_using_directive(item)?,
@@ -191,7 +186,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
         ControlFlow::Continue(())
     }
 
-    // Needed to track parent
+    // In order to track the parent, we need to maintain a stack of visited contracts
     fn visit_item_contract(
         &mut self,
         contract: &'ast ItemContract<'ast>,
@@ -235,12 +230,17 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemFunction<'ast> {
     ) -> Option<Definition> {
         if let ItemKind::Function(item_function) = &item.kind {
             let parent = visitor.current_parent.last().cloned();
-            let params =
-                parameters_list_to_identifiers(item_function.header.parameters, visitor.source_map);
+            let params = variable_definitions_to_identifiers(
+                item_function.header.parameters,
+                visitor.source_map,
+            );
 
             let extracted_natspec =
                 extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-            let returns = returns_to_identifiers(item_function.header.returns, visitor.source_map);
+            let returns = variable_definitions_to_identifiers(
+                item_function.header.returns,
+                visitor.source_map,
+            );
 
             let span = if let Some((_, span)) = extracted_natspec {
                 span_to_text_range(span, visitor.source_map)
@@ -339,11 +339,6 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
         visitor: &mut LintspecVisitor<'ast>,
         item: &'ast Item<'ast>,
     ) -> Option<Definition> {
-        let Item {
-            docs,
-            span: _,
-            kind: _,
-        } = item;
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Struct(strukt) = &item.kind {
@@ -359,7 +354,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemStruct<'ast> {
                 .collect();
 
             let extracted_natspec =
-                extract_natspec(docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted_natspec {
                 span_to_text_range(*doc_span, visitor.source_map)
@@ -387,11 +382,6 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
         visitor: &mut LintspecVisitor<'ast>,
         item: &'ast Item<'ast>,
     ) -> Option<Definition> {
-        let Item {
-            docs,
-            span: _,
-            kind: _,
-        } = item;
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Enum(item_enum) = &item.kind {
@@ -405,7 +395,7 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEnum<'ast> {
                 .collect();
 
             let extracted =
-                extract_natspec(docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
 
             let span = if let Some((_, doc_span)) = &extracted {
                 span_to_text_range(*doc_span, visitor.source_map)
@@ -433,18 +423,14 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemError<'ast> {
         visitor: &mut LintspecVisitor<'ast>,
         item: &'ast Item<'ast>,
     ) -> Option<Definition> {
-        let Item {
-            docs,
-            span: _,
-            kind: _,
-        } = item;
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Error(item_error) = &item.kind {
-            let params = parameters_list_to_identifiers(item_error.parameters, visitor.source_map);
+            let params =
+                variable_definitions_to_identifiers(item_error.parameters, visitor.source_map);
 
             let extracted_natspec =
-                extract_natspec(docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+                extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
 
             let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
 
@@ -475,7 +461,8 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
         let parent = visitor.current_parent.last().cloned();
 
         if let ItemKind::Event(item_event) = &item.kind {
-            let params = parameters_list_to_identifiers(item_event.parameters, visitor.source_map);
+            let params =
+                variable_definitions_to_identifiers(item_event.parameters, visitor.source_map);
 
             let extracted_natspec =
                 extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
@@ -505,8 +492,9 @@ impl<'ast> Extract<'ast> for solar_parse::ast::ItemEvent<'ast> {
     }
 }
 
-// @todo build the utf16 representation too?
-/// Convert a Solar span to a ``TextRange``
+// @todo build the utf16 representation
+/// Convert a Solar ``Span`` to a lintspec ``TextRange``
+/// @dev For now, this does NOT handle the utf16 representation
 fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
     let (_, lo_line, lo_col, hi_line, hi_col) = source_map.span_to_location_info(span);
 
@@ -523,19 +511,25 @@ fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
     start..end
 }
 
-fn parameters_list_to_identifiers(
+/// Convert a list of Solar ``VariableDefinition`` (used for fn params or returns) to the corresponding Lintspec ``Identifier``
+fn variable_definitions_to_identifiers(
     variable_definitions: &[VariableDefinition<'_>],
     source_map: &SourceMap,
 ) -> Vec<Identifier> {
     variable_definitions
         .iter()
-        .map(|var| Identifier {
-            name: var.name.map(|name| name.to_string()),
-            span: span_to_text_range(var.span, source_map),
+        .map(|r| {
+            // Preserve named returns; leave unnamed returns as None
+            let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
+            Identifier {
+                name,
+                span: span_to_text_range(r.span, source_map),
+            }
         })
         .collect()
 }
 
+/// Convert a Solar ``ItemContract`` to the local Parent type
 fn item_contract_to_parent(contract: &ItemContract) -> Parent {
     match contract.kind {
         ContractKind::Contract | ContractKind::AbstractContract => {
@@ -546,6 +540,7 @@ fn item_contract_to_parent(contract: &ItemContract) -> Parent {
     }
 }
 
+/// Convert the Solar ``DocComments`` to the Lintspec ``NatSpec`` and ``Span`` type
 fn extract_natspec(
     docs: &DocComments,
     source_map: &SourceMap,
@@ -578,23 +573,7 @@ fn extract_natspec(
     Ok(Some((combined, docs.span())))
 }
 
-fn returns_to_identifiers(
-    returns: &[VariableDefinition],
-    source_map: &SourceMap,
-) -> Vec<Identifier> {
-    returns
-        .iter()
-        .map(|r| {
-            // Preserve named returns; leave unnamed returns as None
-            let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
-            Identifier {
-                name,
-                span: span_to_text_range(r.span, source_map),
-            }
-        })
-        .collect()
-}
-
+/// Convert a Solar visibility type to the corresponding lintspec Visibility type
 impl From<Option<solar_parse::ast::Visibility>> for Visibility {
     fn from(visibility: Option<solar_parse::ast::Visibility>) -> Self {
         match visibility {
