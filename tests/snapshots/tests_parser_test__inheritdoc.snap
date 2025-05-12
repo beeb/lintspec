@@ -16,7 +16,7 @@ event IParserTest.SimpleEvent
 function IParserTest.SOME_CONSTANT
   @return _returned is missing
 
-./test-data/ParserTest.sol:121:3
+./test-data/ParserTest.sol:120:3
 struct ParserTestFunny.SimpleStruct
   @notice is missing
 
@@ -24,29 +24,24 @@ struct ParserTestFunny.SimpleStruct
 modifier ParserTestFunny.someModifier
   @notice is missing
 
-./test-data/ParserTest.sol:137:3
+./test-data/ParserTest.sol:136:3
 variable ParserTestFunny.SOME_CONSTANT
   @inheritdoc is missing
 
-./test-data/ParserTest.sol:145:3
+./test-data/ParserTest.sol:144:3
 function ParserTestFunny.viewFunctionWithParams
   @inheritdoc is missing
 
-./test-data/ParserTest.sol:150:3
+./test-data/ParserTest.sol:149:3
 function ParserTestFunny._viewInternal
   @notice is missing
   @return missing for unnamed return #1
 
-./test-data/ParserTest.sol:183:3
+./test-data/ParserTest.sol:181:3
 function ParserTestFunny._viewInternal
   @notice is missing
   @param _paramName is missing
-  @return _returned is missing
 
-./test-data/ParserTest.sol:190:3
-function ParserTestFunny._viewBlockLinterFail
-  @notice is missing
-
-./test-data/ParserTest.sol:202:3
+./test-data/ParserTest.sol:200:3
 function ParserTestFunny.functionUnnamedEmptyReturn
   @inheritdoc is missing

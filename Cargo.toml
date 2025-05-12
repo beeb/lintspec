@@ -2,7 +2,7 @@
 authors = ["Valentin Bersier <hi@beeb.li>"]
 categories = ["development-tools", "command-line-utilities"]
 description = "A blazingly fast linter for NatSpec comments in Solidity code"
-edition = "2024"
+edition = "2021"
 keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
 license = "MIT OR Apache-2.0"
 name = "lintspec"

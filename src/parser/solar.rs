@@ -1,14 +1,14 @@
 //! Solidity parser interface
 use solar_parse::{
-    Parser,
     ast::{
-        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
         interface::{
-            Session,
             source_map::{FileName, SourceMap},
+            Session,
         },
         visit::Visit,
+        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
     },
+    Parser,
 };
 use std::io;
 use std::ops::ControlFlow;
@@ -16,13 +16,13 @@ use std::path::PathBuf;
 
 use crate::{
     definitions::{
-        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
+        Identifier, Parent, TextIndex, TextRange, Visibility,
     },
     error::{Error, Result},
-    natspec::{NatSpec, NatSpecKind, parse_comment},
+    natspec::{parse_comment, NatSpec, NatSpecKind},
     parser::{Parse, ParsedDocument},
 };
 
@@ -566,9 +566,9 @@ fn extract_natspec(
     }
 
     // Drop only empty @return tags
-    combined.items.retain(|item| {
-        !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
-    });
+    // combined.items.retain(|item| {
+    //     !(matches!(item.kind, NatSpecKind::Return { .. }) && item.comment.trim().is_empty())
+    // });
 
     Ok(Some((combined, docs.span())))
 }
