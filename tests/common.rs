@@ -9,6 +9,7 @@ use lintspec::{
     print_reports,
 };
 
+#[must_use]
 pub fn generate_output(diags: FileDiagnostics) -> String {
     let mut buf = Vec::new();
     print_reports(&mut buf, PathBuf::new(), diags, true).unwrap();
@@ -16,6 +17,7 @@ pub fn generate_output(diags: FileDiagnostics) -> String {
 }
 
 #[cfg(feature = "solar")]
+#[must_use]
 pub fn multi_lint_handler(
     path: &str,
     options: &ValidationOptions,

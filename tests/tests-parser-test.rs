@@ -2,10 +2,7 @@
 mod common;
 use common::*;
 
-use lintspec::{
-    config::{VariableConfig, WithParamsRules},
-    lint::ValidationOptions,
-};
+use lintspec::{config::WithParamsRules, lint::ValidationOptions};
 
 use similar_asserts::assert_eq;
 
