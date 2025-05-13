@@ -37,21 +37,22 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// # Examples
 ///
 /// ```
+/// # use std::path::PathBuf;
 /// # use lintspec::utils::{detect_solidity_version, semver::Version};
 /// assert_eq!(
-///     detect_solidity_version("pragma solidity >=0.8.4 <0.8.26;").unwrap(),
+///     detect_solidity_version("pragma solidity >=0.8.4 <0.8.26;", PathBuf::from("./file.sol")).unwrap(),
 ///     Version::new(0, 8, 25)
 /// );
 /// assert_eq!(
-///     detect_solidity_version("pragma solidity ^0.4.0 || 0.6.x;").unwrap(),
+///     detect_solidity_version("pragma solidity ^0.4.0 || 0.6.x;", PathBuf::from("./file.sol")).unwrap(),
 ///     Version::new(0, 6, 12)
 /// );
 /// assert_eq!(
-///     detect_solidity_version("contract Foo {}").unwrap(),
+///     detect_solidity_version("contract Foo {}", PathBuf::from("./file.sol")).unwrap(),
 ///     Version::new(0, 8, 0)
 /// );
 /// // this version of Solidity does not exist
-/// assert!(detect_solidity_version("pragma solidity 0.7.7;").is_err());
+/// assert!(detect_solidity_version("pragma solidity 0.7.7;", PathBuf::from("./file.sol")).is_err());
 /// ```
 pub fn detect_solidity_version(src: &str, path: impl AsRef<Path>) -> Result<Version> {
     let Some(pragma) = REGEX.find(src) else {
