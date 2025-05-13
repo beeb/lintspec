@@ -444,19 +444,26 @@ impl From<&ItemContract<'_>> for Parent {
 }
 
 /// Convert a [`Span`] to a [`TextRange`]
-/// TODO: build the utf16 representation
 fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
-    let (_, lo_line, lo_col, hi_line, hi_col) = source_map.span_to_location_info(span);
+    let (source_file, range) = source_map
+        .span_to_source(span)
+        .expect("span must match the source");
 
+    let mut inside = false;
     let mut start = TextIndex::ZERO;
-    start.utf8 = span.lo().to_usize();
-    start.line = lo_line - 1; // Convert from 1-based to 0-based
-    start.column = lo_col - 1;
-
     let mut end = TextIndex::ZERO;
-    end.utf8 = span.hi().to_usize();
-    end.line = hi_line - 1;
-    end.column = hi_col - 1;
+    let mut iter = source_file.src.chars().peekable();
+    while let Some(c) = iter.next() {
+        if !inside {
+            start.advance(c, iter.peek());
+            if start.utf8 >= range.start {
+                inside = true;
+                end = start;
+            }
+        } else {
+            end.advance(c, iter.peek());
+        }
+    }
 
     start..end
 }

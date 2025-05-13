@@ -12,7 +12,6 @@ use event::EventDefinition;
 use function::FunctionDefinition;
 use modifier::ModifierDefinition;
 use serde::{Deserialize, Serialize};
-use slang_solidity::cst::TextIndex as SlangTextIndex;
 use structure::StructDefinition;
 use variable::VariableDeclaration;
 
@@ -66,6 +65,29 @@ impl TextIndex {
         line: 0,
         column: 0,
     };
+
+    /// Advances the index, accounting for lf/nl/ls/ps characters and combinations.
+    /// This is *not* derived from the definition of 'newline' in the language definition,
+    /// nor is it a complete implementation of the Unicode line breaking algorithm.
+    ///
+    /// Implementation is directly taken from [`slang_solidity`].
+    #[inline]
+    pub fn advance(&mut self, c: char, next: Option<&char>) {
+        self.utf8 += c.len_utf8();
+        self.utf16 += c.len_utf16();
+        match (c, next) {
+            ('\r', Some('\n')) => {
+                // Ignore for now, we will increment the line number whe we process the \n
+            }
+            ('\n' | '\r' | '\u{2028}' | '\u{2029}', _) => {
+                self.line += 1;
+                self.column = 0;
+            }
+            _ => {
+                self.column += 1;
+            }
+        }
+    }
 }
 
 impl fmt::Display for TextIndex {
@@ -83,28 +105,6 @@ impl PartialOrd for TextIndex {
 impl Ord for TextIndex {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.utf8.cmp(&other.utf8)
-    }
-}
-
-impl From<SlangTextIndex> for TextIndex {
-    fn from(value: SlangTextIndex) -> Self {
-        Self {
-            utf8: value.utf8,
-            utf16: value.utf16,
-            line: value.line,
-            column: value.column,
-        }
-    }
-}
-
-impl From<TextIndex> for SlangTextIndex {
-    fn from(value: TextIndex) -> Self {
-        Self {
-            utf8: value.utf8,
-            utf16: value.utf16,
-            line: value.line,
-            column: value.column,
-        }
     }
 }
 

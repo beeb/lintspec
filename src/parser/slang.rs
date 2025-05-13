@@ -5,7 +5,10 @@ use std::{
 };
 
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange as SlangTextRange},
+    cst::{
+        Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextIndex as SlangTextIndex,
+        TextRange as SlangTextRange,
+    },
     parser::Parser,
 };
 use winnow::Parser as _;
@@ -15,7 +18,7 @@ use crate::{
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
         structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextRange, Visibility,
+        Identifier, Parent, TextIndex, TextRange, Visibility,
     },
     error::{Error, Result},
     natspec::{parse_comment, NatSpec},
@@ -741,6 +744,28 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
 #[must_use]
 pub fn textrange(value: SlangTextRange) -> TextRange {
     value.start.into()..value.end.into()
+}
+
+impl From<SlangTextIndex> for TextIndex {
+    fn from(value: SlangTextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
+}
+
+impl From<TextIndex> for SlangTextIndex {
+    fn from(value: TextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
 }
 
 #[cfg(test)]
