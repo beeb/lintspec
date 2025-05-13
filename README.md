@@ -20,7 +20,7 @@
   /></a>
       <a href="https://docs.rs/lintspec/latest/lintspec/"><img
       alt="docs.rs"
-      src="https://img.shields.io/badge/MSRV-1.80.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.86.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
 </div>
