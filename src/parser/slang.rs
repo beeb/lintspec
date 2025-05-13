@@ -1,8 +1,14 @@
 //! A parser with `[slang_solidity]` backend
-use std::{io, path::PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 use slang_solidity::{
-    cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange as SlangTextRange},
+    cst::{
+        Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextIndex as SlangTextIndex,
+        TextRange as SlangTextRange,
+    },
     parser::Parser,
 };
 use winnow::Parser as _;
@@ -12,7 +18,7 @@ use crate::{
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
         structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextRange, Visibility,
+        Identifier, Parent, TextIndex, TextRange, Visibility,
     },
     error::{Error, Result},
     natspec::{parse_comment, NatSpec},
@@ -101,8 +107,12 @@ impl Parse for SlangParser {
     fn parse_document(
         &mut self,
         mut input: impl io::Read,
+        path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
+        let path = path
+            .map(|p| p.as_ref().to_path_buf())
+            .unwrap_or(PathBuf::from("stdin"));
         let (contents, output) = {
             let mut contents = String::new();
             input
@@ -114,7 +124,7 @@ impl Parse for SlangParser {
             let solidity_version = if self.skip_version_detection {
                 get_latest_supported_version()
             } else {
-                detect_solidity_version(&contents)?
+                detect_solidity_version(&contents, &path)?
             };
             let parser = Parser::create(solidity_version).expect("parser should initialize");
             let output = parser.parse(NonterminalKind::SourceUnit, &contents);
@@ -124,7 +134,11 @@ impl Parse for SlangParser {
             let Some(error) = output.errors().first() else {
                 return Err(Error::UnknownError);
             };
-            return Err(Error::ParsingError(error.to_string()));
+            return Err(Error::ParsingError {
+                path,
+                loc: error.text_range().start.into(),
+                message: error.message(),
+            });
         }
         let cursor = output.create_tree_cursor();
         Ok(ParsedDocument {
@@ -732,6 +746,28 @@ pub fn textrange(value: SlangTextRange) -> TextRange {
     value.start.into()..value.end.into()
 }
 
+impl From<SlangTextIndex> for TextIndex {
+    fn from(value: SlangTextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
+}
+
+impl From<TextIndex> for SlangTextIndex {
+    fn from(value: TextIndex) -> Self {
+        Self {
+            utf8: value.utf8,
+            utf16: value.utf16,
+            line: value.line,
+            column: value.column,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;
@@ -750,7 +786,7 @@ mod tests {
     use super::*;
 
     fn parse_file(contents: &str) -> Cursor {
-        let solidity_version = detect_solidity_version(contents).unwrap();
+        let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
         let output = parser.parse(NonterminalKind::SourceUnit, contents);
         assert!(output.is_valid(), "{:?}", output.errors());
@@ -1311,7 +1347,7 @@ mod tests {
     #[test]
     fn test_parse_solidity_latest() {
         let contents = include_str!("../../test-data/LatestVersion.sol");
-        let solidity_version = detect_solidity_version(contents).unwrap();
+        let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
         let output = parser.parse(NonterminalKind::SourceUnit, contents);
         assert!(output.is_valid(), "{:?}", output.errors());
@@ -1321,7 +1357,7 @@ mod tests {
     fn test_parse_solidity_unsupported() {
         let mut parser = SlangParser::builder().skip_version_detection(true).build();
         let file = File::open("test-data/UnsupportedVersion.sol").unwrap();
-        let output = parser.parse_document(file, false);
+        let output = parser.parse_document(file, None::<PathBuf>, false);
         assert!(output.is_ok(), "{output:?}");
     }
 }

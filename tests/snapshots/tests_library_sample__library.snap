@@ -1,6 +1,6 @@
 ---
 source: tests/tests-library-sample.rs
-expression: generate_output(diags)
+expression: "snapshot_content(\"./test-data/LibrarySample.sol\",\n&ValidationOptions::builder().inheritdoc(false).build(), true,)"
 ---
 ./test-data/LibrarySample.sol:5:5
 function StringUtils.nothing
