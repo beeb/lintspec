@@ -16,6 +16,7 @@ use std::{
     io,
     ops::ControlFlow,
     path::{Path, PathBuf},
+    str::FromStr as _,
     sync::Arc,
 };
 
@@ -82,7 +83,7 @@ impl Parse for SolarParser {
             .map_err(|_| Error::ParsingError {
                 path: path
                     .map(|p| p.as_ref().to_path_buf())
-                    .unwrap_or(PathBuf::from("stdin")),
+                    .unwrap_or(PathBuf::from("<stdin>")),
                 loc: TextIndex::ZERO,
                 message: sess
                     .emitted_errors()
@@ -512,17 +513,25 @@ fn extract_natspec(
     if docs.is_empty() {
         return Ok(None);
     }
-
+    // there should only be one file in the source map
+    let path = source_map
+        .files()
+        .first()
+        .map(|f| {
+            PathBuf::from_str(&f.name.display().to_string())
+                .unwrap_or(PathBuf::from("<unsupported path>"))
+        })
+        .unwrap_or(PathBuf::from("<stdin>"));
     let mut combined = NatSpec::default();
 
     for doc in docs.iter() {
-        let snippet = source_map.span_to_snippet(doc.span).map_err(
-            |e: solar_parse::interface::source_map::SpanSnippetError| Error::NatspecParsingError {
-                parent: parent.cloned(),
-                span: span_to_text_range(doc.span, source_map),
+        let snippet = source_map
+            .span_to_snippet(doc.span)
+            .map_err(|e| Error::ParsingError {
+                path: path.clone(),
+                loc: span_to_text_range(doc.span, source_map).start,
                 message: format!("{e:?}"),
-            },
-        )?;
+            })?;
 
         combined.append(&mut parse_comment(&mut snippet.as_str()).map_err(|e| {
             Error::NatspecParsingError {

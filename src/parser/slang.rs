@@ -112,7 +112,7 @@ impl Parse for SlangParser {
     ) -> Result<ParsedDocument> {
         let path = path
             .map(|p| p.as_ref().to_path_buf())
-            .unwrap_or(PathBuf::from("stdin"));
+            .unwrap_or(PathBuf::from("<stdin>"));
         let (contents, output) = {
             let mut contents = String::new();
             input
