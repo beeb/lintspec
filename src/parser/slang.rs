@@ -11,7 +11,6 @@ use slang_solidity::{
     },
     parser::Parser,
 };
-use winnow::Parser as _;
 
 use crate::{
     definitions::{
@@ -110,9 +109,7 @@ impl Parse for SlangParser {
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
-        let path = path
-            .map(|p| p.as_ref().to_path_buf())
-            .unwrap_or(PathBuf::from("stdin"));
+        let path = path.map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
         let (contents, output) = {
             let mut contents = String::new();
             input
@@ -542,8 +539,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             items.push((
                 cursor.node().kind().to_string(), // the node type to differentiate multiline from single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
-                parse_comment
-                    .parse(comment)
+                parse_comment(&mut comment.as_str())
                     .map_err(|e| Error::NatspecParsingError {
                         parent: extract_parent_name(cursor.clone()),
                         span: textrange(cursor.text_range()),

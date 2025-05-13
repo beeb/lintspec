@@ -6,7 +6,8 @@ use solar_parse::{
             Session,
         },
         visit::Visit,
-        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, Span,
+        VariableDefinition,
     },
     interface::ColorChoice,
     Parser,
@@ -15,6 +16,7 @@ use std::{
     io,
     ops::ControlFlow,
     path::{Path, PathBuf},
+    str::FromStr as _,
     sync::Arc,
 };
 
@@ -43,8 +45,7 @@ impl Parse for SolarParser {
     ) -> Result<ParsedDocument> {
         let pathbuf = path
             .as_ref()
-            .map(|p| p.as_ref().to_path_buf())
-            .unwrap_or(PathBuf::from("stdin"));
+            .map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
         let source_map = SourceMap::empty();
         let mut buf = String::new();
         input
@@ -55,9 +56,9 @@ impl Parse for SolarParser {
             })?;
         let source_file = source_map
             .new_source_file(
-                path.as_ref()
-                    .map(|p| FileName::Real(p.as_ref().to_path_buf()))
-                    .unwrap_or(FileName::Stdin),
+                path.as_ref().map_or(FileName::Stdin, |p| {
+                    FileName::Real(p.as_ref().to_path_buf())
+                }),
                 buf,
             ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
@@ -77,11 +78,7 @@ impl Parse for SolarParser {
                 let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
 
                 let ast = parser.parse_file().map_err(|err| err.emit())?;
-                let mut visitor = LintspecVisitor {
-                    current_parent: Vec::new(),
-                    definitions: Vec::new(),
-                    source_map: &source_map,
-                };
+                let mut visitor = LintspecVisitor::new(&source_map);
 
                 let _ = visitor.visit_source_unit(&ast);
                 Ok(visitor.definitions)
@@ -115,9 +112,19 @@ impl Parse for SolarParser {
 ///
 /// Most of the items are visited using solar's default [`Visit`] implementation.
 pub struct LintspecVisitor<'ast> {
-    current_parent: Vec<Parent>,
+    current_parent: Option<Parent>,
     definitions: Vec<Definition>,
     source_map: &'ast SourceMap,
+}
+
+impl<'ast> LintspecVisitor<'ast> {
+    pub fn new(source_map: &'ast SourceMap) -> Self {
+        Self {
+            current_parent: None,
+            definitions: Vec::default(),
+            source_map,
+        }
+    }
 }
 
 impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
@@ -126,74 +133,52 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     /// Visit an item and extract definitions from it, using the corresponding trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         match &item.kind {
-            ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
-            ItemKind::Import(item) => self.visit_import_directive(item)?,
-            ItemKind::Using(item) => self.visit_using_directive(item)?,
             ItemKind::Contract(item) => self.visit_item_contract(item)?,
             ItemKind::Function(item_function) => {
                 if let Some(def) = item_function.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_function(item_function)?;
             }
             ItemKind::Variable(var_def) => {
                 if let Some(def) = var_def.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_variable_definition(var_def)?;
             }
             ItemKind::Struct(item_struct) => {
                 if let Some(def) = item_struct.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_struct(item_struct)?;
             }
             ItemKind::Enum(item_enum) => {
                 if let Some(enum_def) = item_enum.extract_definition(item, self) {
                     self.definitions.push(enum_def);
                 }
-
-                self.visit_item_enum(item_enum)?;
             }
-            ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
             ItemKind::Error(item_error) => {
                 if let Some(def) = item_error.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_error(item_error)?;
             }
             ItemKind::Event(item_event) => {
                 if let Some(def) = item_event.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_event(item_event)?;
             }
+            ItemKind::Pragma(_) | ItemKind::Import(_) | ItemKind::Using(_) | ItemKind::Udvt(_) => {}
         }
 
         ControlFlow::Continue(())
     }
 
-    // In order to track the parent, we need to maintain a stack of visited contracts
+    // In order to track the parent, we need to maintain a reference to the contract being visited
     fn visit_item_contract(
         &mut self,
         contract: &'ast ItemContract<'ast>,
     ) -> ControlFlow<Self::BreakValue> {
-        let ItemContract {
-            kind: _,
-            name,
-            bases,
-            body,
-            ..
-        } = contract;
+        let ItemContract { bases, body, .. } = contract;
 
-        self.current_parent.push(contract.into());
+        self.current_parent = Some(contract.into());
 
-        self.visit_ident(name)?;
         for base in bases.iter() {
             self.visit_modifier(base)?;
         }
@@ -201,7 +186,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
             self.visit_item(item)?;
         }
 
-        self.current_parent.pop();
+        self.current_parent = None;
 
         ControlFlow::Continue(())
     }
@@ -214,79 +199,91 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
         let params =
             variable_definitions_to_identifiers(self.header.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
         let returns = variable_definitions_to_identifiers(self.header.returns, visitor.source_map);
 
-        let span = if let Some((_, span)) = extracted_natspec {
-            span_to_text_range(span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &returns,
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        let natspec = extracted_natspec.map(|(ns, _)| ns.populate_returns(&returns));
-
-        let def = if self.kind.is_constructor() {
-            Definition::Constructor(ConstructorDefinition {
-                parent,
-                span,
-                params,
-                natspec,
-            })
-        } else if self.kind.is_modifier() {
-            Definition::Modifier(ModifierDefinition {
-                parent,
-                span,
-                params,
-                natspec,
-                name: self.header.name.unwrap().to_string(),
-                attributes: Attributes {
-                    visibility: self.header.visibility.into(),
-                    r#override: self.header.override_.is_some(),
-                },
-            })
-        } else if self.kind.is_function() {
-            Definition::Function(FunctionDefinition {
-                parent,
-                name: self.header.name.unwrap().to_string(),
-                returns: returns.clone(),
-                attributes: Attributes {
-                    visibility: self.header.visibility.into(),
-                    r#override: self.header.override_.is_some(),
-                },
-                span,
-                params,
-                natspec,
-            })
-        } else {
-            return None;
-        };
-
-        Some(def)
+        match self.kind {
+            FunctionKind::Constructor => Some(
+                ConstructorDefinition {
+                    parent: visitor.current_parent.clone(),
+                    span,
+                    params,
+                    natspec,
+                }
+                .into(),
+            ),
+            FunctionKind::Modifier => Some(
+                ModifierDefinition {
+                    parent: visitor.current_parent.clone(),
+                    span,
+                    params,
+                    natspec,
+                    name: self.header.name.unwrap().to_string(),
+                    attributes: Attributes {
+                        visibility: self.header.visibility.into(),
+                        r#override: self.header.override_.is_some(),
+                    },
+                }
+                .into(),
+            ),
+            FunctionKind::Function => Some(
+                FunctionDefinition {
+                    parent: visitor.current_parent.clone(),
+                    name: self.header.name.unwrap().to_string(),
+                    returns: returns.clone(),
+                    attributes: Attributes {
+                        visibility: self.header.visibility.into(),
+                        r#override: self.header.override_.is_some(),
+                    },
+                    span,
+                    params,
+                    natspec,
+                }
+                .into(),
+            ),
+            FunctionKind::Receive | FunctionKind::Fallback => None,
+        }
     }
 }
 
 impl Extract for &solar_parse::ast::VariableDefinition<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-
-        let span = if let Some((_, span)) = extracted_natspec {
-            span_to_text_range(span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
-        };
-
-        let natspec = if let Some((natspec, _)) = extracted_natspec {
-            Some(natspec)
-        } else {
-            None
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &[],
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
         let attributes = Attributes {
@@ -294,20 +291,21 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
             r#override: self.override_.is_some(),
         };
 
-        Some(Definition::Variable(VariableDeclaration {
-            parent,
-            name: self.name.unwrap().to_string(),
-            span,
-            natspec,
-            attributes,
-        }))
+        Some(
+            VariableDeclaration {
+                parent: visitor.current_parent.clone(),
+                name: self.name.unwrap().to_string(),
+                span,
+                natspec,
+                attributes,
+            }
+            .into(),
+        )
     }
 }
 
 impl Extract for &solar_parse::ast::ItemStruct<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let name = self.name.to_string();
 
         let members = self
@@ -319,31 +317,39 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             })
             .collect();
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-
-        let span = if let Some((_, doc_span)) = &extracted_natspec {
-            span_to_text_range(*doc_span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &[],
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        let natspec = extracted_natspec.map(|(ns, _)| ns);
-
-        Some(Definition::Struct(StructDefinition {
-            parent,
-            name,
-            span,
-            members,
-            natspec,
-        }))
+        Some(
+            StructDefinition {
+                parent: visitor.current_parent.clone(),
+                name,
+                span,
+                members,
+                natspec,
+            }
+            .into(),
+        )
     }
 }
 
 impl Extract for &solar_parse::ast::ItemEnum<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let members = self
             .variants
             .iter()
@@ -353,82 +359,104 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             })
             .collect();
 
-        let extracted =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-
-        let span = if let Some((_, doc_span)) = &extracted {
-            span_to_text_range(*doc_span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &[],
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        let natspec = extracted.map(|(ns, _)| ns);
-
-        Some(Definition::Enumeration(EnumDefinition {
-            parent: parent.clone(),
-            name: self.name.to_string(),
-            span,
-            members,
-            natspec,
-        }))
+        Some(
+            EnumDefinition {
+                parent: visitor.current_parent.clone(),
+                name: self.name.to_string(),
+                span,
+                members,
+                natspec,
+            }
+            .into(),
+        )
     }
 }
 
 impl Extract for &solar_parse::ast::ItemError<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-
-        let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
-
-        let span = if let Some((_, span)) = extracted_natspec {
-            span_to_text_range(span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &[],
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        Some(Definition::Error(ErrorDefinition {
-            parent: parent.clone(),
-            span,
-            name: self.name.to_string(),
-            params,
-            natspec,
-        }))
+        Some(
+            ErrorDefinition {
+                parent: visitor.current_parent.clone(),
+                span,
+                name: self.name.to_string(),
+                params,
+                natspec,
+            }
+            .into(),
+        )
     }
 }
 
 impl Extract for &solar_parse::ast::ItemEvent<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
-
-        let span = if let Some((_, span)) = extracted_natspec {
-            span_to_text_range(span, visitor.source_map)
-        } else {
-            span_to_text_range(item.span, visitor.source_map)
+        let (natspec, span) = match extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+            &[],
+        ) {
+            Ok(extracted) => extracted.map_or_else(
+                || (None, span_to_text_range(item.span, visitor.source_map)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        span_to_text_range(doc_span, visitor.source_map),
+                    )
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        let natspec = if let Some((natspec, _)) = extracted_natspec {
-            Some(natspec)
-        } else {
-            None
-        };
-
-        Some(Definition::Event(EventDefinition {
-            parent: parent.clone(),
-            name: self.name.to_string(),
-            span,
-            params,
-            natspec,
-        }))
+        Some(
+            EventDefinition {
+                parent: visitor.current_parent.clone(),
+                name: self.name.to_string(),
+                span,
+                params,
+                natspec,
+            }
+            .into(),
+        )
     }
 }
 
@@ -456,17 +484,17 @@ fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
     let mut end = TextIndex::ZERO;
     let mut iter = local_begin.sf.src.chars().peekable();
     while let Some(c) = iter.next() {
-        if !inside {
+        if inside {
+            if end.utf8 >= range.end {
+                break;
+            }
+            end.advance(c, iter.peek());
+        } else {
             start.advance(c, iter.peek());
             if start.utf8 >= range.start {
                 inside = true;
                 end = start;
             }
-        } else {
-            if end.utf8 >= range.end {
-                break;
-            }
-            end.advance(c, iter.peek());
         }
     }
 
@@ -496,29 +524,38 @@ fn extract_natspec(
     docs: &DocComments,
     source_map: &SourceMap,
     parent: Option<&Parent>,
+    returns: &[Identifier],
 ) -> Result<Option<(NatSpec, Span)>> {
     if docs.is_empty() {
         return Ok(None);
     }
-
     let mut combined = NatSpec::default();
 
     for doc in docs.iter() {
-        let snippet = source_map.span_to_snippet(doc.span).map_err(
-            |e: solar_parse::interface::source_map::SpanSnippetError| Error::NatspecParsingError {
-                parent: parent.cloned(),
-                span: span_to_text_range(doc.span, source_map),
-                message: format!("{e:?}"),
-            },
-        )?;
-
-        combined.append(&mut parse_comment(&mut snippet.as_str()).map_err(|e| {
-            Error::NatspecParsingError {
-                parent: parent.cloned(),
-                span: span_to_text_range(doc.span, source_map),
+        let snippet = source_map.span_to_snippet(doc.span).map_err(|e| {
+            // there should only be one file in the source map
+            let path = source_map
+                .files()
+                .first()
+                .map_or(PathBuf::from("<stdin>"), |f| {
+                    PathBuf::from_str(&f.name.display().to_string())
+                        .unwrap_or(PathBuf::from("<unsupported path>"))
+                });
+            Error::ParsingError {
+                path,
+                loc: span_to_text_range(doc.span, source_map).start,
                 message: format!("{e:?}"),
             }
-        })?);
+        })?;
+
+        let mut parsed = parse_comment(&mut snippet.as_str())
+            .map_err(|e| Error::NatspecParsingError {
+                parent: parent.cloned(),
+                span: span_to_text_range(doc.span, source_map),
+                message: e.to_string(),
+            })?
+            .populate_returns(returns);
+        combined.append(&mut parsed);
     }
 
     Ok(Some((combined, docs.span())))
