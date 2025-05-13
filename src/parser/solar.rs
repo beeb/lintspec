@@ -445,14 +445,14 @@ impl From<&ItemContract<'_>> for Parent {
 
 /// Convert a [`Span`] to a [`TextRange`]
 fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
-    let (source_file, range) = source_map
-        .span_to_source(span)
-        .expect("span must match the source");
+    let local_begin = source_map.lookup_byte_offset(span.lo());
+    let local_end = source_map.lookup_byte_offset(span.hi());
+    let range = local_begin.pos.to_usize()..local_end.pos.to_usize();
 
     let mut inside = false;
     let mut start = TextIndex::ZERO;
     let mut end = TextIndex::ZERO;
-    let mut iter = source_file.src.chars().peekable();
+    let mut iter = local_begin.sf.src.chars().peekable();
     while let Some(c) = iter.next() {
         if !inside {
             start.advance(c, iter.peek());
