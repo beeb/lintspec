@@ -11,7 +11,6 @@ use slang_solidity::{
     },
     parser::Parser,
 };
-use winnow::Parser as _;
 
 use crate::{
     definitions::{
@@ -542,8 +541,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             items.push((
                 cursor.node().kind().to_string(), // the node type to differentiate multiline from single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
-                parse_comment
-                    .parse(comment)
+                parse_comment(&mut comment.as_str())
                     .map_err(|e| Error::NatspecParsingError {
                         parent: extract_parent_name(cursor.clone()),
                         span: textrange(cursor.text_range()),
