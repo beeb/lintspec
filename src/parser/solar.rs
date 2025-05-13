@@ -8,9 +8,15 @@ use solar_parse::{
         visit::Visit,
         ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
     },
+    interface::ColorChoice,
     Parser,
 };
-use std::{io, ops::ControlFlow, path::PathBuf, sync::Arc};
+use std::{
+    io,
+    ops::ControlFlow,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::{
     definitions::{
@@ -32,6 +38,7 @@ impl Parse for SolarParser {
     fn parse_document(
         &mut self,
         mut input: impl io::Read,
+        path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
         let source_map = SourceMap::empty();
@@ -43,7 +50,11 @@ impl Parse for SolarParser {
                 err,
             })?;
         let source_file = source_map
-            .new_source_file(FileName::Stdin, buf) // should never fail since the content was read already
+            .new_source_file(
+                path.map(|p| FileName::Real(p.as_ref().to_path_buf()))
+                    .unwrap_or(FileName::Stdin),
+                buf,
+            ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
                 path: PathBuf::default(),
                 err,
@@ -51,34 +62,43 @@ impl Parse for SolarParser {
         let source_map = Arc::new(source_map);
         let sess = Session::builder()
             .source_map(Arc::clone(&source_map))
-            .with_stderr_emitter()
+            .with_buffer_emitter(ColorChoice::Auto)
             .build();
 
-        let definitions = sess.enter(|| -> Result<_> {
-            let arena = solar_parse::ast::Arena::new();
+        let definitions = sess
+            .enter(|| -> solar_parse::interface::Result<_> {
+                let arena = solar_parse::ast::Arena::new();
 
-            let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
+                let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
 
-            let ast = parser
-                .parse_file()
-                .map_err(|err| Error::ParsingError(err.label().to_string()))?;
+                let ast = parser.parse_file().map_err(|err| err.emit())?;
+                let mut visitor = LintspecVisitor {
+                    current_parent: Vec::new(),
+                    definitions: Vec::new(),
+                    source_map: &source_map,
+                };
 
-            let mut visitor = LintspecVisitor {
-                current_parent: Vec::new(),
-                definitions: Vec::new(),
-                source_map: &source_map,
-            };
-
-            let _ = visitor.visit_source_unit(&ast);
-
-            Ok(visitor.definitions)
-        })?;
+                let _ = visitor.visit_source_unit(&ast);
+                Ok(visitor.definitions)
+            })
+            .map_err(|_| {
+                Error::ParsingError(
+                    sess.emitted_errors()
+                        .expect("should have a Result")
+                        .unwrap_err()
+                        .to_string(),
+                )
+            })?;
+        drop(source_map);
+        drop(sess);
+        let source_file =
+            Arc::into_inner(source_file).expect("all Arc references should have been dropped");
 
         Ok(ParsedDocument {
             definitions,
             // retrieve the original source code if needed, without cloning
             contents: keep_contents.then_some(
-                Arc::into_inner(source_file.src.clone())
+                Arc::into_inner(source_file.src)
                     .expect("all Arc references should have been dropped"),
             ),
         })

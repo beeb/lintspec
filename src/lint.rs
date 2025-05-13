@@ -144,7 +144,7 @@ pub fn lint(
         path: path.as_ref().to_path_buf(),
         err,
     })?;
-    let document = parser.parse_document(file, keep_contents)?;
+    let document = parser.parse_document(file, Some(&path), keep_contents)?;
     Ok(inner(path.as_ref(), document, options))
 }
 

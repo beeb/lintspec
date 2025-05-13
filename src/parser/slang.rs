@@ -1,5 +1,8 @@
 //! A parser with `[slang_solidity]` backend
-use std::{io, path::PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 use slang_solidity::{
     cst::{Cursor, NonterminalKind, Query, QueryMatch, TerminalKind, TextRange as SlangTextRange},
@@ -101,6 +104,7 @@ impl Parse for SlangParser {
     fn parse_document(
         &mut self,
         mut input: impl io::Read,
+        _path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
         let (contents, output) = {
@@ -1321,7 +1325,7 @@ mod tests {
     fn test_parse_solidity_unsupported() {
         let mut parser = SlangParser::builder().skip_version_detection(true).build();
         let file = File::open("test-data/UnsupportedVersion.sol").unwrap();
-        let output = parser.parse_document(file, false);
+        let output = parser.parse_document(file, None::<PathBuf>, false);
         assert!(output.is_ok(), "{output:?}");
     }
 }
