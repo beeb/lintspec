@@ -70,12 +70,7 @@ impl ItemDiagnostics {
             Ok(relative_path) => relative_path.to_string_lossy(),
             Err(_) => path.as_ref().to_string_lossy(),
         };
-        writeln!(
-            f,
-            "{source_name}:{}:{}",
-            self.span.start.line + 1,   // lines start at zero in the span
-            self.span.start.column + 1, // columsn start at zero in the span
-        )?;
+        writeln!(f, "{source_name}:{}", self.span.start)?;
         if let Some(parent) = &self.parent {
             writeln!(f, "{} {}.{}", self.item_type, parent, self.name)?;
         } else {
