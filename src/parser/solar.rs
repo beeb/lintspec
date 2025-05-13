@@ -73,11 +73,7 @@ impl Parse for SolarParser {
                 let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
 
                 let ast = parser.parse_file().map_err(|err| err.emit())?;
-                let mut visitor = LintspecVisitor {
-                    current_parent: Vec::new(),
-                    definitions: Vec::new(),
-                    source_map: &source_map,
-                };
+                let mut visitor = LintspecVisitor::new(&source_map);
 
                 let _ = visitor.visit_source_unit(&ast);
                 Ok(visitor.definitions)
@@ -116,6 +112,16 @@ pub struct LintspecVisitor<'ast> {
     current_parent: Vec<Parent>,
     definitions: Vec<Definition>,
     source_map: &'ast SourceMap,
+}
+
+impl<'a> LintspecVisitor<'a> {
+    pub fn new(source_map: &'a SourceMap) -> Self {
+        Self {
+            current_parent: Vec::default(),
+            definitions: Vec::default(),
+            source_map,
+        }
+    }
 }
 
 impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
