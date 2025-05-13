@@ -109,7 +109,7 @@ impl Parse for SolarParser {
 ///
 /// Most of the items are visited using solar's default [`Visit`] implementation.
 pub struct LintspecVisitor<'ast> {
-    current_parent: Vec<Parent>,
+    current_parent: Option<Parent>,
     definitions: Vec<Definition>,
     source_map: &'ast SourceMap,
 }
@@ -117,7 +117,7 @@ pub struct LintspecVisitor<'ast> {
 impl<'a> LintspecVisitor<'a> {
     pub fn new(source_map: &'a SourceMap) -> Self {
         Self {
-            current_parent: Vec::default(),
+            current_parent: None,
             definitions: Vec::default(),
             source_map,
         }
@@ -195,7 +195,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
             ..
         } = contract;
 
-        self.current_parent.push(contract.into());
+        self.current_parent = Some(contract.into());
 
         self.visit_ident(name)?;
         for base in bases.iter() {
@@ -205,7 +205,7 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
             self.visit_item(item)?;
         }
 
-        self.current_parent.pop();
+        self.current_parent = None;
 
         ControlFlow::Continue(())
     }
@@ -218,12 +218,15 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
         let params =
             variable_definitions_to_identifiers(self.header.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted_natspec = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
         let returns = variable_definitions_to_identifiers(self.header.returns, visitor.source_map);
 
         let span = if let Some((_, span)) = extracted_natspec {
@@ -236,14 +239,14 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
 
         let def = if self.kind.is_constructor() {
             Definition::Constructor(ConstructorDefinition {
-                parent,
+                parent: visitor.current_parent.clone(),
                 span,
                 params,
                 natspec,
             })
         } else if self.kind.is_modifier() {
             Definition::Modifier(ModifierDefinition {
-                parent,
+                parent: visitor.current_parent.clone(),
                 span,
                 params,
                 natspec,
@@ -255,7 +258,7 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
             })
         } else if self.kind.is_function() {
             Definition::Function(FunctionDefinition {
-                parent,
+                parent: visitor.current_parent.clone(),
                 name: self.header.name.unwrap().to_string(),
                 returns: returns.clone(),
                 attributes: Attributes {
@@ -276,10 +279,12 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
 
 impl Extract for &solar_parse::ast::VariableDefinition<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted_natspec = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
 
         let span = if let Some((_, span)) = extracted_natspec {
             span_to_text_range(span, visitor.source_map)
@@ -299,7 +304,7 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         };
 
         Some(Definition::Variable(VariableDeclaration {
-            parent,
+            parent: visitor.current_parent.clone(),
             name: self.name.unwrap().to_string(),
             span,
             natspec,
@@ -310,8 +315,6 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
 
 impl Extract for &solar_parse::ast::ItemStruct<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let name = self.name.to_string();
 
         let members = self
@@ -323,8 +326,12 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             })
             .collect();
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted_natspec = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
 
         let span = if let Some((_, doc_span)) = &extracted_natspec {
             span_to_text_range(*doc_span, visitor.source_map)
@@ -335,7 +342,7 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
         let natspec = extracted_natspec.map(|(ns, _)| ns);
 
         Some(Definition::Struct(StructDefinition {
-            parent,
+            parent: visitor.current_parent.clone(),
             name,
             span,
             members,
@@ -346,8 +353,6 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
 
 impl Extract for &solar_parse::ast::ItemEnum<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let members = self
             .variants
             .iter()
@@ -357,8 +362,12 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             })
             .collect();
 
-        let extracted =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
 
         let span = if let Some((_, doc_span)) = &extracted {
             span_to_text_range(*doc_span, visitor.source_map)
@@ -369,7 +378,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
         let natspec = extracted.map(|(ns, _)| ns);
 
         Some(Definition::Enumeration(EnumDefinition {
-            parent: parent.clone(),
+            parent: visitor.current_parent.clone(),
             name: self.name.to_string(),
             span,
             members,
@@ -380,12 +389,14 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
 
 impl Extract for &solar_parse::ast::ItemError<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted_natspec = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
 
         let natspec = extracted_natspec.clone().map(|(ns, _)| ns);
 
@@ -396,7 +407,7 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
         };
 
         Some(Definition::Error(ErrorDefinition {
-            parent: parent.clone(),
+            parent: visitor.current_parent.clone(),
             span,
             name: self.name.to_string(),
             params,
@@ -407,12 +418,14 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
 
 impl Extract for &solar_parse::ast::ItemEvent<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let parent = visitor.current_parent.last().cloned();
-
         let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
 
-        let extracted_natspec =
-            extract_natspec(&item.docs, visitor.source_map, parent.as_ref()).unwrap_or(None);
+        let extracted_natspec = extract_natspec(
+            &item.docs,
+            visitor.source_map,
+            visitor.current_parent.as_ref(),
+        )
+        .unwrap_or(None);
 
         let span = if let Some((_, span)) = extracted_natspec {
             span_to_text_range(span, visitor.source_map)
@@ -427,7 +440,7 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
         };
 
         Some(Definition::Event(EventDefinition {
-            parent: parent.clone(),
+            parent: visitor.current_parent.clone(),
             name: self.name.to_string(),
             span,
             params,
