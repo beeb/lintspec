@@ -6,7 +6,8 @@ use solar_parse::{
             Session,
         },
         visit::Visit,
-        ContractKind, DocComments, Item, ItemContract, ItemKind, Span, VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, Span,
+        VariableDefinition,
     },
     interface::ColorChoice,
     Parser,
@@ -114,8 +115,8 @@ pub struct LintspecVisitor<'ast> {
     source_map: &'ast SourceMap,
 }
 
-impl<'a> LintspecVisitor<'a> {
-    pub fn new(source_map: &'a SourceMap) -> Self {
+impl<'ast> LintspecVisitor<'ast> {
+    pub fn new(source_map: &'ast SourceMap) -> Self {
         Self {
             current_parent: None,
             definitions: Vec::default(),
@@ -130,9 +131,6 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     /// Visit an item and extract definitions from it, using the corresponding trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         match &item.kind {
-            ItemKind::Pragma(item) => self.visit_pragma_directive(item)?,
-            ItemKind::Import(item) => self.visit_import_directive(item)?,
-            ItemKind::Using(item) => self.visit_using_directive(item)?,
             ItemKind::Contract(item) => self.visit_item_contract(item)?,
             ItemKind::Function(item_function) => {
                 if let Some(def) = item_function.extract_definition(item, self) {
@@ -162,7 +160,6 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
 
                 self.visit_item_enum(item_enum)?;
             }
-            ItemKind::Udvt(item) => self.visit_item_udvt(item)?,
             ItemKind::Error(item_error) => {
                 if let Some(def) = item_error.extract_definition(item, self) {
                     self.definitions.push(def);
@@ -177,27 +174,21 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
 
                 self.visit_item_event(item_event)?;
             }
+            ItemKind::Pragma(_) | ItemKind::Import(_) | ItemKind::Using(_) | ItemKind::Udvt(_) => {}
         }
 
         ControlFlow::Continue(())
     }
 
-    // In order to track the parent, we need to maintain a stack of visited contracts
+    // In order to track the parent, we need to maintain a reference to the contract being visited
     fn visit_item_contract(
         &mut self,
         contract: &'ast ItemContract<'ast>,
     ) -> ControlFlow<Self::BreakValue> {
-        let ItemContract {
-            kind: _,
-            name,
-            bases,
-            body,
-            ..
-        } = contract;
+        let ItemContract { bases, body, .. } = contract;
 
         self.current_parent = Some(contract.into());
 
-        self.visit_ident(name)?;
         for base in bases.iter() {
             self.visit_modifier(base)?;
         }
@@ -237,43 +228,47 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
 
         let natspec = extracted_natspec.map(|(ns, _)| ns.populate_returns(&returns));
 
-        let def = if self.kind.is_constructor() {
-            Definition::Constructor(ConstructorDefinition {
-                parent: visitor.current_parent.clone(),
-                span,
-                params,
-                natspec,
-            })
-        } else if self.kind.is_modifier() {
-            Definition::Modifier(ModifierDefinition {
-                parent: visitor.current_parent.clone(),
-                span,
-                params,
-                natspec,
-                name: self.header.name.unwrap().to_string(),
-                attributes: Attributes {
-                    visibility: self.header.visibility.into(),
-                    r#override: self.header.override_.is_some(),
-                },
-            })
-        } else if self.kind.is_function() {
-            Definition::Function(FunctionDefinition {
-                parent: visitor.current_parent.clone(),
-                name: self.header.name.unwrap().to_string(),
-                returns: returns.clone(),
-                attributes: Attributes {
-                    visibility: self.header.visibility.into(),
-                    r#override: self.header.override_.is_some(),
-                },
-                span,
-                params,
-                natspec,
-            })
-        } else {
-            return None;
-        };
-
-        Some(def)
+        match self.kind {
+            FunctionKind::Constructor => Some(
+                ConstructorDefinition {
+                    parent: visitor.current_parent.clone(),
+                    span,
+                    params,
+                    natspec,
+                }
+                .into(),
+            ),
+            FunctionKind::Modifier => Some(
+                ModifierDefinition {
+                    parent: visitor.current_parent.clone(),
+                    span,
+                    params,
+                    natspec,
+                    name: self.header.name.unwrap().to_string(),
+                    attributes: Attributes {
+                        visibility: self.header.visibility.into(),
+                        r#override: self.header.override_.is_some(),
+                    },
+                }
+                .into(),
+            ),
+            FunctionKind::Function => Some(
+                FunctionDefinition {
+                    parent: visitor.current_parent.clone(),
+                    name: self.header.name.unwrap().to_string(),
+                    returns: returns.clone(),
+                    attributes: Attributes {
+                        visibility: self.header.visibility.into(),
+                        r#override: self.header.override_.is_some(),
+                    },
+                    span,
+                    params,
+                    natspec,
+                }
+                .into(),
+            ),
+            FunctionKind::Receive | FunctionKind::Fallback => None,
+        }
     }
 }
 
