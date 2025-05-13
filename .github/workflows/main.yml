@@ -18,8 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@nextest
+      - uses: taiki-e/install-action@cargo-hack
       - name: Run tests
-        run: cargo nextest run
+        run: cargo hack nextest run --feature-powerset --depth 2
 
   doctests:
     runs-on: ubuntu-latest
