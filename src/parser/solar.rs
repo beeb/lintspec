@@ -41,12 +41,16 @@ impl Parse for SolarParser {
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
+        let pathbuf = path
+            .as_ref()
+            .map(|p| p.as_ref().to_path_buf())
+            .unwrap_or(PathBuf::from("stdin"));
         let source_map = SourceMap::empty();
         let mut buf = String::new();
         input
             .read_to_string(&mut buf)
             .map_err(|err| Error::IOError {
-                path: PathBuf::default(),
+                path: pathbuf.clone(),
                 err,
             })?;
         let source_file = source_map
@@ -57,7 +61,7 @@ impl Parse for SolarParser {
                 buf,
             ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
-                path: PathBuf::default(),
+                path: pathbuf.clone(),
                 err,
             })?;
         let source_map = Arc::new(source_map);
@@ -83,9 +87,7 @@ impl Parse for SolarParser {
                 Ok(visitor.definitions)
             })
             .map_err(|_| Error::ParsingError {
-                path: path
-                    .map(|p| p.as_ref().to_path_buf())
-                    .unwrap_or(PathBuf::from("stdin")),
+                path: pathbuf,
                 loc: TextIndex::ZERO,
                 message: sess
                     .emitted_errors()
