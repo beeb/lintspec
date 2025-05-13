@@ -1,7 +1,7 @@
 //! The error and result types for lintspec
 use std::path::PathBuf;
 
-use crate::definitions::{Parent, TextRange};
+use crate::definitions::{Parent, TextIndex, TextRange};
 
 /// The result of a lintspec operation
 pub type Result<T> = std::result::Result<T, Error>;
@@ -14,8 +14,12 @@ pub enum Error {
     #[error("the provided Solidity version is not supported: `{0}`")]
     SolidityUnsupportedVersion(String),
 
-    #[error("there was an error while parsing solidity: {0}")]
-    ParsingError(String),
+    #[error("there was an error while parsing {path}:{loc}:\n{message}")]
+    ParsingError {
+        path: PathBuf,
+        loc: TextIndex,
+        message: String,
+    },
 
     /// Error during parsing of a version specifier string
     #[error("error parsing a semver string: {0}")]

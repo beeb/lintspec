@@ -1,5 +1,5 @@
 //! Utils for parsing Solidity source code.
-use std::{fmt::Write as _, sync::LazyLock};
+use std::{fmt::Write as _, path::Path, sync::LazyLock};
 
 use regex::Regex;
 pub use semver;
@@ -53,7 +53,7 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// // this version of Solidity does not exist
 /// assert!(detect_solidity_version("pragma solidity 0.7.7;").is_err());
 /// ```
-pub fn detect_solidity_version(src: &str) -> Result<Version> {
+pub fn detect_solidity_version(src: &str, path: impl AsRef<Path>) -> Result<Version> {
     let Some(pragma) = REGEX.find(src) else {
         return Ok(Version::new(0, 8, 0));
     };
@@ -66,7 +66,11 @@ pub fn detect_solidity_version(src: &str) -> Result<Version> {
         let Some(error) = parse_result.errors().first() else {
             return Err(Error::UnknownError);
         };
-        return Err(Error::ParsingError(error.to_string()));
+        return Err(Error::ParsingError {
+            path: path.as_ref().to_path_buf(),
+            loc: error.text_range().start.into(),
+            message: error.message(),
+        });
     }
 
     let cursor = parse_result.create_tree_cursor();

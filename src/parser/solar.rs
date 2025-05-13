@@ -51,7 +51,8 @@ impl Parse for SolarParser {
             })?;
         let source_file = source_map
             .new_source_file(
-                path.map(|p| FileName::Real(p.as_ref().to_path_buf()))
+                path.as_ref()
+                    .map(|p| FileName::Real(p.as_ref().to_path_buf()))
                     .unwrap_or(FileName::Stdin),
                 buf,
             ) // should never fail since the content was read already
@@ -81,13 +82,16 @@ impl Parse for SolarParser {
                 let _ = visitor.visit_source_unit(&ast);
                 Ok(visitor.definitions)
             })
-            .map_err(|_| {
-                Error::ParsingError(
-                    sess.emitted_errors()
-                        .expect("should have a Result")
-                        .unwrap_err()
-                        .to_string(),
-                )
+            .map_err(|_| Error::ParsingError {
+                path: path
+                    .map(|p| p.as_ref().to_path_buf())
+                    .unwrap_or(PathBuf::from("stdin")),
+                loc: TextIndex::ZERO,
+                message: sess
+                    .emitted_errors()
+                    .expect("should have a Result")
+                    .unwrap_err()
+                    .to_string(),
             })?;
         drop(source_map);
         drop(sess);

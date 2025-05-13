@@ -104,9 +104,12 @@ impl Parse for SlangParser {
     fn parse_document(
         &mut self,
         mut input: impl io::Read,
-        _path: Option<impl AsRef<Path>>,
+        path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
+        let path = path
+            .map(|p| p.as_ref().to_path_buf())
+            .unwrap_or(PathBuf::from("stdin"));
         let (contents, output) = {
             let mut contents = String::new();
             input
@@ -118,7 +121,7 @@ impl Parse for SlangParser {
             let solidity_version = if self.skip_version_detection {
                 get_latest_supported_version()
             } else {
-                detect_solidity_version(&contents)?
+                detect_solidity_version(&contents, &path)?
             };
             let parser = Parser::create(solidity_version).expect("parser should initialize");
             let output = parser.parse(NonterminalKind::SourceUnit, &contents);
@@ -128,7 +131,11 @@ impl Parse for SlangParser {
             let Some(error) = output.errors().first() else {
                 return Err(Error::UnknownError);
             };
-            return Err(Error::ParsingError(error.to_string()));
+            return Err(Error::ParsingError {
+                path,
+                loc: error.text_range().start.into(),
+                message: error.message(),
+            });
         }
         let cursor = output.create_tree_cursor();
         Ok(ParsedDocument {
@@ -754,7 +761,7 @@ mod tests {
     use super::*;
 
     fn parse_file(contents: &str) -> Cursor {
-        let solidity_version = detect_solidity_version(contents).unwrap();
+        let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
         let output = parser.parse(NonterminalKind::SourceUnit, contents);
         assert!(output.is_valid(), "{:?}", output.errors());
@@ -1315,7 +1322,7 @@ mod tests {
     #[test]
     fn test_parse_solidity_latest() {
         let contents = include_str!("../../test-data/LatestVersion.sol");
-        let solidity_version = detect_solidity_version(contents).unwrap();
+        let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
         let output = parser.parse(NonterminalKind::SourceUnit, contents);
         assert!(output.is_valid(), "{:?}", output.errors());

@@ -2,7 +2,7 @@
 //!
 //! This module contains structs for each of the source item types that can be documented with `NatSpec`.
 //! The [`Definition`] type provides a unified interface to interact with the various types.
-use std::ops::Range;
+use std::{fmt, ops::Range};
 
 use constructor::ConstructorDefinition;
 use derive_more::{Display, From, IsVariant};
@@ -66,6 +66,12 @@ impl TextIndex {
         line: 0,
         column: 0,
     };
+}
+
+impl fmt::Display for TextIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.line + 1, self.column + 1)
+    }
 }
 
 impl PartialOrd for TextIndex {
