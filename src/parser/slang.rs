@@ -109,9 +109,7 @@ impl Parse for SlangParser {
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
-        let path = path
-            .map(|p| p.as_ref().to_path_buf())
-            .unwrap_or(PathBuf::from("<stdin>"));
+        let path = path.map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
         let (contents, output) = {
             let mut contents = String::new();
             input

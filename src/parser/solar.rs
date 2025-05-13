@@ -45,8 +45,7 @@ impl Parse for SolarParser {
     ) -> Result<ParsedDocument> {
         let pathbuf = path
             .as_ref()
-            .map(|p| p.as_ref().to_path_buf())
-            .unwrap_or(PathBuf::from("<stdin>"));
+            .map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
         let source_map = SourceMap::empty();
         let mut buf = String::new();
         input
@@ -57,9 +56,9 @@ impl Parse for SolarParser {
             })?;
         let source_file = source_map
             .new_source_file(
-                path.as_ref()
-                    .map(|p| FileName::Real(p.as_ref().to_path_buf()))
-                    .unwrap_or(FileName::Stdin),
+                path.as_ref().map_or(FileName::Stdin, |p| {
+                    FileName::Real(p.as_ref().to_path_buf())
+                }),
                 buf,
             ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
@@ -497,17 +496,17 @@ fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
     let mut end = TextIndex::ZERO;
     let mut iter = local_begin.sf.src.chars().peekable();
     while let Some(c) = iter.next() {
-        if !inside {
+        if inside {
+            if end.utf8 >= range.end {
+                break;
+            }
+            end.advance(c, iter.peek());
+        } else {
             start.advance(c, iter.peek());
             if start.utf8 >= range.start {
                 inside = true;
                 end = start;
             }
-        } else {
-            if end.utf8 >= range.end {
-                break;
-            }
-            end.advance(c, iter.peek());
         }
     }
 
@@ -550,11 +549,10 @@ fn extract_natspec(
             let path = source_map
                 .files()
                 .first()
-                .map(|f| {
+                .map_or(PathBuf::from("<stdin>"), |f| {
                     PathBuf::from_str(&f.name.display().to_string())
                         .unwrap_or(PathBuf::from("<unsupported path>"))
-                })
-                .unwrap_or(PathBuf::from("<stdin>"));
+                });
             Error::ParsingError {
                 path,
                 loc: span_to_text_range(doc.span, source_map).start,
