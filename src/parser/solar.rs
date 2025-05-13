@@ -138,43 +138,31 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
                 if let Some(def) = item_function.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_function(item_function)?;
             }
             ItemKind::Variable(var_def) => {
                 if let Some(def) = var_def.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_variable_definition(var_def)?;
             }
             ItemKind::Struct(item_struct) => {
                 if let Some(def) = item_struct.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_struct(item_struct)?;
             }
             ItemKind::Enum(item_enum) => {
                 if let Some(enum_def) = item_enum.extract_definition(item, self) {
                     self.definitions.push(enum_def);
                 }
-
-                self.visit_item_enum(item_enum)?;
             }
             ItemKind::Error(item_error) => {
                 if let Some(def) = item_error.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_error(item_error)?;
             }
             ItemKind::Event(item_event) => {
                 if let Some(def) = item_event.extract_definition(item, self) {
                     self.definitions.push(def);
                 }
-
-                self.visit_item_event(item_event)?;
             }
             ItemKind::Pragma(_) | ItemKind::Import(_) | ItemKind::Using(_) | ItemKind::Udvt(_) => {}
         }
