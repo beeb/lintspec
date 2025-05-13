@@ -461,6 +461,9 @@ fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
                 end = start;
             }
         } else {
+            if end.utf8 >= range.end {
+                break;
+            }
             end.advance(c, iter.peek());
         }
     }
