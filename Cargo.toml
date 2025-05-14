@@ -25,6 +25,7 @@ derive_more = { version = "2.0.1", features = [
     "from",
     "display",
     "is_variant",
+    "try_into",
 ] }
 dotenvy = "0.15.7"
 dunce = "1.0.5"
