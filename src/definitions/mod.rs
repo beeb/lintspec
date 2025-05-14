@@ -191,6 +191,43 @@ impl PartialEq for Definition {
 }
 
 impl Definition {
+    /// Retrieve the span of a definition
+    #[must_use]
+    pub fn span(&self) -> Option<TextRange> {
+        match self {
+            Definition::Constructor(d) => Some(d.span()),
+            Definition::Enumeration(d) => Some(d.span()),
+            Definition::Error(d) => Some(d.span()),
+            Definition::Event(d) => Some(d.span()),
+            Definition::Function(d) => Some(d.span()),
+            Definition::Modifier(d) => Some(d.span()),
+            Definition::Struct(d) => Some(d.span()),
+            Definition::Variable(d) => Some(d.span()),
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                Some(span.clone())
+            }
+            Definition::NatspecParsingError(_) => None,
+        }
+    }
+
+    /// Mutably borrow the span of a definition
+    pub fn span_mut(&mut self) -> Option<&mut TextRange> {
+        match self {
+            Definition::Constructor(d) => Some(&mut d.span),
+            Definition::Enumeration(d) => Some(&mut d.span),
+            Definition::Error(d) => Some(&mut d.span),
+            Definition::Event(d) => Some(&mut d.span),
+            Definition::Function(d) => Some(&mut d.span),
+            Definition::Modifier(d) => Some(&mut d.span),
+            Definition::Struct(d) => Some(&mut d.span),
+            Definition::Variable(d) => Some(&mut d.span),
+            Definition::NatspecParsingError(Error::NatspecParsingError {
+                ref mut span, ..
+            }) => Some(span),
+            Definition::NatspecParsingError(_) => None,
+        }
+    }
+
     /// Convert to the inner constructor definition
     #[must_use]
     pub fn to_constructor(self) -> Option<ConstructorDefinition> {
