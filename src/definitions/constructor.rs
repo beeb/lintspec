@@ -70,7 +70,7 @@ impl Validate for ConstructorDefinition {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, sync::LazyLock};
+    use std::sync::LazyLock;
 
     use similar_asserts::assert_eq;
 
