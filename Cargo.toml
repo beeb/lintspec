@@ -44,8 +44,14 @@ toml = "0.8.20"
 winnow = "0.7.2"
 
 [dev-dependencies]
+divan = "0.1.21"
 insta = "1.42.1"
 similar-asserts = "1.6.1"
+
+[[bench]]
+name = "solar"
+harness = false
+required-features = ["solar"]
 
 [features]
 solar = ["dep:solar-parse"]

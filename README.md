@@ -20,7 +20,7 @@
   /></a>
       <a href="https://docs.rs/lintspec/latest/lintspec/"><img
       alt="docs.rs"
-      src="https://img.shields.io/badge/MSRV-1.80.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.86.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
 </div>
@@ -61,6 +61,18 @@ nix run nixpkgs#lintspec
 #### Pre-built binaries and install script
 
 Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
+
+### Experimental `solar` backend
+
+An experimental (and very fast) parsing backend using [`solar`](https://github.com/paradigmxyz/solar) can be tested
+by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
+
+```bash
+cargo install lintspec -F solar`
+```
+
+The overall speed gains are in the order of 3x compared to the default
+[`slang`](https://github.com/NomicFoundation/slang) backend. **Note that `solar` only supports Solidity >=0.8.0.**
 
 ## Usage
 

@@ -14,6 +14,12 @@ use serde_with::skip_serializing_none;
 
 use crate::definitions::ItemType;
 
+#[cfg(not(feature = "solar"))]
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(feature = "solar")]
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-solar");
+
 /// Macro to implement the rule overrides from the CLI
 macro_rules! cli_rule_override {
     ($config:expr, $items:expr, param, $req:expr) => {
@@ -432,7 +438,7 @@ pub enum Commands {
 
 #[derive(Parser, Debug, Clone, Serialize, Deserialize)]
 #[skip_serializing_none]
-#[command(version, about, long_about = None)]
+#[command(version = VERSION, about, long_about = None)]
 #[non_exhaustive]
 pub struct Args {
     /// One or more paths to files and folders to analyze
