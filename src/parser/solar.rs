@@ -512,7 +512,8 @@ impl From<&ItemContract<'_>> for Parent {
 }
 
 /// Convert a [`Span`] to an utf8 offset stored in a [`TextRange`]
-/// @dev Only the uft8 offset of the TextRante is initially populated, the rest being filled in `complete_text_indices` (avoid multiple src parsing for the utf16)
+///
+/// Only the utf8 offset of the [`TextRange`] is initially populated, the rest being filled via [`complete_text_ranges`] to avoid duplicate work.
 fn span_to_utf8_offset(span: Span, source_map: &SourceMap) -> TextRange {
     let local_begin = source_map.lookup_byte_offset(span.lo());
     let local_end = source_map.lookup_byte_offset(span.hi());
