@@ -96,7 +96,7 @@ impl Parse for SolarParser {
             })?;
 
         let source_text_for_mapping: &str = &source_file.src;
-        let required_utf8_offsets = gather_offsets(&definitions, &pathbuf)?;
+        let required_utf8_offsets = gather_offsets(&definitions)?;
 
         let offset_mapper = UTF8OffsetToTextIndexMapper::new(source_text_for_mapping);
         let populated_text_indices = offset_mapper.populate_text_indices(&required_utf8_offsets);
@@ -119,29 +119,10 @@ impl Parse for SolarParser {
 }
 
 /// Gather all the utf8 offsets in a vec of [`Definition`]
-fn gather_offsets(definitions: &[Definition], path: &PathBuf) -> Result<HashSet<usize>> {
+fn gather_offsets(definitions: &[Definition]) -> Result<HashSet<usize>> {
     let mut utf8_offsets = HashSet::new();
     for def in definitions {
-        let span_val: TextRange = match def {
-            Definition::Constructor(d) => d.span.clone(),
-            Definition::Enumeration(d) => d.span.clone(),
-            Definition::Error(d) => d.span.clone(),
-            Definition::Event(d) => d.span.clone(),
-            Definition::Function(d) => d.span.clone(),
-            Definition::Modifier(d) => d.span.clone(),
-            Definition::Struct(d) => d.span.clone(),
-            Definition::Variable(d) => d.span.clone(),
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                span.clone()
-            }
-            Definition::NatspecParsingError(err) => {
-                return Err(Error::ParsingError {
-                    path: path.clone(),
-                    loc: TextIndex::ZERO,
-                    message: format!("NatspecParsingError found while gathering offsets: {err}"),
-                });
-            }
-        };
+        let span_val: TextRange = def.span().unwrap();
         utf8_offsets.insert(span_val.start.utf8);
         utf8_offsets.insert(span_val.end.utf8);
     }
@@ -156,20 +137,7 @@ fn complete_text_indices(
     path: &PathBuf,
 ) -> Result<()> {
     for def in definitions.iter_mut() {
-        let span_to_update: Option<&mut TextRange> = match def {
-            Definition::Constructor(d) => Some(&mut d.span),
-            Definition::Enumeration(d) => Some(&mut d.span),
-            Definition::Error(d) => Some(&mut d.span),
-            Definition::Event(d) => Some(&mut d.span),
-            Definition::Function(d) => Some(&mut d.span),
-            Definition::Modifier(d) => Some(&mut d.span),
-            Definition::Struct(d) => Some(&mut d.span),
-            Definition::Variable(d) => Some(&mut d.span),
-            Definition::NatspecParsingError(Error::NatspecParsingError {
-                ref mut span, ..
-            }) => Some(span),
-            Definition::NatspecParsingError(_) => None,
-        };
+        let span_to_update: Option<&mut TextRange> = def.span_mut();
 
         if let Some(current_span_to_update) = span_to_update {
             if let Some(start_ti) = populated_text_indices.get(&current_span_to_update.start.utf8) {
