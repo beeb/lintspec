@@ -5,7 +5,7 @@
 use std::ops::Range;
 
 use constructor::ConstructorDefinition;
-use derive_more::{Display, From, IsVariant};
+use derive_more::{Display, From, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -142,7 +142,7 @@ pub enum Parent {
 }
 
 /// A source item's definition
-#[derive(Debug, From, IsVariant)]
+#[derive(Debug, From, TryInto, IsVariant)]
 pub enum Definition {
     Constructor(ConstructorDefinition),
     Enumeration(EnumDefinition),
