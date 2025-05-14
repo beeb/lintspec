@@ -86,7 +86,7 @@ impl Parse for SolarParser {
                 Ok(visitor.definitions)
             })
             .map_err(|_| Error::ParsingError {
-                path: pathbuf.clone(),
+                path: pathbuf,
                 loc: TextIndex::ZERO,
                 message: sess
                     .emitted_errors()
