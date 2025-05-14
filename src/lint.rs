@@ -70,12 +70,7 @@ impl ItemDiagnostics {
             Ok(relative_path) => relative_path.to_string_lossy(),
             Err(_) => path.as_ref().to_string_lossy(),
         };
-        writeln!(
-            f,
-            "{source_name}:{}:{}",
-            self.span.start.line + 1,   // lines start at zero in the span
-            self.span.start.column + 1, // columsn start at zero in the span
-        )?;
+        writeln!(f, "{source_name}:{}", self.span.start)?;
         if let Some(parent) = &self.parent {
             writeln!(f, "{} {}.{}", self.item_type, parent, self.name)?;
         } else {
@@ -144,7 +139,7 @@ pub fn lint(
         path: path.as_ref().to_path_buf(),
         err,
     })?;
-    let document = parser.parse_document(file, keep_contents)?;
+    let document = parser.parse_document(file, Some(&path), keep_contents)?;
     Ok(inner(path.as_ref(), document, options))
 }
 

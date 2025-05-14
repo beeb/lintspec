@@ -20,7 +20,7 @@
   /></a>
       <a href="https://docs.rs/lintspec/latest/lintspec/"><img
       alt="docs.rs"
-      src="https://img.shields.io/badge/MSRV-1.80.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.86.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
 </div>
@@ -61,6 +61,20 @@ nix run nixpkgs#lintspec
 #### Pre-built binaries and install script
 
 Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
+
+### Experimental `solar` backend
+
+An experimental (and very fast) parsing backend using [`solar`](https://github.com/paradigmxyz/solar) can be tested
+by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
+
+```bash
+cargo install lintspec -F solar`
+```
+
+With this backend, the parsing step is roughly 15x faster than with the default
+[`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 2-3x can be expected on the
+total execution time.
+**Note that `solar` only supports Solidity >=0.8.0.**
 
 ## Usage
 
@@ -118,6 +132,7 @@ configuration file. They use the same names as in the TOML config file and use t
 nested items.
 
 Examples:
+
 - `LS_LINTSPEC_PATHS=[src,test]`
 - `LS_LINTSPEC_INHERITDOC=false`
 - `LS_LINTSPEC_NOTICE_OR_DEV=true`: if the setting name contains `_`, it is not considered a delimiter
@@ -150,7 +165,7 @@ The following options are available for the action (all are optional if a config
 |---|---|---|---|
 | `working-directory` | `"./"` | Working directory path | `"./src"` |
 | `paths` | `"[]"` | Paths to scan, relative to the working directory, in square brackets and separated by commas. Required unless a `.lintspec.toml` file is present in the working directory. | `"[path/to/file.sol,test/test.sol]"` |
-| `exclude` | `"[]"` | Paths to exclude, relative to the working directory, in square brackets and separated by commas | `"[path/to/exclude,other/path.sol]"` | 
+| `exclude` | `"[]"` | Paths to exclude, relative to the working directory, in square brackets and separated by commas | `"[path/to/exclude,other/path.sol]"` |
 | `extra-args` | | Extra arguments passed to the `lintspec` command | `"--inheritdoc=false"` |
 | `version` | `"latest"` | Version of lintspec to use. For enhanced security, you can pin this to a fixed version | `"0.4.1"` |
 | `fail-on-problem` | `"true"` | Whether the action should fail when `NatSpec` problems have been found. Disabling this only creates annotations for found problems, but succeeds | `"false"` |
@@ -204,6 +219,27 @@ Benchmark 2: lintspec src --compact --param-required struct
 Summary
   lintspec src --compact --param-required struct ran
   207.34 ± 8.28 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
+```
+
+On a MacBook Pro M2 Max with 96GB of RAM, linting the same Uniswap V4 repo using the experimental Solar backend is roughly
+900x faster than natspec-smells:
+
+```text
+Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enforceInheritdoc --constructorNatspec
+  Time (mean ± σ):     11.421 s ±  0.110 s    [User: 12.957 s, System: 0.578 s]
+  Range (min … max):   11.241 s … 11.556 s    10 runs
+ 
+  Warning: Ignoring non-zero exit code.
+ 
+Benchmark 2: lintspec src --compact
+  Time (mean ± σ):      12.7 ms ±   0.2 ms    [User: 17.6 ms, System: 9.7 ms]
+  Range (min … max):    12.1 ms …  13.9 ms    184 runs
+ 
+  Warning: Ignoring non-zero exit code.
+ 
+Summary
+  lintspec src --compact ran
+  899.67 ± 19.41 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enforceInheritdoc --constructorNatspec
 ```
 
 ### Features

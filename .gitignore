@@ -6,3 +6,6 @@
 .env
 .env.*
 !.env.example
+.vscode
+.wake
+.cargo

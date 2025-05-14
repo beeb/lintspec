@@ -1,0 +1,5 @@
+---
+source: tests/tests-interface-sample.rs
+expression: "snapshot_content(\"./test-data/InterfaceSample.sol\",\n&ValidationOptions::builder().inheritdoc(false).build(), true,)"
+---
+

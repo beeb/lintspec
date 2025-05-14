@@ -7,9 +7,15 @@ use lintspec::{
     error::Error,
     files::find_sol_files,
     lint::{lint, ValidationOptions},
-    parser::slang::SlangParser,
     print_reports,
 };
+
+#[cfg(not(feature = "solar"))]
+use lintspec::parser::slang::SlangParser;
+
+#[cfg(feature = "solar")]
+use lintspec::parser::solar::SolarParser;
+
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 fn main() -> Result<()> {
@@ -23,6 +29,7 @@ fn main() -> Result<()> {
         println!("Exiting");
         return Ok(());
     }
+
     let config = read_config(args)?;
 
     // identify Solidity files to parse
@@ -37,9 +44,15 @@ fn main() -> Result<()> {
 
     // lint all the requested Solidity files
     let options: ValidationOptions = (&config).into();
+
+    #[cfg(feature = "solar")]
+    let parser = SolarParser {};
+
+    #[cfg(not(feature = "solar"))]
     let parser = SlangParser::builder()
         .skip_version_detection(config.lintspec.skip_version_detection)
         .build();
+
     let diagnostics = paths
         .par_iter()
         .filter_map(|p| {

@@ -1,16 +1,13 @@
-use lintspec::{
-    lint::{lint, ValidationOptions},
-    parser::slang::SlangParser,
-};
+use lintspec::lint::ValidationOptions;
+
+mod common;
+use common::*;
 
 #[test]
-fn test_basic() {
-    let diags = lint(
-        SlangParser::default(),
+fn test_interface() {
+    insta::assert_snapshot!(snapshot_content(
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
-    )
-    .unwrap();
-    assert!(diags.is_none(), "{diags:?}");
+    ));
 }
