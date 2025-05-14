@@ -18,10 +18,14 @@
       src="https://img.shields.io/badge/docs.rs-lintspec-3b74d1?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
-      <a href="https://docs.rs/lintspec/latest/lintspec/"><img
-      alt="docs.rs"
+  <a href="https://docs.rs/lintspec/latest/lintspec/"><img
+      alt="MSRV"
       src="https://img.shields.io/badge/MSRV-1.86.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
+  /></a>
+  <a href="https://codspeed.io/beeb/lintspec"><img
+      alt="CodSpeed"
+      src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json"
   /></a>
 </div>
 
@@ -64,7 +68,7 @@ Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
 ### Experimental `solar` backend
 
-An experimental (and very fast) parsing backend using [`solar`](https://github.com/paradigmxyz/solar) can be tested
+An experimental (and very fast) parsing backend using [Solar](https://github.com/paradigmxyz/solar) can be tested
 by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
 
 ```bash
@@ -74,7 +78,7 @@ cargo install lintspec -F solar`
 With this backend, the parsing step is roughly 15x faster than with the default
 [`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 2-3x can be expected on the
 total execution time.
-**Note that `solar` only supports Solidity >=0.8.0.**
+**Note that Solar only supports Solidity >=0.8.0.**
 
 ## Usage
 
@@ -221,25 +225,20 @@ Summary
   207.34 ± 8.28 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
 ```
 
-On a MacBook Pro M2 Max with 96GB of RAM, linting the same Uniswap V4 repo using the experimental Solar backend is roughly
-900x faster than natspec-smells:
+Using the experimental [Solar](https://github.com/paradigmxyz/solar) backend improves that by a further factor of 2-3x:
 
 ```text
-Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enforceInheritdoc --constructorNatspec
-  Time (mean ± σ):     11.421 s ±  0.110 s    [User: 12.957 s, System: 0.578 s]
-  Range (min … max):   11.241 s … 11.556 s    10 runs
- 
-  Warning: Ignoring non-zero exit code.
- 
-Benchmark 2: lintspec src --compact
-  Time (mean ± σ):      12.7 ms ±   0.2 ms    [User: 17.6 ms, System: 9.7 ms]
-  Range (min … max):    12.1 ms …  13.9 ms    184 runs
- 
-  Warning: Ignoring non-zero exit code.
- 
+Benchmark 1: lintspec src --compact --skip-version-detection
+  Time (mean ± σ):      64.2 ms ±   1.5 ms    [User: 259.8 ms, System: 68.7 ms]
+  Range (min … max):    61.4 ms …  68.0 ms    46 runs
+
+Benchmark 2: lintspec-solar src --compact
+  Time (mean ± σ):      27.9 ms ±   1.2 ms    [User: 17.1 ms, System: 32.7 ms]
+  Range (min … max):    24.3 ms …  30.8 ms    105 runs
+
 Summary
-  lintspec src --compact ran
-  899.67 ± 19.41 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enforceInheritdoc --constructorNatspec
+  lintspec-solar src --compact ran
+    2.30 ± 0.11 times faster than lintspec src --compact --skip-version-detection
 ```
 
 ### Features
