@@ -114,13 +114,7 @@ impl Parse for SolarParser {
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     let utf8_offsets: HashSet<_> = definitions
         .iter()
-        .filter_map(|d| {
-            if let Some(span) = d.span() {
-                Some([span.start.utf8, span.end.utf8])
-            } else {
-                None
-            }
-        })
+        .filter_map(|d| d.span().map(|span| [span.start.utf8, span.end.utf8]))
         .flatten()
         .collect();
     let mut mapping = HashMap::new();

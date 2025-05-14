@@ -1,3 +1,4 @@
+#![allow(clippy::doc_markdown)]
 #![doc = include_str!("../README.md")]
 use std::{io, path::Path, sync::Arc};
 

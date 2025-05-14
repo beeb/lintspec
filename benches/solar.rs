@@ -24,11 +24,11 @@ fn parse_slang(bencher: Bencher, path: &str) {
     let parser = SlangParser::builder().skip_version_detection(true).build();
     bencher.bench_local(move || {
         black_box(parse_file(parser.clone(), path));
-    })
+    });
 }
 
 #[divan::bench(args = FILES, min_time = Duration::from_secs(1))]
 fn parse_solar(bencher: Bencher, path: &str) {
     let parser = SolarParser {};
-    bencher.bench_local(move || black_box(parse_file(parser.clone(), path)))
+    bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
 }

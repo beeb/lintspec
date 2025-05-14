@@ -1,25 +1,24 @@
 [lintspec]
-paths = []                     # paths to files and folders to analyze
-exclude = []                   # paths to files or folders to exclude, see also `.nsignore`
-inheritdoc = true              # enforce that all overridden, public and external items have `@inheritdoc`
-notice_or_dev = false          # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
-skip_version_detection = false # skip detection of the Solidity version from pragma statements and use the latest
+paths = []
+exclude = []
+inheritdoc = true
+notice_or_dev = false
+skip_version_detection = false
 
 [output]
-# out = ""        # if provided, redirects output to this file
-json = false    # output diagnostics as JSON
-compact = false # compact output (minified JSON or compact text)
-sort = false    # sort results by file path
+json = false
+compact = false
+sort = false
 
 [constructor]
-notice = "ignored" # since constructors rarely have another purpose than deployment, `@notice` is optional
+notice = "ignored"
 dev = "ignored"
 param = "required"
 
 [enum]
 notice = "required"
 dev = "ignored"
-param = "ignored"   # `@param` on enums is not in the official spec
+param = "ignored"
 
 [error]
 notice = "required"
@@ -63,7 +62,7 @@ param = "required"
 [struct]
 notice = "required"
 dev = "ignored"
-param = "ignored"   # `@param` on structs is not in the official spec
+param = "ignored"
 
 [variable.private]
 notice = "required"
