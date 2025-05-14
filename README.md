@@ -19,9 +19,13 @@
       height="20"
   /></a>
       <a href="https://docs.rs/lintspec/latest/lintspec/"><img
-      alt="docs.rs"
+      alt="MSRV"
       src="https://img.shields.io/badge/MSRV-1.86.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
+  /></a>
+      <a href="https://codspeed.io/beeb/lintspec"><img
+      alt="CodSpeed"
+      src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json"
   /></a>
 </div>
 
