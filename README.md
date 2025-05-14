@@ -229,14 +229,14 @@ Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enfo
  
   Warning: Ignoring non-zero exit code.
  
-Benchmark 2: ./../../defiSucks/lintspec/target/release/lintspec src --compact
+Benchmark 2: lintspec src --compact
   Time (mean ± σ):      12.7 ms ±   0.2 ms    [User: 17.6 ms, System: 9.7 ms]
   Range (min … max):    12.1 ms …  13.9 ms    184 runs
  
   Warning: Ignoring non-zero exit code.
  
 Summary
-  ./../../defiSucks/lintspec/target/release/lintspec src --compact ran
+  lintspec src --compact ran
   899.67 ± 19.41 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol" --enforceInheritdoc --constructorNatspec
 ```
 
