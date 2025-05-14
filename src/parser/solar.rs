@@ -32,6 +32,8 @@ use crate::{
     parser::{Parse, ParsedDocument},
 };
 
+use std::collections::{HashMap, HashSet};
+
 #[derive(Clone)]
 pub struct SolarParser {}
 
@@ -71,7 +73,7 @@ impl Parse for SolarParser {
             .with_buffer_emitter(ColorChoice::Auto)
             .build();
 
-        let definitions = sess
+        let mut definitions = sess
             .enter(|| -> solar_parse::interface::Result<_> {
                 let arena = solar_parse::ast::Arena::new();
 
@@ -84,7 +86,7 @@ impl Parse for SolarParser {
                 Ok(visitor.definitions)
             })
             .map_err(|_| Error::ParsingError {
-                path: pathbuf,
+                path: pathbuf.clone(),
                 loc: TextIndex::ZERO,
                 message: sess
                     .emitted_errors()
@@ -92,6 +94,15 @@ impl Parse for SolarParser {
                     .unwrap_err()
                     .to_string(),
             })?;
+
+        let source_text_for_mapping: &str = &source_file.src;
+        let required_utf8_offsets = gather_offsets(&definitions, &pathbuf)?;
+
+        let offset_mapper = UTF8OffsetToTextIndexMapper::new(source_text_for_mapping);
+        let populated_text_indices = offset_mapper.populate_text_indices(&required_utf8_offsets);
+
+        complete_text_indices(&mut definitions, &populated_text_indices, &pathbuf)?;
+
         drop(source_map);
         drop(sess);
         let source_file =
@@ -99,13 +110,95 @@ impl Parse for SolarParser {
 
         Ok(ParsedDocument {
             definitions,
-            // retrieve the original source code if needed, without cloning
             contents: keep_contents.then_some(
                 Arc::into_inner(source_file.src)
                     .expect("all Arc references should have been dropped"),
             ),
         })
     }
+}
+
+/// Gather all the utf8 offsets in a vec of [`Definition`]
+fn gather_offsets(definitions: &[Definition], path: &PathBuf) -> Result<HashSet<usize>> {
+    let mut utf8_offsets = HashSet::new();
+    for def in definitions {
+        let span_val: TextRange = match def {
+            Definition::Constructor(d) => d.span.clone(),
+            Definition::Enumeration(d) => d.span.clone(),
+            Definition::Error(d) => d.span.clone(),
+            Definition::Event(d) => d.span.clone(),
+            Definition::Function(d) => d.span.clone(),
+            Definition::Modifier(d) => d.span.clone(),
+            Definition::Struct(d) => d.span.clone(),
+            Definition::Variable(d) => d.span.clone(),
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                span.clone()
+            }
+            Definition::NatspecParsingError(err) => {
+                return Err(Error::ParsingError {
+                    path: path.clone(),
+                    loc: TextIndex::ZERO,
+                    message: format!("NatspecParsingError found while gathering offsets: {err}"),
+                });
+            }
+        };
+        utf8_offsets.insert(span_val.start.utf8);
+        utf8_offsets.insert(span_val.end.utf8);
+    }
+
+    Ok(utf8_offsets)
+}
+
+/// Using a hashmap of utf8 offsets to [`TextIndex`], complete the [`TextRange`] of each [`Definition`]
+fn complete_text_indices(
+    definitions: &mut [Definition],
+    populated_text_indices: &HashMap<usize, TextIndex>,
+    path: &PathBuf,
+) -> Result<()> {
+    for def in definitions.iter_mut() {
+        let span_to_update: Option<&mut TextRange> = match def {
+            Definition::Constructor(d) => Some(&mut d.span),
+            Definition::Enumeration(d) => Some(&mut d.span),
+            Definition::Error(d) => Some(&mut d.span),
+            Definition::Event(d) => Some(&mut d.span),
+            Definition::Function(d) => Some(&mut d.span),
+            Definition::Modifier(d) => Some(&mut d.span),
+            Definition::Struct(d) => Some(&mut d.span),
+            Definition::Variable(d) => Some(&mut d.span),
+            Definition::NatspecParsingError(Error::NatspecParsingError {
+                ref mut span, ..
+            }) => Some(span),
+            Definition::NatspecParsingError(_) => None,
+        };
+
+        if let Some(current_span_to_update) = span_to_update {
+            if let Some(start_ti) = populated_text_indices.get(&current_span_to_update.start.utf8) {
+                current_span_to_update.start = *start_ti;
+            } else {
+                return Err(Error::ParsingError {
+                    path: path.clone(),
+                    loc: current_span_to_update.start,
+                    message: format!(
+                        "Start UTF-8 offset {} not found in populated map during TextIndex completion.",
+                        current_span_to_update.start.utf8
+                    ),
+                });
+            }
+            if let Some(end_ti) = populated_text_indices.get(&current_span_to_update.end.utf8) {
+                current_span_to_update.end = *end_ti;
+            } else {
+                return Err(Error::ParsingError {
+                    path: path.clone(),
+                    loc: current_span_to_update.end,
+                    message: format!(
+                        "End UTF-8 offset {} not found in populated map during TextIndex completion.",
+                        current_span_to_update.end.utf8
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// A custom visitor to extract definitions from the [`solar_parse`] AST
@@ -211,11 +304,11 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
             &returns,
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -275,11 +368,11 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
             &[],
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -313,7 +406,7 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             .iter()
             .map(|m| Identifier {
                 name: Some(m.name.expect("name").to_string()),
-                span: span_to_text_range(m.span, visitor.source_map),
+                span: span_to_utf8_offset(m.span, visitor.source_map),
             })
             .collect();
 
@@ -324,11 +417,11 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             &[],
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -355,7 +448,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             .iter()
             .map(|v| Identifier {
                 name: Some(v.name.to_string()),
-                span: span_to_text_range(v.span, visitor.source_map),
+                span: span_to_utf8_offset(v.span, visitor.source_map),
             })
             .collect();
 
@@ -366,11 +459,11 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             &[],
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -401,11 +494,11 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
             &[],
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -436,11 +529,11 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
             &[],
         ) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_text_range(item.span, visitor.source_map)),
+                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        span_to_text_range(doc_span, visitor.source_map),
+                        span_to_utf8_offset(doc_span, visitor.source_map),
                     )
                 },
             ),
@@ -473,32 +566,26 @@ impl From<&ItemContract<'_>> for Parent {
     }
 }
 
-/// Convert a [`Span`] to a [`TextRange`]
-fn span_to_text_range(span: Span, source_map: &SourceMap) -> TextRange {
+/// Convert a [`Span`] to an utf8 offset stored in a [`TextRange`]
+/// @dev Only the uft8 offset of the TextRante is initially populated, the rest being filled in `complete_text_indices` (avoid multiple src parsing for the utf16)
+fn span_to_utf8_offset(span: Span, source_map: &SourceMap) -> TextRange {
     let local_begin = source_map.lookup_byte_offset(span.lo());
     let local_end = source_map.lookup_byte_offset(span.hi());
-    let range = local_begin.pos.to_usize()..local_end.pos.to_usize();
 
-    let mut inside = false;
-    let mut start = TextIndex::ZERO;
-    let mut end = TextIndex::ZERO;
-    let mut iter = local_begin.sf.src.chars().peekable();
-    while let Some(c) = iter.next() {
-        if inside {
-            if end.utf8 >= range.end {
-                break;
-            }
-            end.advance(c, iter.peek());
-        } else {
-            start.advance(c, iter.peek());
-            if start.utf8 >= range.start {
-                inside = true;
-                end = start;
-            }
-        }
-    }
+    let start_utf8 = local_begin.pos.to_usize();
+    let end_utf8 = local_end.pos.to_usize();
 
-    start..end
+    let start_index = TextIndex {
+        utf8: start_utf8,
+        ..Default::default()
+    };
+
+    let end_index = TextIndex {
+        utf8: end_utf8,
+        ..Default::default()
+    };
+
+    start_index..end_index
 }
 
 /// Convert a list of [`VariableDefinition`] (used for fn params or returns) into an [`Identifier`]
@@ -513,7 +600,7 @@ fn variable_definitions_to_identifiers(
             let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
             Identifier {
                 name,
-                span: span_to_text_range(r.span, source_map),
+                span: span_to_utf8_offset(r.span, source_map),
             }
         })
         .collect()
@@ -543,7 +630,7 @@ fn extract_natspec(
                 });
             Error::ParsingError {
                 path,
-                loc: span_to_text_range(doc.span, source_map).start,
+                loc: span_to_utf8_offset(doc.span, source_map).start,
                 message: format!("{e:?}"),
             }
         })?;
@@ -551,7 +638,7 @@ fn extract_natspec(
         let mut parsed = parse_comment(&mut snippet.as_str())
             .map_err(|e| Error::NatspecParsingError {
                 parent: parent.cloned(),
-                span: span_to_text_range(doc.span, source_map),
+                span: span_to_utf8_offset(doc.span, source_map),
                 message: e.to_string(),
             })?
             .populate_returns(returns);
@@ -570,5 +657,39 @@ impl From<Option<solar_parse::ast::Visibility>> for Visibility {
             Some(solar_parse::ast::Visibility::External) => Visibility::External,
             Some(solar_parse::ast::Visibility::Internal) | None => Visibility::Internal,
         }
+    }
+}
+
+/// Convert utf8 offsets to [`TextIndex`] in a given source text
+struct UTF8OffsetToTextIndexMapper<'a> {
+    source_text: &'a str,
+}
+
+impl<'a> UTF8OffsetToTextIndexMapper<'a> {
+    fn new(source_text: &'a str) -> Self {
+        Self { source_text }
+    }
+
+    /// Given a hashset of utf8 offsets, return a hashmap <utf8 offsets, corresponding [`TextIndex`]>,
+    fn populate_text_indices(
+        &self,
+        utf8_offsets_to_map: &HashSet<usize>,
+    ) -> HashMap<usize, TextIndex> {
+        let mut mapping = HashMap::new();
+        let mut current_ti = TextIndex::ZERO;
+
+        if utf8_offsets_to_map.contains(&0) {
+            mapping.insert(0, current_ti);
+        }
+
+        let mut char_iter = self.source_text.chars().peekable();
+        while let Some(c) = char_iter.next() {
+            current_ti.advance(c, char_iter.peek());
+
+            if utf8_offsets_to_map.contains(&current_ti.utf8) {
+                mapping.insert(current_ti.utf8, current_ti);
+            }
+        }
+        mapping
     }
 }
