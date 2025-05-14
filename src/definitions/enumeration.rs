@@ -95,7 +95,9 @@ mod tests {
 
     fn parse_file(contents: &str) -> EnumDefinition {
         let mut parser = SlangParser::builder().skip_version_detection(true).build();
-        let doc = parser.parse_document(contents.as_bytes(), false).unwrap();
+        let doc = parser
+            .parse_document(contents.as_bytes(), None::<std::path::PathBuf>, false)
+            .unwrap();
         doc.definitions
             .into_iter()
             .find_map(Definition::to_enum)
