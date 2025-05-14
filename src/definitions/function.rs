@@ -144,11 +144,12 @@ impl Validate for FunctionDefinition {
 mod tests {
     use std::sync::LazyLock;
 
-    use semver::Version;
     use similar_asserts::assert_eq;
-    use slang_solidity::{cst::NonterminalKind, parser::Parser};
 
-    use crate::parser::slang::Extract as _;
+    use crate::{
+        definitions::Definition,
+        parser::{slang::SlangParser, Parse as _},
+    };
 
     use super::*;
 
@@ -156,16 +157,12 @@ mod tests {
         LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> FunctionDefinition {
-        let parser = Parser::create(Version::new(0, 8, 0)).unwrap();
-        let output = parser.parse(NonterminalKind::SourceUnit, contents);
-        assert!(output.is_valid(), "{:?}", output.errors());
-        let cursor = output.create_tree_cursor();
-        let m = cursor
-            .query(vec![FunctionDefinition::query()])
-            .next()
-            .unwrap();
-        let def = FunctionDefinition::extract(m).unwrap();
-        def.to_function().unwrap()
+        let mut parser = SlangParser::builder().skip_version_detection(true).build();
+        let doc = parser.parse_document(contents.as_bytes(), false).unwrap();
+        doc.definitions
+            .into_iter()
+            .find_map(Definition::to_function)
+            .unwrap()
     }
 
     #[test]
