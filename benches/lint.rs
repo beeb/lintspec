@@ -1,0 +1,41 @@
+use std::fs::File;
+
+use divan::{black_box, Bencher};
+use lintspec::{
+    lint::{Validate as _, ValidationOptions},
+    parser::{slang::SlangParser, Parse as _, ParsedDocument},
+};
+
+const FILES: &[&str] = &[
+    "test-data/BasicSample.sol",
+    "test-data/ParserTest.sol",
+    "test-data/InterfaceSample.sol",
+    "test-data/LibrarySample.sol",
+];
+
+fn main() {
+    divan::main();
+}
+
+fn parse_file(path: &str) -> ParsedDocument {
+    let file = File::open(path).unwrap();
+    SlangParser::builder()
+        .skip_version_detection(true)
+        .build()
+        .parse_document(file, Some(path), false)
+        .unwrap()
+}
+
+#[divan::bench(args = FILES)]
+fn lint(bencher: Bencher, path: &str) {
+    let doc = parse_file(path);
+    let options = ValidationOptions::default();
+    bencher.bench_local(move || {
+        black_box(
+            doc.definitions
+                .iter()
+                .map(|item| item.validate(&options))
+                .collect::<Vec<_>>(),
+        );
+    });
+}
