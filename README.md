@@ -71,8 +71,10 @@ by installing with the `solar` feature flag enabled. This is only possible via `
 cargo install lintspec -F solar`
 ```
 
-The overall speed gains are in the order of 15x compared to the default
-[`slang`](https://github.com/NomicFoundation/slang) backend. **Note that `solar` only supports Solidity >=0.8.0.**
+With this backend, the parsing step is roughly 15x faster than with the default
+[`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 2-3x can be expected on the
+total execution time.
+**Note that `solar` only supports Solidity >=0.8.0.**
 
 ## Usage
 

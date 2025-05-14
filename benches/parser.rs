@@ -1,7 +1,7 @@
-use std::{fs::File, time::Duration};
+use std::fs::File;
 
 use divan::{black_box, Bencher};
-use lintspec::parser::{slang::SlangParser, solar::SolarParser, Parse, ParsedDocument};
+use lintspec::parser::{slang::SlangParser, Parse, ParsedDocument};
 
 const FILES: &[&str] = &[
     "test-data/BasicSample.sol",
@@ -19,7 +19,7 @@ fn parse_file(mut parser: impl Parse, path: &str) -> ParsedDocument {
     parser.parse_document(file, Some(path), false).unwrap()
 }
 
-#[divan::bench(args = FILES, min_time = Duration::from_secs(1))]
+#[divan::bench(args = FILES)]
 fn parse_slang(bencher: Bencher, path: &str) {
     let parser = SlangParser::builder().skip_version_detection(true).build();
     bencher.bench_local(move || {
@@ -27,8 +27,9 @@ fn parse_slang(bencher: Bencher, path: &str) {
     });
 }
 
-#[divan::bench(args = FILES, min_time = Duration::from_secs(1))]
+#[cfg(feature = "solar")]
+#[divan::bench(args = FILES)]
 fn parse_solar(bencher: Bencher, path: &str) {
-    let parser = SolarParser {};
+    let parser = lintspec::parser::solar::SolarParser {};
     bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
 }

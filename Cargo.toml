@@ -45,14 +45,17 @@ toml = "0.8.20"
 winnow = "0.7.2"
 
 [dev-dependencies]
-divan = "0.1.21"
+divan = { version = "2.10.1", package = "codspeed-divan-compat" }
 insta = "1.42.1"
 similar-asserts = "1.6.1"
 
 [[bench]]
-name = "solar"
+name = "parser"
 harness = false
-required-features = ["solar"]
+
+[[bench]]
+name = "lint"
+harness = false
 
 [features]
 solar = ["dep:solar-parse"]
