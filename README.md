@@ -62,7 +62,7 @@ nix run nixpkgs#lintspec
 
 Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
-#### Experimental `solar` backend
+### Experimental `solar` backend
 
 An experimental (and very fast) parsing backend using [`solar`](https://github.com/paradigmxyz/solar) can be tested
 by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
