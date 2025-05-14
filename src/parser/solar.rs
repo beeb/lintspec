@@ -73,7 +73,7 @@ impl Parse for SolarParser {
             .with_buffer_emitter(ColorChoice::Auto)
             .build();
 
-        let mut definitions = sess
+        let definitions = sess
             .enter(|| -> solar_parse::interface::Result<_> {
                 let arena = solar_parse::ast::Arena::new();
 
@@ -95,21 +95,13 @@ impl Parse for SolarParser {
                     .to_string(),
             })?;
 
-        let source_text_for_mapping: &str = &source_file.src;
-        let required_utf8_offsets = gather_offsets(&definitions)?;
-
-        let offset_mapper = UTF8OffsetToTextIndexMapper::new(source_text_for_mapping);
-        let populated_text_indices = offset_mapper.populate_text_indices(&required_utf8_offsets);
-
-        complete_text_indices(&mut definitions, &populated_text_indices, &pathbuf)?;
-
         drop(source_map);
         drop(sess);
         let source_file =
             Arc::into_inner(source_file).expect("all Arc references should have been dropped");
 
         Ok(ParsedDocument {
-            definitions,
+            definitions: complete_text_ranges(&source_file.src, definitions),
             contents: keep_contents.then_some(
                 Arc::into_inner(source_file.src)
                     .expect("all Arc references should have been dropped"),
@@ -118,55 +110,40 @@ impl Parse for SolarParser {
     }
 }
 
-/// Gather all the utf8 offsets in a vec of [`Definition`]
-fn gather_offsets(definitions: &[Definition]) -> Result<HashSet<usize>> {
-    let mut utf8_offsets = HashSet::new();
-    for def in definitions {
-        let span_val: TextRange = def.span().unwrap();
-        utf8_offsets.insert(span_val.start.utf8);
-        utf8_offsets.insert(span_val.end.utf8);
-    }
-
-    Ok(utf8_offsets)
-}
-
-/// Using a hashmap of utf8 offsets to [`TextIndex`], complete the [`TextRange`] of each [`Definition`]
-fn complete_text_indices(
-    definitions: &mut [Definition],
-    populated_text_indices: &HashMap<usize, TextIndex>,
-    path: &PathBuf,
-) -> Result<()> {
-    for def in definitions.iter_mut() {
-        let span_to_update: Option<&mut TextRange> = def.span_mut();
-
-        if let Some(current_span_to_update) = span_to_update {
-            if let Some(start_ti) = populated_text_indices.get(&current_span_to_update.start.utf8) {
-                current_span_to_update.start = *start_ti;
+/// Complete the [`TextRange`] of a list of [`Definition`]
+fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+    let utf8_offsets: HashSet<_> = definitions
+        .iter()
+        .filter_map(|d| {
+            if let Some(span) = d.span() {
+                Some([span.start.utf8, span.end.utf8])
             } else {
-                return Err(Error::ParsingError {
-                    path: path.clone(),
-                    loc: current_span_to_update.start,
-                    message: format!(
-                        "Start UTF-8 offset {} not found in populated map during TextIndex completion.",
-                        current_span_to_update.start.utf8
-                    ),
-                });
+                None
             }
-            if let Some(end_ti) = populated_text_indices.get(&current_span_to_update.end.utf8) {
-                current_span_to_update.end = *end_ti;
-            } else {
-                return Err(Error::ParsingError {
-                    path: path.clone(),
-                    loc: current_span_to_update.end,
-                    message: format!(
-                        "End UTF-8 offset {} not found in populated map during TextIndex completion.",
-                        current_span_to_update.end.utf8
-                    ),
-                });
-            }
+        })
+        .flatten()
+        .collect();
+    let mut mapping = HashMap::new();
+    let mut current = TextIndex::ZERO;
+    mapping.insert(0, current); // just in case zero is needed
+
+    let mut char_iter = source.chars().peekable();
+    while let Some(c) = char_iter.next() {
+        current.advance(c, char_iter.peek());
+
+        if utf8_offsets.contains(&current.utf8) {
+            mapping.insert(current.utf8, current);
         }
     }
-    Ok(())
+    for span in definitions.iter_mut().filter_map(|d| d.span_mut()) {
+        span.start = *mapping
+            .get(&span.start.utf8)
+            .expect("utf8 offset should be present in cache");
+        span.end = *mapping
+            .get(&span.end.utf8)
+            .expect("utf8 offset should be present in cache");
+    }
+    definitions
 }
 
 /// A custom visitor to extract definitions from the [`solar_parse`] AST
@@ -625,39 +602,5 @@ impl From<Option<solar_parse::ast::Visibility>> for Visibility {
             Some(solar_parse::ast::Visibility::External) => Visibility::External,
             Some(solar_parse::ast::Visibility::Internal) | None => Visibility::Internal,
         }
-    }
-}
-
-/// Convert utf8 offsets to [`TextIndex`] in a given source text
-struct UTF8OffsetToTextIndexMapper<'a> {
-    source_text: &'a str,
-}
-
-impl<'a> UTF8OffsetToTextIndexMapper<'a> {
-    fn new(source_text: &'a str) -> Self {
-        Self { source_text }
-    }
-
-    /// Given a hashset of utf8 offsets, return a hashmap <utf8 offsets, corresponding [`TextIndex`]>,
-    fn populate_text_indices(
-        &self,
-        utf8_offsets_to_map: &HashSet<usize>,
-    ) -> HashMap<usize, TextIndex> {
-        let mut mapping = HashMap::new();
-        let mut current_ti = TextIndex::ZERO;
-
-        if utf8_offsets_to_map.contains(&0) {
-            mapping.insert(0, current_ti);
-        }
-
-        let mut char_iter = self.source_text.chars().peekable();
-        while let Some(c) = char_iter.next() {
-            current_ti.advance(c, char_iter.peek());
-
-            if utf8_offsets_to_map.contains(&current_ti.utf8) {
-                mapping.insert(current_ti.utf8, current_ti);
-            }
-        }
-        mapping
     }
 }
