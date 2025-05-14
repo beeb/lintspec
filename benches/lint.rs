@@ -2,7 +2,7 @@ use std::fs::File;
 
 use divan::{black_box, Bencher};
 use lintspec::{
-    lint::{Validate as _, ValidationOptions},
+    lint::{lint, Validate as _, ValidationOptions},
     parser::{slang::SlangParser, Parse as _, ParsedDocument},
 };
 
@@ -27,7 +27,7 @@ fn parse_file(path: &str) -> ParsedDocument {
 }
 
 #[divan::bench(args = FILES)]
-fn lint(bencher: Bencher, path: &str) {
+fn lint_only(bencher: Bencher, path: &str) {
     let doc = parse_file(path);
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
@@ -37,5 +37,14 @@ fn lint(bencher: Bencher, path: &str) {
                 .map(|item| item.validate(&options))
                 .collect::<Vec<_>>(),
         );
+    });
+}
+
+#[divan::bench(args = FILES)]
+fn lint_e2e(bencher: Bencher, path: &str) {
+    let parser = SlangParser::builder().skip_version_detection(true).build();
+    let options = ValidationOptions::default();
+    bencher.bench_local(move || {
+        black_box(lint(parser.clone(), path, &options, false).ok());
     });
 }
