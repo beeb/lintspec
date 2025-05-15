@@ -575,7 +575,7 @@ fn extract_natspec(
             }
         })?;
 
-        let mut parsed = parse_comment(&mut snippet.as_str())
+        let mut parsed = parse_comment(&mut snippet.as_str().trim_end_matches('\r'))
             .map_err(|e| Error::NatspecParsingError {
                 parent: parent.cloned(),
                 span: span_to_utf8_offset(doc.span, source_map),
