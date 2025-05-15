@@ -111,6 +111,7 @@ impl Parse for SolarParser {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 /// Complete the [`TextRange`] of a list of [`Definition`]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     fn register_span(set: &mut BTreeSet<usize>, span: &TextRange) {
@@ -189,16 +190,20 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     while let Some(c) = char_iter.next() {
         debug_assert!(current_offset >= &current.utf8);
         current.advance(c, char_iter.peek());
-        if &current.utf8 == current_offset {
-            mapping.insert(current.utf8, current);
-        } else if &current.utf8 > current_offset {
-            current_offset = match set_iter.next() {
-                Some(o) => o,
-                None => break,
-            };
-            if current_offset == &current.utf8 {
+        match current.utf8.cmp(current_offset) {
+            std::cmp::Ordering::Equal => {
                 mapping.insert(current.utf8, current);
             }
+            std::cmp::Ordering::Greater => {
+                current_offset = match set_iter.next() {
+                    Some(o) => o,
+                    None => break,
+                };
+                if current_offset == &current.utf8 {
+                    mapping.insert(current.utf8, current);
+                }
+            }
+            std::cmp::Ordering::Less => {}
         }
     }
 
