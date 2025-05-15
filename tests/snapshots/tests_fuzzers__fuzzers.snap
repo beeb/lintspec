@@ -1,0 +1,98 @@
+---
+source: tests/tests-fuzzers.rs
+expression: "snapshot_content(\"./test-data/Fuzzers.sol\",\n&ValidationOptions::builder().inheritdoc(false).build(), true,)"
+---
+./test-data/Fuzzers.sol:20:5
+variable Fuzzers._vm
+  @notice is missing
+
+./test-data/Fuzzers.sol:22:5
+variable Fuzzers._vm2
+  @notice is missing
+
+./test-data/Fuzzers.sol:25:5
+function Fuzzers.boundLiquidityDelta
+  @notice is missing
+  @param key is missing
+  @param liquidityDeltaUnbounded is missing
+  @param liquidityMaxByAmount is missing
+  @return missing for unnamed return #1
+
+./test-data/Fuzzers.sol:40:5
+function Fuzzers.boundLiquidityDeltaTightly
+  @notice is missing
+  @param key is missing
+  @param liquidityDeltaUnbounded is missing
+  @param liquidityMaxByAmount is missing
+  @param maxPositions is missing
+  @return missing for unnamed return #1
+
+./test-data/Fuzzers.sol:57:5
+function Fuzzers.getLiquidityDeltaFromAmounts
+  @notice is missing
+  @param tickLower is missing
+  @param tickUpper is missing
+  @param sqrtPriceX96 is missing
+  @return missing for unnamed return #1
+
+./test-data/Fuzzers.sol:93:5
+function Fuzzers.boundTicks
+  @notice is missing
+  @param tickLower is missing
+  @param tickUpper is missing
+  @param tickSpacing is missing
+  @return missing for unnamed return #1
+  @return missing for unnamed return #2
+
+./test-data/Fuzzers.sol:123:5
+function Fuzzers.boundTicks
+  @notice is missing
+  @param key is missing
+  @param tickLower is missing
+  @param tickUpper is missing
+  @return missing for unnamed return #1
+  @return missing for unnamed return #2
+
+./test-data/Fuzzers.sol:127:5
+function Fuzzers.createRandomSqrtPriceX96
+  @notice is missing
+  @param tickSpacing is missing
+  @param seed is missing
+  @return missing for unnamed return #1
+
+./test-data/Fuzzers.sol:134:5
+function Fuzzers.createFuzzyLiquidityParams
+  @notice is missing
+  @return result is missing
+
+./test-data/Fuzzers.sol:150:5
+function Fuzzers.createFuzzyLiquidityParamsWithTightBound
+  @notice is missing
+  @param key is missing
+  @param params is missing
+  @param sqrtPriceX96 is missing
+  @param maxPositions is missing
+  @return result is missing
+
+./test-data/Fuzzers.sol:164:5
+function Fuzzers.createFuzzyLiquidity
+  @notice is missing
+  @param modifyLiquidityRouter is missing
+  @param key is missing
+  @param params is missing
+  @param sqrtPriceX96 is missing
+  @param hookData is missing
+  @return result is missing
+  @return delta is missing
+
+./test-data/Fuzzers.sol:176:5
+function Fuzzers.createFuzzyLiquidityWithTightBound
+  @notice is missing
+  @param modifyLiquidityRouter is missing
+  @param key is missing
+  @param params is missing
+  @param sqrtPriceX96 is missing
+  @param hookData is missing
+  @param maxPositions is missing
+  @return result is missing
+  @return delta is missing
