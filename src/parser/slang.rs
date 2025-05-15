@@ -717,6 +717,7 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
         if cursor.node().is_nonterminal_with_kinds(&[
             NonterminalKind::TypeName,
             NonterminalKind::ElementaryType,
+            NonterminalKind::IdentifierPath, // Some state variables have an EndOfLine inside the type identifier
         ]) {
             continue;
         }
