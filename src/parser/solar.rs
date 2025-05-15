@@ -13,6 +13,7 @@ use solar_parse::{
     Parser,
 };
 use std::{
+    collections::BTreeSet,
     io,
     ops::ControlFlow,
     path::{Path, PathBuf},
@@ -32,7 +33,7 @@ use crate::{
     parser::{Parse, ParsedDocument},
 };
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct SolarParser {}
@@ -112,30 +113,145 @@ impl Parse for SolarParser {
 
 /// Complete the [`TextRange`] of a list of [`Definition`]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
-    let utf8_offsets: HashSet<_> = definitions
-        .iter()
-        .filter_map(|d| d.span().map(|span| [span.start.utf8, span.end.utf8]))
-        .flatten()
-        .collect();
+    fn register_span(set: &mut BTreeSet<usize>, span: &TextRange) {
+        set.insert(span.start.utf8);
+        set.insert(span.end.utf8);
+    }
+    fn populate_span(map: &HashMap<usize, TextIndex>, span: &mut TextRange) {
+        span.start = *map
+            .get(&span.start.utf8)
+            .expect("utf8 offset should be present in cache");
+        span.end = *map
+            .get(&span.end.utf8)
+            .expect("utf8 offset should be present in cache");
+    }
+    let mut offsets = BTreeSet::new();
+    for def in &definitions {
+        def.span().inspect(|s| register_span(&mut offsets, s));
+        match def {
+            Definition::Constructor(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Enumeration(d) => {
+                d.members
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Error(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Event(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Function(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+                d.returns
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Modifier(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Struct(d) => {
+                d.members
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                register_span(&mut offsets, span);
+            }
+            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+        }
+    }
+    if offsets.is_empty() {
+        return definitions;
+    }
+
     let mut mapping = HashMap::new();
     let mut current = TextIndex::ZERO;
     mapping.insert(0, current); // just in case zero is needed
 
+    let mut set_iter = offsets.iter();
     let mut char_iter = source.chars().peekable();
+    let mut current_offset = set_iter
+        .next()
+        .expect("there should be one element at least");
     while let Some(c) = char_iter.next() {
+        debug_assert!(current_offset >= &current.utf8);
         current.advance(c, char_iter.peek());
-
-        if utf8_offsets.contains(&current.utf8) {
+        if &current.utf8 == current_offset {
             mapping.insert(current.utf8, current);
+        } else if &current.utf8 > current_offset {
+            current_offset = match set_iter.next() {
+                Some(o) => o,
+                None => break,
+            };
+            if current_offset == &current.utf8 {
+                mapping.insert(current.utf8, current);
+            }
         }
     }
-    for span in definitions.iter_mut().filter_map(|d| d.span_mut()) {
-        span.start = *mapping
-            .get(&span.start.utf8)
-            .expect("utf8 offset should be present in cache");
-        span.end = *mapping
-            .get(&span.end.utf8)
-            .expect("utf8 offset should be present in cache");
+
+    for def in &mut definitions {
+        if let Some(span) = def.span_mut() {
+            populate_span(&mapping, span);
+        }
+        match def {
+            Definition::Constructor(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Enumeration(d) => {
+                d.members
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Error(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Event(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Function(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                d.returns
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Modifier(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Struct(d) => {
+                d.members
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError {
+                ref mut span, ..
+            }) => {
+                populate_span(&mapping, span);
+            }
+            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+        }
     }
     definitions
 }
