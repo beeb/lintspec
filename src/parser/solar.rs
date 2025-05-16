@@ -13,6 +13,7 @@ use solar_parse::{
     Parser,
 };
 use std::{
+    collections::BTreeSet,
     io,
     ops::ControlFlow,
     path::{Path, PathBuf},
@@ -32,7 +33,7 @@ use crate::{
     parser::{Parse, ParsedDocument},
 };
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct SolarParser {}
@@ -110,32 +111,152 @@ impl Parse for SolarParser {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 /// Complete the [`TextRange`] of a list of [`Definition`]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
-    let utf8_offsets: HashSet<_> = definitions
-        .iter()
-        .filter_map(|d| d.span().map(|span| [span.start.utf8, span.end.utf8]))
-        .flatten()
-        .collect();
+    fn register_span(set: &mut BTreeSet<usize>, span: &TextRange) {
+        set.insert(span.start.utf8);
+        set.insert(span.end.utf8);
+    }
+    fn populate_span(map: &HashMap<usize, TextIndex>, span: &mut TextRange) {
+        span.start = *map
+            .get(&span.start.utf8)
+            .expect("utf8 offset should be present in cache");
+        span.end = *map
+            .get(&span.end.utf8)
+            .expect("utf8 offset should be present in cache");
+    }
+    let mut offsets = BTreeSet::new();
+    for def in &definitions {
+        def.span().inspect(|s| register_span(&mut offsets, s));
+        match def {
+            Definition::Constructor(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Enumeration(d) => {
+                d.members
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Error(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Event(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Function(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+                d.returns
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Modifier(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::Struct(d) => {
+                d.members
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                register_span(&mut offsets, span);
+            }
+            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+        }
+    }
+    if offsets.is_empty() {
+        return definitions;
+    }
+
     let mut mapping = HashMap::new();
     let mut current = TextIndex::ZERO;
     mapping.insert(0, current); // just in case zero is needed
 
+    let mut set_iter = offsets.iter();
     let mut char_iter = source.chars().peekable();
+    let mut current_offset = set_iter
+        .next()
+        .expect("there should be one element at least");
     while let Some(c) = char_iter.next() {
+        debug_assert!(current_offset >= &current.utf8);
         current.advance(c, char_iter.peek());
-
-        if utf8_offsets.contains(&current.utf8) {
-            mapping.insert(current.utf8, current);
+        match current.utf8.cmp(current_offset) {
+            std::cmp::Ordering::Equal => {
+                mapping.insert(current.utf8, current);
+            }
+            std::cmp::Ordering::Greater => {
+                current_offset = match set_iter.next() {
+                    Some(o) => o,
+                    None => break,
+                };
+                if current_offset == &current.utf8 {
+                    mapping.insert(current.utf8, current);
+                }
+            }
+            std::cmp::Ordering::Less => {}
         }
     }
-    for span in definitions.iter_mut().filter_map(|d| d.span_mut()) {
-        span.start = *mapping
-            .get(&span.start.utf8)
-            .expect("utf8 offset should be present in cache");
-        span.end = *mapping
-            .get(&span.end.utf8)
-            .expect("utf8 offset should be present in cache");
+
+    for def in &mut definitions {
+        if let Some(span) = def.span_mut() {
+            populate_span(&mapping, span);
+        }
+        match def {
+            Definition::Constructor(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Enumeration(d) => {
+                d.members
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Error(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Event(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Function(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                d.returns
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Modifier(d) => {
+                d.params
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::Struct(d) => {
+                d.members
+                    .iter_mut()
+                    .for_each(|i| populate_span(&mapping, &mut i.span));
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError {
+                ref mut span, ..
+            }) => {
+                populate_span(&mapping, span);
+            }
+            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+        }
     }
     definitions
 }
@@ -156,6 +277,29 @@ impl<'ast> LintspecVisitor<'ast> {
             definitions: Vec::default(),
             source_map,
         }
+    }
+
+    /// Convert a [`Span`] to a pair of utf8 offsets as a [`TextRange`]
+    ///
+    /// Only the utf8 offset of the [`TextRange`] is initially populated, the rest being filled via [`complete_text_ranges`] to avoid duplicate work.
+    fn span_to_textrange(&self, span: Span) -> TextRange {
+        let local_begin = self.source_map.lookup_byte_offset(span.lo());
+        let local_end = self.source_map.lookup_byte_offset(span.hi());
+
+        let start_utf8 = local_begin.pos.to_usize();
+        let end_utf8 = local_end.pos.to_usize();
+
+        let start_index = TextIndex {
+            utf8: start_utf8,
+            ..Default::default()
+        };
+
+        let end_index = TextIndex {
+            utf8: end_utf8,
+            ..Default::default()
+        };
+
+        start_index..end_index
     }
 }
 
@@ -231,25 +375,14 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params =
-            variable_definitions_to_identifiers(self.header.parameters, visitor.source_map);
+        let params = variable_definitions_to_identifiers(self.header.parameters, visitor);
 
-        let returns = variable_definitions_to_identifiers(self.header.returns, visitor.source_map);
+        let returns = variable_definitions_to_identifiers(self.header.returns, visitor);
 
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &returns,
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -300,20 +433,10 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
 
 impl Extract for &solar_parse::ast::VariableDefinition<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &[],
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -345,24 +468,14 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             .iter()
             .map(|m| Identifier {
                 name: Some(m.name.expect("name").to_string()),
-                span: span_to_utf8_offset(m.span, visitor.source_map),
+                span: visitor.span_to_textrange(m.span),
             })
             .collect();
 
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &[],
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -387,24 +500,14 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             .iter()
             .map(|v| Identifier {
                 name: Some(v.name.to_string()),
-                span: span_to_utf8_offset(v.span, visitor.source_map),
+                span: visitor.span_to_textrange(v.span),
             })
             .collect();
 
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &[],
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -424,22 +527,12 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
 
 impl Extract for &solar_parse::ast::ItemError<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
+        let params = variable_definitions_to_identifiers(self.parameters, visitor);
 
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &[],
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -459,22 +552,12 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
 
 impl Extract for &solar_parse::ast::ItemEvent<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params = variable_definitions_to_identifiers(self.parameters, visitor.source_map);
+        let params = variable_definitions_to_identifiers(self.parameters, visitor);
 
-        let (natspec, span) = match extract_natspec(
-            &item.docs,
-            visitor.source_map,
-            visitor.current_parent.as_ref(),
-            &[],
-        ) {
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, span_to_utf8_offset(item.span, visitor.source_map)),
-                |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        span_to_utf8_offset(doc_span, visitor.source_map),
-                    )
-                },
+                || (None, visitor.span_to_textrange(item.span)),
+                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -505,33 +588,10 @@ impl From<&ItemContract<'_>> for Parent {
     }
 }
 
-/// Convert a [`Span`] to an utf8 offset stored in a [`TextRange`]
-///
-/// Only the utf8 offset of the [`TextRange`] is initially populated, the rest being filled via [`complete_text_ranges`] to avoid duplicate work.
-fn span_to_utf8_offset(span: Span, source_map: &SourceMap) -> TextRange {
-    let local_begin = source_map.lookup_byte_offset(span.lo());
-    let local_end = source_map.lookup_byte_offset(span.hi());
-
-    let start_utf8 = local_begin.pos.to_usize();
-    let end_utf8 = local_end.pos.to_usize();
-
-    let start_index = TextIndex {
-        utf8: start_utf8,
-        ..Default::default()
-    };
-
-    let end_index = TextIndex {
-        utf8: end_utf8,
-        ..Default::default()
-    };
-
-    start_index..end_index
-}
-
 /// Convert a list of [`VariableDefinition`] (used for fn params or returns) into an [`Identifier`]
 fn variable_definitions_to_identifiers(
     variable_definitions: &[VariableDefinition<'_>],
-    source_map: &SourceMap,
+    visitor: &mut LintspecVisitor,
 ) -> Vec<Identifier> {
     variable_definitions
         .iter()
@@ -540,7 +600,7 @@ fn variable_definitions_to_identifiers(
             let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
             Identifier {
                 name,
-                span: span_to_utf8_offset(r.span, source_map),
+                span: visitor.span_to_textrange(r.span),
             }
         })
         .collect()
@@ -549,8 +609,7 @@ fn variable_definitions_to_identifiers(
 /// Convert solar's [`DocComments`] into a [`NatSpec`] and [`Span`]
 fn extract_natspec(
     docs: &DocComments,
-    source_map: &SourceMap,
-    parent: Option<&Parent>,
+    visitor: &mut LintspecVisitor,
     returns: &[Identifier],
 ) -> Result<Option<(NatSpec, Span)>> {
     if docs.is_empty() {
@@ -559,9 +618,10 @@ fn extract_natspec(
     let mut combined = NatSpec::default();
 
     for doc in docs.iter() {
-        let snippet = source_map.span_to_snippet(doc.span).map_err(|e| {
+        let snippet = visitor.source_map.span_to_snippet(doc.span).map_err(|e| {
             // there should only be one file in the source map
-            let path = source_map
+            let path = visitor
+                .source_map
                 .files()
                 .first()
                 .map_or(PathBuf::from("<stdin>"), |f| {
@@ -570,7 +630,7 @@ fn extract_natspec(
                 });
             Error::ParsingError {
                 path,
-                loc: span_to_utf8_offset(doc.span, source_map).start,
+                loc: visitor.span_to_textrange(doc.span).start,
                 message: format!("{e:?}"),
             }
         })?;
@@ -578,8 +638,8 @@ fn extract_natspec(
         // trim is to temporarily fix this: https://github.com/paradigmxyz/solar/issues/315
         let mut parsed = parse_comment(&mut snippet.as_str().trim_end_matches('\r'))
             .map_err(|e| Error::NatspecParsingError {
-                parent: parent.cloned(),
-                span: span_to_utf8_offset(doc.span, source_map),
+                parent: visitor.current_parent.clone(),
+                span: visitor.span_to_textrange(doc.span),
                 message: e.to_string(),
             })?
             .populate_returns(returns);
