@@ -398,6 +398,7 @@ impl Default for Config {
 }
 
 impl Config {
+    #[allow(clippy::result_large_err)]
     pub fn from(provider: impl Provider) -> Result<Config, figment::Error> {
         Figment::from(provider).extract()
     }
