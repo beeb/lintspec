@@ -25,7 +25,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
     if let Some(Commands::Init) = args.command {
         let path = write_default_config()?;
-        println!("Default config was written to {path:?}");
+        println!("Default config was written to {}", path.display());
         println!("Exiting");
         return Ok(());
     }
