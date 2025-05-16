@@ -26,7 +26,6 @@
               cargo-dist
               cargo-insta
               cargo-nextest
-              rust-analyzer-unwrapped
               toolchain
             ];
 
