@@ -382,7 +382,12 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -436,7 +441,12 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -475,7 +485,12 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -507,7 +522,12 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -532,7 +552,12 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -557,7 +582,12 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
