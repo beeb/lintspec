@@ -378,14 +378,24 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let params = variable_definitions_to_identifiers(self.header.parameters, visitor);
 
         let returns = variable_definitions_to_identifiers(self.header.returns, visitor);
-
+        dbg!(&item);
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, visitor.span_to_textrange(item.span)),
+                || {
+                    let (natspec, span) = match &item.kind {
+                        ItemKind::Function(item_fn) => {
+                            dbg!("hey");
+                            (None, visitor.span_to_textrange(item_fn.header.span))
+                        }
+                        _ => (None, visitor.span_to_textrange(item.span)),
+                    };
+
+                    (natspec, span)
+                },
                 |(natspec, doc_span)| {
                     (
                         Some(natspec),
-                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.lo())),
                     )
                 },
             ),
@@ -628,9 +638,11 @@ fn variable_definitions_to_identifiers(
         .map(|r| {
             // Preserve named returns; leave unnamed returns as None
             let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
+
+            // We use the span of the identifier without the type
             Identifier {
                 name,
-                span: visitor.span_to_textrange(r.span),
+                span: visitor.span_to_textrange(r.span.with_lo(r.ty.span.hi())),
             }
         })
         .collect()
