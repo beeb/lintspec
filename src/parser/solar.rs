@@ -382,20 +382,29 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
                 || {
-                    let (natspec, span) = match &item.kind {
+                    let span = match &item.kind {
                         ItemKind::Function(item_fn) => {
-                            (None, visitor.span_to_textrange(item_fn.header.span))
+                            visitor.span_to_textrange(item_fn.header.span)
                         }
-                        _ => (None, visitor.span_to_textrange(item.span)),
+                        _ => visitor.span_to_textrange(item.span),
                     };
 
-                    (natspec, span)
+                    (None, span)
                 },
                 |(natspec, doc_span)| {
-                    (
-                        Some(natspec),
-                        visitor.span_to_textrange(doc_span.with_hi(item.span.lo())),
-                    )
+                    // If there are natspec in a fn, take the whole doc and fn header as span
+                    if let ItemKind::Function(item_fn) = &item.kind {
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(item_fn.header.span.hi())),
+                        )
+                    } else {
+                        // otherwise, use the doc and item span
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                        )
+                    }
                 },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
