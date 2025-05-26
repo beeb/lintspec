@@ -23,7 +23,7 @@ fn test_basic() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(format!("{diags_slang:#?}"), format!("{diags_solar:#?}"));
+    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn test_fuzzers() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(format!("{diags_slang:#?}"), format!("{diags_solar:#?}"));
+    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn test_interface() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(format!("{diags_slang:#?}"), format!("{diags_solar:#?}"));
+    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn test_library() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(format!("{diags_slang:#?}"), format!("{diags_solar:#?}"));
+    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
 }
 
 #[test]
@@ -107,5 +107,5 @@ fn test_parsertest() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(format!("{diags_slang:#?}"), format!("{diags_solar:#?}"));
+    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
 }
