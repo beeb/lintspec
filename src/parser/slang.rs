@@ -299,7 +299,7 @@ impl Extract for FunctionDefinition {
                 @function_params parameters:[Parameters]
             ]
             @function_attr attributes:[FunctionAttributes]
-            returns:[ReturnsDeclaration
+            @function_returns_declaration returns:[ReturnsDeclaration
                 variables:[ParametersDeclaration
                     @function_returns parameters:[Parameters]
                 ]
@@ -314,10 +314,11 @@ impl Extract for FunctionDefinition {
         let name = capture(&m, "function_name")?;
         let params = capture(&m, "function_params")?;
         let attributes = capture(&m, "function_attr")?;
+        let returns_declaration = capture_opt(&m, "function_returns_declaration")?;
         let returns = capture_opt(&m, "function_returns")?;
 
         let span_start = find_definition_start(&func);
-        let span_end = returns
+        let span_end = returns_declaration
             .as_ref()
             .map_or_else(|| attributes.text_range(), Cursor::text_range)
             .end
