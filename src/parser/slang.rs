@@ -363,7 +363,6 @@ impl Extract for ModifierDefinition {
         let name = capture(&m, "modifier_name")?;
         let params = capture_opt(&m, "modifier_params")?;
         let attr = capture(&m, "modifier_attr")?;
-        println!("{:#?}", attr.node());
 
         let span_start = find_definition_start(&modifier);
         let span_end = attr.text_range().end.into();
