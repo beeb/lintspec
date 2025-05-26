@@ -636,13 +636,18 @@ fn variable_definitions_to_identifiers(
     variable_definitions
         .iter()
         .map(|r| {
-            // Preserve named returns; leave unnamed returns as None
-            let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
-
-            // We use the span of the identifier without the type
-            Identifier {
-                name,
-                span: visitor.span_to_textrange(r.span.with_lo(r.ty.span.hi())),
+            // If there is a named variable, we use its span
+            if let Some(name) = r.name {
+                Identifier {
+                    name: Some(name.to_string()),
+                    span: visitor.span_to_textrange(name.span),
+                }
+                // Otherwise, we use the type's span
+            } else {
+                Identifier {
+                    name: None,
+                    span: visitor.span_to_textrange(r.ty.span),
+                }
             }
         })
         .collect()
