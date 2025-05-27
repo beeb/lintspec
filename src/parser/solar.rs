@@ -378,7 +378,6 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let params = variable_definitions_to_identifiers(self.header.parameters, visitor);
 
         let returns = variable_definitions_to_identifiers(self.header.returns, visitor);
-        dbg!(&self.header.returns);
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
                 || {
