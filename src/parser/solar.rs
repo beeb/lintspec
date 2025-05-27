@@ -378,7 +378,7 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let params = variable_definitions_to_identifiers(self.header.parameters, visitor);
 
         let returns = variable_definitions_to_identifiers(self.header.returns, visitor);
-
+        dbg!(&self.header.returns);
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
                 || {
@@ -643,18 +643,18 @@ fn variable_definitions_to_identifiers(
 ) -> Vec<Identifier> {
     variable_definitions
         .iter()
-        .map(|r| {
+        .map(|r: &VariableDefinition<'_>| {
             // If there is a named variable, we use its span
             if let Some(name) = r.name {
                 Identifier {
                     name: Some(name.to_string()),
                     span: visitor.span_to_textrange(name.span),
                 }
-                // Otherwise, we use the type's span
+                // Otherwise, we use the return span
             } else {
                 Identifier {
                     name: None,
-                    span: visitor.span_to_textrange(r.ty.span),
+                    span: visitor.span_to_textrange(r.span),
                 }
             }
         })
