@@ -318,11 +318,15 @@ impl Extract for FunctionDefinition {
         let returns = capture_opt(&m, "function_returns")?;
 
         let span_start = find_definition_start(&func);
-        let span_end = returns_declaration
-            .as_ref()
-            .map_or_else(|| attributes.text_range(), Cursor::text_range)
-            .end
-            .into();
+        let span_end = returns_declaration.as_ref().map_or_else(
+            || attributes.text_range().end.into(),
+            |ret_decl| {
+                let mut curs = ret_decl.spawn();
+                curs.go_to_last_child();
+                find_definition_end(&curs)
+            },
+        );
+
         let span = span_start..span_end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::Parameter);
