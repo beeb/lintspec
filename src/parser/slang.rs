@@ -493,7 +493,7 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
         if !found {
             out.push(Identifier {
                 name: None,
-                span: textrange(cursor.text_range()),
+                span: find_definition_start(&cursor)..find_definition_end(&cursor),
             });
         }
     }
