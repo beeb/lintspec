@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 name = "lintspec"
 readme = "./README.md"
 repository = "https://github.com/beeb/lintspec"
-rust-version = "1.86.0"
+rust-version = "1.87.0"
 version = "0.5.0"
 
 [lints.clippy]
@@ -39,7 +39,7 @@ serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.138"
 serde_with = "3.12.0"
 slang_solidity = "0.18.3"
-solar-parse = { git = "https://github.com/paradigmxyz/solar.git", default-features = false, optional = true }
+solar-parse = { git = "https://github.com/paradigmxyz/solar.git", rev = "ec4a2a4", default-features = false, optional = true }
 thiserror = "2.0.11"
 toml = "0.8.20"
 winnow = "0.7.2"
