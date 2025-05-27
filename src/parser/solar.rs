@@ -381,8 +381,31 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
-                || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                || {
+                    let span = match &item.kind {
+                        ItemKind::Function(item_fn) => {
+                            visitor.span_to_textrange(item_fn.header.span)
+                        }
+                        _ => visitor.span_to_textrange(item.span),
+                    };
+
+                    (None, span)
+                },
+                |(natspec, doc_span)| {
+                    // If there are natspec in a fn, take the whole doc and fn header as span
+                    if let ItemKind::Function(item_fn) = &item.kind {
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(item_fn.header.span.hi())),
+                        )
+                    } else {
+                        // otherwise, use the doc and item span
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                        )
+                    }
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -436,7 +459,12 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -475,7 +503,12 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -507,7 +540,12 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -532,7 +570,12 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -557,7 +600,12 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
                 || (None, visitor.span_to_textrange(item.span)),
-                |(natspec, doc_span)| (Some(natspec), visitor.span_to_textrange(doc_span)),
+                |(natspec, doc_span)| {
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                    )
+                },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
@@ -596,11 +644,18 @@ fn variable_definitions_to_identifiers(
     variable_definitions
         .iter()
         .map(|r| {
-            // Preserve named returns; leave unnamed returns as None
-            let name = r.name.map(|n| n.to_string()).filter(|s| !s.is_empty());
-            Identifier {
-                name,
-                span: visitor.span_to_textrange(r.span),
+            // If there is a named variable, we use its span
+            if let Some(name) = r.name {
+                Identifier {
+                    name: Some(name.to_string()),
+                    span: visitor.span_to_textrange(name.span),
+                }
+                // Otherwise, we use the type's span
+            } else {
+                Identifier {
+                    name: None,
+                    span: visitor.span_to_textrange(r.ty.span),
+                }
             }
         })
         .collect()
