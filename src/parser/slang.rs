@@ -172,10 +172,10 @@ impl Extract for ConstructorDefinition {
         let params = capture(&m, "constructor_params")?;
         let attr = capture(&m, "constructor_attr")?;
 
-        let span = find_definition_start(&constructor).map_or_else(
-            || textrange(constructor.text_range()),
-            |start| start.start..attr.text_range().end.into(),
-        );
+        let span_start = find_definition_start(&constructor);
+        let span_end = attr.text_range().end.into();
+        let span = span_start..span_end;
+
         let params = extract_params(&params, NonterminalKind::Parameter);
         let natspec = extract_comment(&constructor.clone(), &[])?;
         let parent = extract_parent_name(constructor);
@@ -206,10 +206,7 @@ impl Extract for EnumDefinition {
         let name = capture(&m, "enum_name")?;
         let members = capture(&m, "enum_members")?;
 
-        let span = find_definition_start(&enumeration).map_or_else(
-            || textrange(enumeration.text_range()),
-            |start| start.start..enumeration.text_range().end.into(),
-        );
+        let span = find_definition_start(&enumeration)..find_definition_end(&enumeration);
         let name = name.node().unparse().trim().to_string();
         let members = extract_enum_members(&members);
         let natspec = extract_comment(&enumeration.clone(), &[])?;
@@ -242,10 +239,7 @@ impl Extract for ErrorDefinition {
         let name = capture(&m, "err_name")?;
         let params = capture(&m, "err_params")?;
 
-        let span = find_definition_start(&err).map_or_else(
-            || textrange(err.text_range()),
-            |start| start.start..err.text_range().end.into(),
-        );
+        let span = find_definition_start(&err)..find_definition_end(&err);
         let name = name.node().unparse().trim().to_string();
         let params = extract_identifiers(&params);
         let natspec = extract_comment(&err.clone(), &[])?;
@@ -278,10 +272,7 @@ impl Extract for EventDefinition {
         let name = capture(&m, "event_name")?;
         let params = capture(&m, "event_params")?;
 
-        let span = find_definition_start(&event).map_or_else(
-            || textrange(event.text_range()),
-            |start| start.start..event.text_range().end.into(),
-        );
+        let span = find_definition_start(&event)..find_definition_end(&event);
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::EventParameter);
         let natspec = extract_comment(&event.clone(), &[])?;
@@ -309,7 +300,7 @@ impl Extract for FunctionDefinition {
             ]
             @function_attr attributes:[FunctionAttributes]
             returns:[ReturnsDeclaration
-                variables:[ParametersDeclaration
+                @function_returns_declaration variables:[ParametersDeclaration
                     @function_returns parameters:[Parameters]
                 ]
             ]?
@@ -323,15 +314,14 @@ impl Extract for FunctionDefinition {
         let name = capture(&m, "function_name")?;
         let params = capture(&m, "function_params")?;
         let attributes = capture(&m, "function_attr")?;
+        let returns_declaration = capture_opt(&m, "function_returns_declaration")?;
         let returns = capture_opt(&m, "function_returns")?;
 
-        let start = find_definition_start(&func).unwrap_or_else(|| textrange(func.text_range()));
-        let end = textrange(
-            returns
-                .as_ref()
-                .map_or_else(|| attributes.text_range(), Cursor::text_range),
-        );
-        let span = start.start..end.end;
+        let span_start = find_definition_start(&func);
+        let span_end = returns_declaration
+            .as_ref()
+            .map_or_else(|| attributes.text_range().end.into(), find_definition_end);
+        let span = span_start..span_end;
         let name = name.node().unparse().trim().to_string();
         let params = extract_params(&params, NonterminalKind::Parameter);
         let returns = returns
@@ -373,14 +363,9 @@ impl Extract for ModifierDefinition {
         let params = capture_opt(&m, "modifier_params")?;
         let attr = capture(&m, "modifier_attr")?;
 
-        let start =
-            find_definition_start(&modifier).unwrap_or_else(|| textrange(modifier.text_range()));
-        let end = textrange(
-            params
-                .as_ref()
-                .map_or_else(|| attr.text_range(), Cursor::text_range),
-        );
-        let span = start.start..end.end;
+        let span_start = find_definition_start(&modifier);
+        let span_end = attr.text_range().end.into();
+        let span = span_start..span_end;
         let name = name.node().unparse().trim().to_string();
         let params = params
             .map(|p| extract_params(&p, NonterminalKind::Parameter))
@@ -417,10 +402,7 @@ impl Extract for StructDefinition {
         let name = capture(&m, "struct_name")?;
         let members = capture(&m, "struct_members")?;
 
-        let span = find_definition_start(&structure).map_or_else(
-            || textrange(structure.text_range()),
-            |start| start.start..structure.text_range().end.into(),
-        );
+        let span = find_definition_start(&structure)..find_definition_end(&structure);
         let name = name.node().unparse().trim().to_string();
         let members = extract_struct_members(&members)?;
         let natspec = extract_comment(&structure.clone(), &[])?;
@@ -453,10 +435,7 @@ impl Extract for VariableDeclaration {
         let attributes = capture(&m, "variable_attr")?;
         let name = capture(&m, "variable_name")?;
 
-        let span = find_definition_start(&variable).map_or_else(
-            || textrange(variable.text_range()),
-            |start| start.start..variable.text_range().end.into(),
-        );
+        let span = find_definition_start(&variable)..find_definition_end(&variable);
         let name = name.node().unparse().trim().to_string();
         let natspec = extract_comment(&variable.clone(), &[])?;
         let parent = extract_parent_name(variable);
@@ -514,7 +493,7 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
         if !found {
             out.push(Identifier {
                 name: None,
-                span: textrange(cursor.text_range()),
+                span: find_definition_start(&cursor)..find_definition_end(&cursor),
             });
         }
     }
@@ -700,9 +679,30 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     Ok(out)
 }
 
-/// Find the start of the definition node by ignoring any leading whitespace trivia
+/// Find the end index of a definition by ignoring the trailing trivia
 #[must_use]
-pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
+pub fn find_definition_end(cursor: &Cursor) -> TextIndex {
+    let default = cursor.text_range().end.into();
+    let mut cursor = cursor.spawn();
+    if !cursor.go_to_last_child() {
+        return default;
+    }
+    if !cursor.node().is_trivia() {
+        return cursor.text_range().end.into();
+    }
+    while cursor.go_to_previous() {
+        if cursor.node().is_trivia() {
+            continue;
+        }
+        return cursor.text_range().end.into();
+    }
+    default
+}
+
+/// Find the start index of a definition by ignoring any leading whitespace trivia
+#[must_use]
+pub fn find_definition_start(cursor: &Cursor) -> TextIndex {
+    let default = cursor.text_range().start.into();
     let mut cursor = cursor.spawn();
     while cursor.go_to_next() {
         if cursor.node().is_terminal_with_kinds(&[
@@ -732,9 +732,9 @@ pub fn find_definition_start(cursor: &Cursor) -> Option<TextRange> {
                 continue;
             }
         }
-        return Some(textrange(cursor.text_range()));
+        return cursor.text_range().start.into();
     }
-    None
+    default
 }
 
 /// Convert from a slang `TextRange` to this crate's equivalent

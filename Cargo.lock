@@ -2321,8 +2321,7 @@ checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
 [[package]]
 name = "solar-ast"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7960f42b73c63b78df9e223ea88ca87b7aaef91e3b5084b89d79ec31ad9fc8e3"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "alloy-primitives",
  "bumpalo",
@@ -2340,8 +2339,7 @@ dependencies = [
 [[package]]
 name = "solar-config"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00ff62c74517305ddee6fdfa741bac8195826d2820586659341063c991fa4a9e"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "strum 0.27.1",
 ]
@@ -2349,8 +2347,7 @@ dependencies = [
 [[package]]
 name = "solar-data-structures"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3c5934e613b60cfb0b2eadc035bac1fb57641026e4c2fb3683e9580391bd109"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "bumpalo",
  "index_vec",
@@ -2364,8 +2361,7 @@ dependencies = [
 [[package]]
 name = "solar-interface"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a614174b9fa673b0a01cc8308d18578f32dd091359786368964bbd19e94e59f7"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -2374,7 +2370,7 @@ dependencies = [
  "derive_builder",
  "derive_more",
  "dunce",
- "itertools 0.14.0",
+ "itertools 0.10.5",
  "itoa",
  "lasso",
  "match_cfg",
@@ -2384,7 +2380,7 @@ dependencies = [
  "solar-config",
  "solar-data-structures",
  "solar-macros",
- "thiserror 2.0.12",
+ "thiserror 1.0.69",
  "tracing",
  "unicode-width 0.2.0",
 ]
@@ -2392,8 +2388,7 @@ dependencies = [
 [[package]]
 name = "solar-macros"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccbdb5d9ecd4127af47279f99475f9fbff6ad3d03afc98ba78e1998bc07c0d46"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2403,13 +2398,12 @@ dependencies = [
 [[package]]
 name = "solar-parse"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7965e27a45ca85135ffd45839f9623131175fb43d2ad3526d32de0946f250f1b"
+source = "git+https://github.com/paradigmxyz/solar.git?rev=ec4a2a4#ec4a2a42329160cea764a693dcd70da31a4cf6d4"
 dependencies = [
  "alloy-primitives",
  "bitflags",
  "bumpalo",
- "itertools 0.14.0",
+ "itertools 0.10.5",
  "memchr",
  "num-bigint",
  "num-rational",
