@@ -689,8 +689,7 @@ fn extract_natspec(
             }
         })?;
 
-        // trim is to temporarily fix this: https://github.com/paradigmxyz/solar/issues/315
-        let mut parsed = parse_comment(&mut snippet.as_str().trim_end_matches('\r'))
+        let mut parsed = parse_comment(&mut snippet.as_str())
             .map_err(|e| Error::NatspecParsingError {
                 parent: visitor.current_parent.clone(),
                 span: visitor.span_to_textrange(doc.span),
