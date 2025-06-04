@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file. See [conven
 
 - **(definitions)** add TryInto/TryFrom implementations for each variant ([#80](https://github.com/beeb/lintspec/pull/80)) - ([1bd37fa](https://github.com/beeb/lintspec/commit/1bd37fa4c4c3cac829fa1ec8e24125d6400128de))
 
+-  [**breaking**] solar parsing backend ([#69](https://github.com/beeb/lintspec/pull/69)) - ([01e39ee](https://github.com/beeb/lintspec/commit/01e39ee613d1e1d32352972a94b3792b77a212a2))
 
 
 ### Changed
@@ -19,9 +20,6 @@ All notable changes to this project will be documented in this file. See [conven
 - **(flake)** update ([#88](https://github.com/beeb/lintspec/pull/88)) - ([cb93eb8](https://github.com/beeb/lintspec/commit/cb93eb835c88a86d54a01dcdc7e43f2241f5da22))
 
 - **(parser)** [**breaking**] change input from path to reader ([#74](https://github.com/beeb/lintspec/pull/74)) - ([7f29a31](https://github.com/beeb/lintspec/commit/7f29a31890cbf960c4a9dcbe83dc7d1a5003e562))
-
-
--  [**breaking**] solar parsing backend ([#69](https://github.com/beeb/lintspec/pull/69)) - ([01e39ee](https://github.com/beeb/lintspec/commit/01e39ee613d1e1d32352972a94b3792b77a212a2))
 
 ### Documentation
 
