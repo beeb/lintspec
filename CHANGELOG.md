@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.6.0] - 2025-06-04
+
+### Added
+
+- **(definitions)** add TryInto/TryFrom implementations for each variant ([#80](https://github.com/beeb/lintspec/pull/80)) - ([1bd37fa](https://github.com/beeb/lintspec/commit/1bd37fa4c4c3cac829fa1ec8e24125d6400128de))
+
+
+
+### Changed
+
+- **(deps)** update cargo deps ([#92](https://github.com/beeb/lintspec/pull/92)) - ([0a4c251](https://github.com/beeb/lintspec/commit/0a4c2518be38eb1e53db5c4aea82b9da8d567744))
+
+- **(flake)** refactor flake ([#81](https://github.com/beeb/lintspec/pull/81)) - ([cc67a60](https://github.com/beeb/lintspec/commit/cc67a602e1073b086e3572116640d06a63d6e562))
+
+- **(flake)** update ([#88](https://github.com/beeb/lintspec/pull/88)) - ([cb93eb8](https://github.com/beeb/lintspec/commit/cb93eb835c88a86d54a01dcdc7e43f2241f5da22))
+
+- **(parser)** [**breaking**] change input from path to reader ([#74](https://github.com/beeb/lintspec/pull/74)) - ([7f29a31](https://github.com/beeb/lintspec/commit/7f29a31890cbf960c4a9dcbe83dc7d1a5003e562))
+
+
+-  [**breaking**] solar parsing backend ([#69](https://github.com/beeb/lintspec/pull/69)) - ([01e39ee](https://github.com/beeb/lintspec/commit/01e39ee613d1e1d32352972a94b3792b77a212a2))
+
+### Documentation
+
+- **(readme)** add codspeed badge ([#82](https://github.com/beeb/lintspec/pull/82)) - ([ade1baf](https://github.com/beeb/lintspec/commit/ade1baf97d4dade5653b4827dd54f336feb0cc7d))
+
+- **(readme)** fix command ([#84](https://github.com/beeb/lintspec/pull/84)) - ([fbe5ffd](https://github.com/beeb/lintspec/commit/fbe5ffde016bd6613a68564e7c2c66767b25d6e9))
+
+- **(readme)** update benchmarks for 0.6 ([#93](https://github.com/beeb/lintspec/pull/93)) - ([593ed4b](https://github.com/beeb/lintspec/commit/593ed4b76dcfe477411a2f78354b0d1bb3411dbc))
+
+
+
+### Fixed
+
+- **(natspec)** [**breaking**] consider some comment delimiters as errors ([#77](https://github.com/beeb/lintspec/pull/77)) - ([3156ea0](https://github.com/beeb/lintspec/commit/3156ea0b384da29d3237bc0024624e728c129993))
+
+- **(slang)** ignore non-doc-comments in span ([#76](https://github.com/beeb/lintspec/pull/76)) - ([fbc2dce](https://github.com/beeb/lintspec/commit/fbc2dcef1a3e8ff9c2a32c4d2c496e2f97e57121))
+
+- **(slang)** ignore natspec comments which start with too many slashes or stars ([#78](https://github.com/beeb/lintspec/pull/78)) - ([fc411f0](https://github.com/beeb/lintspec/commit/fc411f0c0dbf49506e7450c9ee48694729dc1cb1))
+
+- **(slang)** span start for variable definition with non-native type ([#85](https://github.com/beeb/lintspec/pull/85)) - ([4519ba0](https://github.com/beeb/lintspec/commit/4519ba0920df5c0cb52f54e0b4559ea0f509fee6))
+
+- **(solar)** temp fix for bad line endings on Windows ([#83](https://github.com/beeb/lintspec/pull/83)) - ([0fad2c1](https://github.com/beeb/lintspec/commit/0fad2c16005632a4ff5567f1bec1266ca512a8dc))
+
+- **(solar)** differences in offsets/spans ([#86](https://github.com/beeb/lintspec/pull/86)) - ([e40d552](https://github.com/beeb/lintspec/commit/e40d552ea0939929aa309eba36e2f409b809cecf))
+
+
+
+### Tests
+
+- **(definitions)** simplify parsing helper ([#79](https://github.com/beeb/lintspec/pull/79)) - ([92cba6f](https://github.com/beeb/lintspec/commit/92cba6f3caad469a8088ae552acf69b9f638f829))
+
+
+
+
+
+
+**Full Changelog**: [0.5.0...0.6.0](https://github.com/beeb/lintspec/compare/v0.5.0...v0.6.0)
+
 ## [0.5.0] - 2025-04-19
 
 ### Changed
