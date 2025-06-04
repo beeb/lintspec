@@ -208,37 +208,37 @@ them for inspiring this project!
 ### Benchmark
 
 On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
-[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.4 is about 200x
-faster, or 0.5% of the execution time:
+[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.6 is about 300x
+faster, or 0.33% of the execution time:
 
 ```text
-Benchmark 1: npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
-  Time (mean ± σ):     13.034 s ±  0.138 s    [User: 13.349 s, System: 0.560 s]
-  Range (min … max):   12.810 s … 13.291 s    10 runs
+Benchmark 1: npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
+  Time (mean ± σ):     14.493 s ±  0.492 s    [User: 13.851 s, System: 1.046 s]
+  Range (min … max):   14.129 s … 15.826 s    10 runs
 
 Benchmark 2: lintspec src --compact --param-required struct
-  Time (mean ± σ):      62.9 ms ±   2.4 ms    [User: 261.9 ms, System: 69.6 ms]
-  Range (min … max):    55.1 ms …  66.5 ms    47 runs
+  Time (mean ± σ):      44.9 ms ±   1.6 ms    [User: 312.8 ms, System: 51.2 ms]
+  Range (min … max):    41.9 ms …  48.9 ms    67 runs
 
 Summary
   lintspec src --compact --param-required struct ran
-  207.34 ± 8.28 times faster than npx @defi-wonderland/natspec-smells --include "src/**/*.sol"
+  322.47 ± 16.01 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
 ```
 
 Using the experimental [Solar](https://github.com/paradigmxyz/solar) backend improves that by a further factor of 2-3x:
 
 ```text
 Benchmark 1: lintspec src --compact --skip-version-detection
-  Time (mean ± σ):      64.2 ms ±   1.5 ms    [User: 259.8 ms, System: 68.7 ms]
-  Range (min … max):    61.4 ms …  68.0 ms    46 runs
+  Time (mean ± σ):      44.8 ms ±   1.9 ms    [User: 308.8 ms, System: 49.8 ms]
+  Range (min … max):    41.3 ms …  49.9 ms    69 runs
 
 Benchmark 2: lintspec-solar src --compact
-  Time (mean ± σ):      27.9 ms ±   1.2 ms    [User: 17.1 ms, System: 32.7 ms]
-  Range (min … max):    24.3 ms …  30.8 ms    105 runs
+  Time (mean ± σ):      19.7 ms ±   0.7 ms    [User: 15.0 ms, System: 30.7 ms]
+  Range (min … max):    18.5 ms …  21.9 ms    143 runs
 
 Summary
   lintspec-solar src --compact ran
-    2.30 ± 0.11 times faster than lintspec src --compact --skip-version-detection
+    2.27 ± 0.13 times faster than lintspec src --compact --skip-version-detection
 ```
 
 ### Features
