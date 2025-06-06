@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.6.1] - 2025-06-06
+
+### Changed
+
+- **(changelog)** automatically assign features to the "Added" group ([#94](https://github.com/beeb/lintspec/pull/94)) - ([eff452d](https://github.com/beeb/lintspec/commit/eff452dc0ab971977b37d20620d860ec019cb846))
+
+- **(flake)** reduce toolchain scope ([#96](https://github.com/beeb/lintspec/pull/96)) - ([d247d97](https://github.com/beeb/lintspec/commit/d247d974c6dea3ebff59f44c6d10901b62b418e8))
+
+
+
+
+
+
+**Full Changelog**: [0.6.0...0.6.1](https://github.com/beeb/lintspec/compare/v0.6.0...v0.6.1)
+
 ## [0.6.0] - 2025-06-04
 
 ### Added
