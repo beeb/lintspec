@@ -18,7 +18,15 @@
             inherit system;
             overlays = [ fenix.overlays.default ];
           };
-          toolchain = fenix.packages.${system}.stable.toolchain;
+          toolchain = fenix.packages.${system}.stable.withComponents [
+            "rustc"
+            "cargo"
+            "rust-std"
+            "rustfmt-preview"
+            "clippy-preview"
+            "rust-analyzer-preview"
+            "rust-src"
+          ];
         in
         {
           default = pkgs.mkShell {
