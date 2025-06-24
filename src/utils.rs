@@ -101,10 +101,7 @@ pub fn detect_solidity_version(src: &str, path: impl AsRef<Path>) -> Result<Vers
             let text = expr.node().unparse();
             let text = text.trim();
             // check if we are dealing with a version range with hyphen format
-            if text.contains('-') {
-                let (start, end) = text
-                    .split_once('-')
-                    .expect("version range should have a minus character");
+            if let Some((start, end)) = text.split_once('-') {
                 let v = version_reqs
                     .last_mut()
                     .expect("version expression should be inside an expression set");
