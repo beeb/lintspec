@@ -54,7 +54,7 @@ impl SlangParser {
     pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         let mut out = Vec::new();
         for m in cursor.query(Self::queries()) {
-            let def = match m.query_number {
+            let def = match m.query_index {
                 0 => Some(
                     ConstructorDefinition::extract(m)
                         .unwrap_or_else(Definition::NatspecParsingError),
@@ -124,7 +124,7 @@ impl Parse for SlangParser {
                 detect_solidity_version(&contents, &path)?
             };
             let parser = Parser::create(solidity_version).expect("parser should initialize");
-            let output = parser.parse(NonterminalKind::SourceUnit, &contents);
+            let output = parser.parse_file_contents(&contents);
             (keep_contents.then_some(contents), output)
         };
         if !output.is_valid() {
@@ -156,7 +156,7 @@ pub trait Extract {
 
 impl Extract for ConstructorDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@constructor [ConstructorDefinition
             parameters:[ParametersDeclaration
                 @constructor_params parameters:[Parameters]
@@ -192,7 +192,7 @@ impl Extract for ConstructorDefinition {
 
 impl Extract for EnumDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@enum [EnumDefinition
             @enum_name name:[Identifier]
             @enum_members members:[EnumMembers]
@@ -225,7 +225,7 @@ impl Extract for EnumDefinition {
 
 impl Extract for ErrorDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@err [ErrorDefinition
             @err_name name:[Identifier]
             @err_params members:[ErrorParametersDeclaration]
@@ -258,7 +258,7 @@ impl Extract for ErrorDefinition {
 
 impl Extract for EventDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@event [EventDefinition
             @event_name name:[Identifier]
             @event_params parameters:[EventParametersDeclaration]
@@ -291,7 +291,7 @@ impl Extract for EventDefinition {
 
 impl Extract for FunctionDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@function [FunctionDefinition
             @keyword function_keyword:[FunctionKeyword]
             @function_name name:[FunctionName]
@@ -345,7 +345,7 @@ impl Extract for FunctionDefinition {
 
 impl Extract for ModifierDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@modifier [ModifierDefinition
             @modifier_name name:[Identifier]
             parameters:[ParametersDeclaration
@@ -388,7 +388,7 @@ impl Extract for ModifierDefinition {
 
 impl Extract for StructDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@struct [StructDefinition
             @struct_name name:[Identifier]
             @struct_members members:[StructMembers]
@@ -421,7 +421,7 @@ impl Extract for StructDefinition {
 
 impl Extract for VariableDeclaration {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@variable [StateVariableDefinition
             @variable_attr attributes:[StateVariableAttributes]
             @variable_name name:[Identifier]
@@ -476,13 +476,11 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
     let mut cursor = cursor.spawn();
     let mut out = Vec::new();
     while cursor.go_to_next_nonterminal_with_kind(kind) {
-        let mut sub_cursor = cursor.spawn().with_edges();
+        let mut sub_cursor = cursor.spawn();
         let mut found = false;
         while sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
-            if let Some(label) = sub_cursor.label() {
-                if label.to_string() != "name" {
-                    continue;
-                }
+            if sub_cursor.label().to_string() != "name" {
+                continue;
             }
             found = true;
             out.push(Identifier {
@@ -575,13 +573,11 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
 /// Extract identifiers from a CST node, filtered by label equal to `name`
 #[must_use]
 pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
-    let mut cursor = cursor.spawn().with_edges();
+    let mut cursor = cursor.spawn();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
-        if let Some(label) = cursor.label() {
-            if label.to_string() != "name" {
-                continue;
-            }
+        if cursor.label().to_string() != "name" {
+            continue;
         }
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),
@@ -648,7 +644,7 @@ pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
 /// Extract the identifiers of each of an enum's variants
 #[must_use]
 pub fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
-    let mut cursor = cursor.spawn().with_edges();
+    let mut cursor = cursor.spawn();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
         out.push(Identifier {
@@ -663,7 +659,7 @@ pub fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
 pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     let cursor = cursor.spawn();
     let mut out = Vec::new();
-    let query = Query::parse(
+    let query = Query::create(
         "[StructMember
         @member_name name:[Identifier]
     ]",
@@ -770,10 +766,7 @@ mod tests {
     use std::fs::File;
 
     use similar_asserts::assert_eq;
-    use slang_solidity::{
-        cst::{Cursor, NonterminalKind},
-        parser::Parser,
-    };
+    use slang_solidity::{cst::Cursor, parser::Parser};
 
     use crate::{
         natspec::{NatSpecItem, NatSpecKind},
@@ -785,7 +778,7 @@ mod tests {
     fn parse_file(contents: &str) -> Cursor {
         let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
-        let output = parser.parse(NonterminalKind::SourceUnit, contents);
+        let output = parser.parse_file_contents(contents);
         assert!(output.is_valid(), "{:?}", output.errors());
         output.create_tree_cursor()
     }
@@ -1346,7 +1339,7 @@ mod tests {
         let contents = include_str!("../../test-data/LatestVersion.sol");
         let solidity_version = detect_solidity_version(contents, PathBuf::new()).unwrap();
         let parser = Parser::create(solidity_version).unwrap();
-        let output = parser.parse(NonterminalKind::SourceUnit, contents);
+        let output = parser.parse_file_contents(contents);
         assert!(output.is_valid(), "{:?}", output.errors());
     }
 
