@@ -33,7 +33,7 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// supported by [`slang_solidity`].
 ///
 /// # Panics
-/// This function panics if the [`Parser::SUPPORTED_VERSIONS`] list is empty.
+/// This function panics if the [`LanguageFacts::ALL_VERSIONS`] list is empty.
 ///
 /// # Examples
 ///
@@ -115,7 +115,7 @@ pub fn detect_solidity_version(src: &str, path: impl AsRef<Path>) -> Result<Vers
                     .expect("version expression should be inside an expression set");
                 // for `semver`, the different specifiers should be combined with a comma if they must all match
                 if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
-                    // for `semver`, no comparator is the same as the caret comparator, but for solidity is means `=`
+                    // for `semver`, no comparator is the same as the caret comparator, but for solidity it means `=`
                     let _ = write!(v, ",={text}");
                 } else {
                     let _ = write!(v, ",{text}");
