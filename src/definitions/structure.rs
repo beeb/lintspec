@@ -280,7 +280,22 @@ mod tests {
                 uint256 foo;
             }";
         let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 2);
+        assert_eq!(res.diags[0].message, "extra @param fooThe");
+        assert_eq!(res.diags[1].message, "@param foo is missing");
+    }
+
+    #[test]
+    fn test_struct_extra_param() {
+        let contents = "
+            /// @notice A struct
+            /// @param foo The param
+            /// @param bar Some other param
+            struct Test {
+                uint256 foo;
+            }";
+        let res = parse_file(contents).validate(&OPTIONS);
         assert_eq!(res.diags.len(), 1);
-        assert_eq!(res.diags[0].message, "@param foo is missing");
+        assert_eq!(res.diags[0].message, "extra @param bar");
     }
 }

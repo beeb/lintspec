@@ -3,18 +3,20 @@
 //! The [`lint`] function parsers the source file and contained items, validates them according to the configured
 //! rules and emits a list of diagnostics, grouped by source item.
 use std::{
+    collections::HashMap,
     fs::File,
     io,
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
 use serde::Serialize;
 
 use crate::{
     config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
-    natspec::NatSpec,
+    natspec::{NatSpec, NatSpecKind},
     parser::{Parse, ParsedDocument},
 };
 
@@ -277,22 +279,45 @@ pub fn check_params(
             }));
             return res;
         };
-        for param in params {
-            let Some(name) = &param.name else {
-                // no need to document unused params
-                continue;
-            };
-            let message = match natspec.count_param(param) {
-                0 => format!("@param {name} is missing"),
-                2.. => format!("@param {name} is present more than once"),
-                _ => {
-                    continue;
+        let param_names: HashMap<_, _> = params
+            .iter()
+            .filter_map(|p| p.name.as_ref().map(|n| (n, &p.span)))
+            .collect();
+        let natspec_counts = natspec
+            .items
+            .iter()
+            .filter_map(|i| {
+                if let NatSpecKind::Param { ref name } = i.kind {
+                    Some(name)
+                } else {
+                    None
                 }
-            };
-            res.push(Diagnostic {
-                span: param.span.clone(),
-                message,
-            });
+            })
+            .counts();
+        for name in natspec_counts.keys() {
+            if !param_names.contains_key(name) {
+                res.push(Diagnostic {
+                    span: default_span.clone(),
+                    message: format!("extra @param {name}"),
+                });
+            }
+        }
+        for (name, span) in param_names {
+            match natspec_counts.get(name) {
+                Some(count) if count > &1 => {
+                    res.push(Diagnostic {
+                        span: span.clone(),
+                        message: format!("@param {name} is present more than once"),
+                    });
+                }
+                None => {
+                    res.push(Diagnostic {
+                        span: span.clone(),
+                        message: format!("@param {name} is missing"),
+                    });
+                }
+                Some(_) => {}
+            }
         }
     } else if let Some(natspec) = natspec {
         // the rule is to forbid `@param`
@@ -303,6 +328,7 @@ pub fn check_params(
             });
         }
     }
+    res.sort_unstable_by_key(|d| d.span.start.utf8);
     res
 }
 
