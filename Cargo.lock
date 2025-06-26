@@ -1402,6 +1402,7 @@ dependencies = [
  "figment",
  "ignore",
  "insta",
+ "itertools 0.14.0",
  "miette",
  "rayon",
  "regex",

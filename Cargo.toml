@@ -31,6 +31,7 @@ dotenvy = "0.15.7"
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 ignore = "0.4.23"
+itertools = "0.14.0"
 miette = { version = "7.5.0", features = ["fancy"] }
 rayon = "1.10.0"
 regex = "1.11.1"
