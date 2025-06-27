@@ -1,16 +1,16 @@
 //! A parser with [`solar_parse`] backend
 use solar_parse::{
+    Parser,
     ast::{
-        interface::{
-            source_map::{FileName, SourceMap},
-            Session,
-        },
-        visit::Visit,
         ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, Span,
         VariableDefinition,
+        interface::{
+            Session,
+            source_map::{FileName, SourceMap},
+        },
+        visit::Visit,
     },
     interface::ColorChoice,
-    Parser,
 };
 use std::{
     collections::BTreeSet,
@@ -23,13 +23,13 @@ use std::{
 
 use crate::{
     definitions::{
+        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextIndex, TextRange, Visibility,
+        structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
-    natspec::{parse_comment, NatSpec},
+    natspec::{NatSpec, parse_comment},
     parser::{Parse, ParsedDocument},
 };
 
@@ -250,9 +250,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                     .iter_mut()
                     .for_each(|i| populate_span(&mapping, &mut i.span));
             }
-            Definition::NatspecParsingError(Error::NatspecParsingError {
-                ref mut span, ..
-            }) => {
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 populate_span(&mapping, span);
             }
             Definition::Variable(_) | Definition::NatspecParsingError(_) => {}

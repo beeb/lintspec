@@ -1,6 +1,6 @@
 //! Parsing and validation of state variable declarations.
 use crate::{
-    lint::{check_notice_and_dev, check_returns, Diagnostic, ItemDiagnostics},
+    lint::{Diagnostic, ItemDiagnostics, check_notice_and_dev, check_returns},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -144,7 +144,7 @@ mod tests {
 
     use crate::{
         definitions::Definition,
-        parser::{slang::SlangParser, Parse as _},
+        parser::{Parse as _, slang::SlangParser},
     };
 
     use super::*;

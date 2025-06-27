@@ -294,10 +294,16 @@ pub fn check_params(
                 }
             })
             .counts();
-        for name in natspec_counts.keys() {
+        for item in &natspec.items {
+            let NatSpecKind::Param { name } = &item.kind else {
+                continue;
+            };
             if !param_names.contains_key(name) {
+                // the item's span is relative to the comment's start offset
+                let span_start = default_span.start + item.span.start;
+                let span_end = default_span.start + item.span.end;
                 res.push(Diagnostic {
-                    span: default_span.clone(),
+                    span: span_start..span_end,
                     message: format!("extra @param {name}"),
                 });
             }

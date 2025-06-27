@@ -1,15 +1,17 @@
 //! `NatSpec` Comment Parser
+use std::ops::Range;
+
 use derive_more::IsVariant;
 use winnow::{
+    LocatingSlice, ModalResult, Parser,
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, cut_err, delimited, not, opt, repeat, separated},
     error::{StrContext, StrContextValue},
     seq,
     token::{take_till, take_until},
-    ModalResult, Parser as _,
 };
 
-use crate::definitions::Identifier;
+use crate::definitions::{Identifier, TextIndex, TextRange};
 
 /// A collection of `NatSpec` items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -108,6 +110,9 @@ pub struct NatSpecItem {
 
     /// The comment associated with this `NatSpec` item
     pub comment: String,
+
+    /// The span of this item, relative to the start offset of the string passed to [`parse_comment`]
+    pub span: TextRange,
 }
 
 impl NatSpecItem {
@@ -174,11 +179,41 @@ impl From<NatSpecItem> for NatSpec {
 
 /// Parse a Solidity doc-comment to extract the `NatSpec` information
 pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
-    alt((single_line_comment, multiline_comment, empty_multiline)).parse_next(input)
+    let (mut natspec, spans) = alt((single_line_comment, multiline_comment, empty_multiline))
+        .parse_next(&mut LocatingSlice::new(input))?;
+    if natspec.items.is_empty() {
+        return Ok(natspec);
+    }
+
+    let mut current_index = TextIndex::ZERO;
+    let mut char_iter = input.chars().peekable();
+    for (natspec_item, byte_span) in natspec.items.iter_mut().zip(spans.iter()) {
+        if current_index.utf8 == byte_span.start {
+            natspec_item.span.start = current_index;
+        } else {
+            // find start offset
+            while let Some(c) = char_iter.next() {
+                current_index.advance(c, char_iter.peek());
+                if current_index.utf8 == byte_span.start {
+                    natspec_item.span.start = current_index;
+                    break;
+                }
+            }
+        }
+        // find end offset
+        while let Some(c) = char_iter.next() {
+            current_index.advance(c, char_iter.peek());
+            if current_index.utf8 == byte_span.end {
+                natspec_item.span.end = current_index;
+                break;
+            }
+        }
+    }
+    Ok(natspec)
 }
 
 /// Parse an identifier (contiguous non-whitespace characters)
-fn ident(input: &mut &str) -> ModalResult<String> {
+fn ident(input: &mut LocatingSlice<&str>) -> ModalResult<String> {
     take_till(1.., |c: char| c.is_whitespace())
         .map(|ident: &str| ident.to_owned())
         .parse_next(input)
@@ -188,7 +223,7 @@ fn ident(input: &mut &str) -> ModalResult<String> {
 ///
 /// For `@return`, the identifier, if present, is not included in the `NatSpecItem` for now. A post-processing
 /// step ([`NatSpecItem::populate_return`]) is needed to extract the name.
-fn natspec_kind(input: &mut &str) -> ModalResult<NatSpecKind> {
+fn natspec_kind(input: &mut LocatingSlice<&str>) -> ModalResult<NatSpecKind> {
     alt((
         "@title".map(|_| NatSpecKind::Title),
         "@author".map(|_| NatSpecKind::Author),
@@ -215,26 +250,39 @@ fn natspec_kind(input: &mut &str) -> ModalResult<NatSpecKind> {
 
 /// Parse the end of a multiline comment (one or more `*` followed by `/`)
 #[allow(clippy::unnecessary_wraps)]
-fn end_of_comment(input: &mut &str) -> ModalResult<()> {
+fn end_of_comment(input: &mut LocatingSlice<&str>) -> ModalResult<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())
 }
 
 /// Parse a single `NatSpec` item (line) in a multiline comment
-fn one_multiline_natspec(input: &mut &str) -> ModalResult<NatSpecItem> {
-    seq! {NatSpecItem {
-        _: space0,
-        _: repeat::<_, _, (), _, _>(0.., '*'),
-        _: space0,
-        kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
-        _: space0,
-        comment: take_until(0.., ("\r", "\n", "*/")).parse_to(),
-    }}
-    .parse_next(input)
+fn one_multiline_natspec(
+    input: &mut LocatingSlice<&str>,
+) -> ModalResult<(NatSpecItem, Range<usize>)> {
+    let _ = space0.parse_next(input)?;
+    let () = repeat::<_, _, (), _, _>(0.., '*').parse_next(input)?;
+    let _ = space0.parse_next(input)?;
+    let (kind, kind_span) = opt(natspec_kind)
+        .map(|v| v.unwrap_or(NatSpecKind::Notice))
+        .with_span()
+        .parse_next(input)?;
+    let _ = space0.parse_next(input)?;
+    let (comment, comment_span) = take_until(0.., ("\r", "\n", "*/"))
+        .parse_to()
+        .with_span()
+        .parse_next(input)?;
+    Ok((
+        NatSpecItem {
+            kind,
+            comment,
+            span: TextRange::default(),
+        },
+        kind_span.start..comment_span.end,
+    ))
 }
 
 /// Parse a multiline `NatSpec` comment
-fn multiline_comment(input: &mut &str) -> ModalResult<NatSpec> {
+fn multiline_comment(input: &mut LocatingSlice<&str>) -> ModalResult<(NatSpec, Vec<Range<usize>>)> {
     delimited(
         (
             (
@@ -251,30 +299,45 @@ fn multiline_comment(input: &mut &str) -> ModalResult<NatSpec> {
         separated(0.., one_multiline_natspec, line_ending),
         (opt(line_ending), space0, end_of_comment),
     )
-    .map(|items| NatSpec { items })
+    .map(|items: Vec<(NatSpecItem, Range<usize>)>| {
+        let (items, spans) = items.into_iter().unzip();
+        (NatSpec { items }, spans)
+    })
     .parse_next(input)
 }
 
 /// Parse an empty multiline comment (without any text in the body)
-fn empty_multiline(input: &mut &str) -> ModalResult<NatSpec> {
+fn empty_multiline(input: &mut LocatingSlice<&str>) -> ModalResult<(NatSpec, Vec<Range<usize>>)> {
     let _ = ("/**", space1, repeat::<_, _, (), _, _>(1.., '*'), '/').parse_next(input)?;
-    Ok(NatSpec::default())
+    Ok((NatSpec::default(), Vec::new()))
 }
 
 /// Parse a single line comment `NatSpec` item
-fn single_line_natspec(input: &mut &str) -> ModalResult<NatSpecItem> {
-    seq! {NatSpecItem {
-        _: space0,
-        kind: opt(natspec_kind).map(|v| v.unwrap_or(NatSpecKind::Notice)),
-        _: space0,
-        comment: till_line_ending.parse_to(),
-    }}
-    .parse_next(input)
+fn single_line_natspec(
+    input: &mut LocatingSlice<&str>,
+) -> ModalResult<(NatSpecItem, Range<usize>)> {
+    let _ = space0.parse_next(input)?;
+    let (kind, kind_span) = opt(natspec_kind)
+        .map(|v| v.unwrap_or(NatSpecKind::Notice))
+        .with_span()
+        .parse_next(input)?;
+    let _ = space0.parse_next(input)?;
+    let (comment, comment_span) = till_line_ending.parse_to().with_span().parse_next(input)?;
+    Ok((
+        NatSpecItem {
+            kind,
+            comment,
+            span: TextRange::default(),
+        },
+        kind_span.start..comment_span.end,
+    ))
 }
 
 /// Parse a single line `NatSpec` comment
-fn single_line_comment(input: &mut &str) -> ModalResult<NatSpec> {
-    let item = delimited(
+fn single_line_comment(
+    input: &mut LocatingSlice<&str>,
+) -> ModalResult<(NatSpec, Vec<Range<usize>>)> {
+    let (item, range) = delimited(
         (
             "///",
             // four slashes is not a valid doc-comment
@@ -288,9 +351,9 @@ fn single_line_comment(input: &mut &str) -> ModalResult<NatSpec> {
     )
     .parse_next(input)?;
     if item.is_empty() {
-        return Ok(NatSpec::default());
+        return Ok((NatSpec::default(), Vec::new()));
     }
-    Ok(item.into())
+    Ok((item.into(), vec![range]))
 }
 
 #[cfg(test)]
@@ -328,7 +391,7 @@ mod tests {
             ),
         ];
         for case in cases {
-            let res = natspec_kind.parse(case.0);
+            let res = natspec_kind.parse(LocatingSlice::new(case.0));
             assert!(res.is_ok(), "{res:?}");
             let res = res.unwrap();
             assert_eq!(res, case.1);
@@ -370,14 +433,15 @@ mod tests {
             ("    * foobar\n", NatSpecKind::Notice, "foobar"),
         ];
         for case in cases {
-            let res = (one_multiline_natspec, line_ending).parse(case.0);
+            let res = (one_multiline_natspec, line_ending).parse(LocatingSlice::new(case.0));
             assert!(res.is_ok(), "{res:?}");
-            let (res, _) = res.unwrap();
+            let ((res, _), _) = res.unwrap();
             assert_eq!(
                 res,
                 NatSpecItem {
                     kind: case.1,
-                    comment: case.2.to_string()
+                    comment: case.2.to_string(),
+                    span: TextRange::default()
                 }
             );
         }
@@ -386,10 +450,10 @@ mod tests {
     #[test]
     fn test_single_line() {
         let cases = [
-            ("/// Foo bar\n", NatSpecKind::Notice, "Foo bar"),
-            ("///  Baz\n", NatSpecKind::Notice, "Baz"),
+            ("/// Foo bar", NatSpecKind::Notice, "Foo bar"),
+            ("///  Baz", NatSpecKind::Notice, "Baz"),
             (
-                "/// @notice  Hello world\n",
+                "/// @notice  Hello world",
                 NatSpecKind::Notice,
                 "Hello world",
             ),
@@ -414,14 +478,15 @@ mod tests {
             ),
         ];
         for case in cases {
-            let res = single_line_comment.parse(case.0);
+            let res = single_line_comment.parse(LocatingSlice::new(case.0));
             assert!(res.is_ok(), "{res:?}");
-            let res = res.unwrap();
+            let (res, _) = res.unwrap();
             assert_eq!(
                 res,
                 NatSpecItem {
                     kind: case.1,
-                    comment: case.2.to_string()
+                    comment: case.2.to_string(),
+                    span: TextRange::default()
                 }
                 .into()
             );
@@ -430,15 +495,15 @@ mod tests {
 
     #[test]
     fn test_single_line_empty() {
-        let res = single_line_comment.parse("///\n");
+        let res = single_line_comment.parse(LocatingSlice::new("///\n"));
         assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
+        let (res, _) = res.unwrap();
         assert_eq!(res, NatSpec::default());
     }
 
     #[test]
     fn test_single_line_weird() {
-        let res = single_line_comment.parse("//// Hello\n");
+        let res = single_line_comment.parse(LocatingSlice::new("//// Hello\n"));
         assert!(matches!(res, Err(ParseError { .. })));
     }
 
@@ -447,15 +512,16 @@ mod tests {
         let comment = "/**
      * @notice Some notice text.
      */";
-        let res = multiline_comment.parse(comment);
+        let res = multiline_comment.parse(LocatingSlice::new(comment));
         assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
+        let (res, _) = res.unwrap();
         assert_eq!(
             res,
             NatSpec {
                 items: vec![NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some notice text.".to_string()
+                    comment: "Some notice text.".to_string(),
+                    span: TextRange::default()
                 }]
             }
         );
@@ -467,22 +533,24 @@ mod tests {
      * @notice Some notice text.
      * @custom:something
      */";
-        let res = multiline_comment.parse(comment);
+        let res = multiline_comment.parse(LocatingSlice::new(comment));
         assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
+        let (res, _) = res.unwrap();
         assert_eq!(
             res,
             NatSpec {
                 items: vec![
                     NatSpecItem {
                         kind: NatSpecKind::Notice,
-                        comment: "Some notice text.".to_string()
+                        comment: "Some notice text.".to_string(),
+                        span: TextRange::default()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Custom {
                             tag: "something".to_string()
                         },
-                        comment: String::new()
+                        comment: String::new(),
+                        span: TextRange::default()
                     }
                 ]
             }
@@ -495,32 +563,36 @@ mod tests {
 Another notice
         * @param test
      \t** @custom:something */";
-        let res = multiline_comment.parse(comment);
+        let res = multiline_comment.parse(LocatingSlice::new(comment));
         assert!(res.is_ok(), "{res:?}");
-        let res = res.unwrap();
+        let (res, _) = res.unwrap();
         assert_eq!(
             res,
             NatSpec {
                 items: vec![
                     NatSpecItem {
                         kind: NatSpecKind::Notice,
-                        comment: "Some notice text.".to_string()
+                        comment: "Some notice text.".to_string(),
+                        span: TextRange::default()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Notice,
-                        comment: "Another notice".to_string()
+                        comment: "Another notice".to_string(),
+                        span: TextRange::default()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Param {
                             name: "test".to_string()
                         },
-                        comment: String::new()
+                        comment: String::new(),
+                        span: TextRange::default()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Custom {
                             tag: "something".to_string()
                         },
-                        comment: String::new()
+                        comment: String::new(),
+                        span: TextRange::default()
                     }
                 ]
             }
@@ -529,15 +601,17 @@ Another notice
 
     #[test]
     fn test_multiline_empty() {
-        let comment = "/**
+        let mut comment = "/**
         */";
-        let res = parse_comment.parse(comment);
+        let res = parse_comment.parse_next(&mut comment);
+
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
 
-        let comment = "/** */";
-        let res = parse_comment.parse(comment);
+        let mut comment = "/** */";
+        let res = parse_comment.parse_next(&mut comment);
+
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
