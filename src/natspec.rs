@@ -603,21 +603,14 @@ Another notice
     fn test_multiline_empty() {
         let mut comment = "/**
         */";
-        let res = parse_comment(&mut comment); // this is fine
-
-        // let comment = "/**
-        // */";
-        // let res = parse_comment.parse(comment); // this errors
+        let res = parse_comment.parse_next(&mut comment);
 
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
 
         let mut comment = "/** */";
-        let res = parse_comment(&mut comment); // this is fine
-
-        // let comment = "/** */";
-        // let res = parse_comment.parse(comment); // this errors
+        let res = parse_comment.parse_next(&mut comment);
 
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
