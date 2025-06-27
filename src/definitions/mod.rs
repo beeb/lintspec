@@ -5,7 +5,7 @@
 use std::{fmt, ops::Range};
 
 use constructor::ConstructorDefinition;
-use derive_more::{Display, From, IsVariant, TryInto};
+use derive_more::{Add, Display, From, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -49,7 +49,7 @@ pub type TextRange = Range<TextIndex>;
 /// A position inside of the source code
 ///
 /// Lines and columns start at 0.
-#[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize)]
+#[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize, Add)]
 pub struct TextIndex {
     pub utf8: usize,
     pub utf16: usize,
