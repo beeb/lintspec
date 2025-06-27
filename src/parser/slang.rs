@@ -817,6 +817,16 @@ mod tests {
     impl_find_item!(find_event, Definition::Event, EventDefinition);
     impl_find_item!(find_struct, Definition::Struct, StructDefinition);
 
+    macro_rules! adjust_offset_windows {
+        ($byte_index:literal, $lines:literal) => {
+            if cfg!(windows) {
+                $byte_index + $lines
+            } else {
+                $byte_index
+            }
+        };
+    }
+
     fn single_line_textrange(range: Range<usize>) -> TextRange {
         TextIndex {
             utf8: range.start,
@@ -1170,13 +1180,13 @@ mod tests {
                     kind: NatSpecKind::Notice,
                     comment: "A function with different style of natspec".to_string(),
                     span: TextIndex {
-                        utf8: 9,
-                        utf16: 9,
+                        utf8: adjust_offset_windows!(9, 1),
+                        utf16: adjust_offset_windows!(9, 1),
                         line: 1,
                         column: 5,
                     }..TextIndex {
-                        utf8: 59,
-                        utf16: 59,
+                        utf8: adjust_offset_windows!(59, 1),
+                        utf16: adjust_offset_windows!(59, 1),
                         line: 1,
                         column: 55,
                     }
@@ -1187,13 +1197,13 @@ mod tests {
                     },
                     comment: "The first parameter".to_string(),
                     span: TextIndex {
-                        utf8: 65,
-                        utf16: 65,
+                        utf8: adjust_offset_windows!(65, 2),
+                        utf16: adjust_offset_windows!(65, 2),
                         line: 2,
                         column: 5,
                     }..TextIndex {
-                        utf8: 100,
-                        utf16: 100,
+                        utf8: adjust_offset_windows!(100, 2),
+                        utf16: adjust_offset_windows!(100, 2),
                         line: 2,
                         column: 40,
                     }
@@ -1204,13 +1214,13 @@ mod tests {
                     },
                     comment: "The second parameter".to_string(),
                     span: TextIndex {
-                        utf8: 106,
-                        utf16: 106,
+                        utf8: adjust_offset_windows!(106, 3),
+                        utf16: adjust_offset_windows!(106, 3),
                         line: 3,
                         column: 5,
                     }..TextIndex {
-                        utf8: 142,
-                        utf16: 142,
+                        utf8: adjust_offset_windows!(142, 3),
+                        utf16: adjust_offset_windows!(142, 3),
                         line: 3,
                         column: 41,
                     }
@@ -1219,13 +1229,13 @@ mod tests {
                     kind: NatSpecKind::Return { name: None },
                     comment: "The returned value".to_string(),
                     span: TextIndex {
-                        utf8: 148,
-                        utf16: 148,
+                        utf8: adjust_offset_windows!(148, 4),
+                        utf16: adjust_offset_windows!(148, 4),
                         line: 4,
                         column: 5,
                     }..TextIndex {
-                        utf8: 174,
-                        utf16: 174,
+                        utf8: adjust_offset_windows!(174, 4),
+                        utf16: adjust_offset_windows!(174, 4),
                         line: 4,
                         column: 31,
                     }
@@ -1314,13 +1324,13 @@ mod tests {
                     kind: NatSpecKind::Notice,
                     comment: "Some private stuff".to_string(),
                     span: TextIndex {
-                        utf8: 9,
-                        utf16: 9,
+                        utf8: adjust_offset_windows!(9, 1),
+                        utf16: adjust_offset_windows!(9, 1),
                         line: 1,
                         column: 5,
                     }..TextIndex {
-                        utf8: 37,
-                        utf16: 37,
+                        utf8: adjust_offset_windows!(37, 1),
+                        utf16: adjust_offset_windows!(37, 1),
                         line: 1,
                         column: 33,
                     }
@@ -1331,13 +1341,13 @@ mod tests {
                     },
                     comment: "The parameter name".to_string(),
                     span: TextIndex {
-                        utf8: 43,
-                        utf16: 43,
+                        utf8: adjust_offset_windows!(43, 2),
+                        utf16: adjust_offset_windows!(43, 2),
                         line: 2,
                         column: 5,
                     }..TextIndex {
-                        utf8: 84,
-                        utf16: 84,
+                        utf8: adjust_offset_windows!(84, 2),
+                        utf16: adjust_offset_windows!(84, 2),
                         line: 2,
                         column: 46,
                     }
@@ -1348,13 +1358,13 @@ mod tests {
                     },
                     comment: "The returned value".to_string(),
                     span: TextIndex {
-                        utf8: 90,
-                        utf16: 90,
+                        utf8: adjust_offset_windows!(90, 3),
+                        utf16: adjust_offset_windows!(90, 3),
                         line: 3,
                         column: 5,
                     }..TextIndex {
-                        utf8: 134,
-                        utf16: 134,
+                        utf8: adjust_offset_windows!(134, 3),
+                        utf16: adjust_offset_windows!(134, 3),
                         line: 3,
                         column: 49,
                     }
