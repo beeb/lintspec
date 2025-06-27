@@ -767,7 +767,7 @@ impl From<TextIndex> for SlangTextIndex {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::{fs::File, ops::Range};
 
     use similar_asserts::assert_eq;
     use slang_solidity::{
@@ -817,6 +817,20 @@ mod tests {
     impl_find_item!(find_event, Definition::Event, EventDefinition);
     impl_find_item!(find_struct, Definition::Struct, StructDefinition);
 
+    fn single_line_textrange(range: Range<usize>) -> TextRange {
+        TextIndex {
+            utf8: range.start,
+            utf16: range.start,
+            line: 0,
+            column: range.start,
+        }..TextIndex {
+            utf8: range.end,
+            utf16: range.end,
+            line: 0,
+            column: range.end,
+        }
+    }
+
     #[test]
     fn test_parse_external_function() {
         let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
@@ -834,12 +848,12 @@ mod tests {
                         parent: "IParserTest".to_string()
                     },
                     comment: String::new(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..27)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "Dev comment for the function".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..37)
                 }
             ]
         );
@@ -861,7 +875,7 @@ mod tests {
                     parent: "IParserTest".to_string()
                 },
                 comment: String::new(),
-                span: TextRange::default()
+                span: single_line_textrange(4..27)
             },]
         );
     }
@@ -882,7 +896,7 @@ mod tests {
                     parent: "IParserTest".to_string()
                 },
                 comment: String::new(),
-                span: TextRange::default()
+                span: single_line_textrange(4..27)
             },]
         );
     }
@@ -902,14 +916,14 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "The description of the modifier".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..43)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param1".to_string()
                     },
                     comment: "The only parameter".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..37)
                 },
             ]
         );
@@ -929,7 +943,7 @@ mod tests {
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
                 comment: "The description of the modifier".to_string(),
-                span: TextRange::default()
+                span: single_line_textrange(4..43)
             },]
         );
     }
@@ -949,26 +963,26 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Some private stuff".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..30)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "Dev comment for the private function".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..45)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
                     comment: "The parameter name".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..40)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
                     comment: "The returned value".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..40)
                 }
             ]
         );
@@ -989,17 +1003,17 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Some internal stuff".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..31)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Separate line".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(12..25)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Third one".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(12..21)
                 },
             ]
         );
@@ -1020,12 +1034,12 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Some internal stuff".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..31)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Separate line".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..25)
                 },
             ]
         );
@@ -1045,7 +1059,7 @@ mod tests {
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
                 comment: "Thrown whenever something goes wrong".to_string(),
-                span: TextRange::default()
+                span: single_line_textrange(4..48)
             },]
         );
     }
@@ -1064,7 +1078,7 @@ mod tests {
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
                 comment: "Emitted whenever something happens".to_string(),
-                span: TextRange::default()
+                span: single_line_textrange(4..46)
             },]
         );
     }
@@ -1084,26 +1098,26 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "A struct holding 2 variables of type uint256".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..56)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "a".to_string()
                     },
                     comment: "The first variable".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..32)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "b".to_string()
                     },
                     comment: "The second variable".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..33)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "This is definitely a struct".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..36)
                 },
             ]
         );
@@ -1124,17 +1138,17 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "View function with no parameters".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..44)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "Natspec for the return value is missing".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..48)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
                     comment: "The returned value".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..30)
                 },
             ]
         );
@@ -1155,26 +1169,66 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "A function with different style of natspec".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 9,
+                        utf16: 9,
+                        line: 1,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 59,
+                        utf16: 59,
+                        line: 1,
+                        column: 55,
+                    }
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param1".to_string()
                     },
                     comment: "The first parameter".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 65,
+                        utf16: 65,
+                        line: 2,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 100,
+                        utf16: 100,
+                        line: 2,
+                        column: 40,
+                    }
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param2".to_string()
                     },
                     comment: "The second parameter".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 106,
+                        utf16: 106,
+                        line: 3,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 142,
+                        utf16: 142,
+                        line: 3,
+                        column: 41,
+                    }
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
                     comment: "The returned value".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 148,
+                        utf16: 148,
+                        line: 4,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 174,
+                        utf16: 174,
+                        line: 4,
+                        column: 31,
+                    }
                 },
             ]
         );
@@ -1209,12 +1263,12 @@ mod tests {
                         parent: "IParserTest".to_string()
                     },
                     comment: String::new(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..27)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "Providing context".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..26)
                 }
             ]
         );
@@ -1259,21 +1313,51 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Some private stuff".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 9,
+                        utf16: 9,
+                        line: 1,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 37,
+                        utf16: 37,
+                        line: 1,
+                        column: 33,
+                    }
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
                     comment: "The parameter name".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 43,
+                        utf16: 43,
+                        line: 2,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 84,
+                        utf16: 84,
+                        line: 2,
+                        column: 46,
+                    }
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
                     comment: "The returned value".to_string(),
-                    span: TextRange::default()
+                    span: TextIndex {
+                        utf8: 90,
+                        utf16: 90,
+                        line: 3,
+                        column: 5,
+                    }..TextIndex {
+                        utf8: 134,
+                        utf16: 134,
+                        line: 3,
+                        column: 49,
+                    }
                 },
             ]
         );
@@ -1294,21 +1378,21 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Some private stuff".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..32)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
                     comment: "The parameter name".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..45)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
                     comment: "The returned value".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..48)
                 },
             ]
         );
@@ -1341,12 +1425,12 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "Linter fail".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..23)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
                     comment: "What have I done".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..30)
                 }
             ]
         );
@@ -1367,17 +1451,17 @@ mod tests {
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
                     comment: "fun fact: there are extra spaces after the 1st return".to_string(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..57)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
                     comment: String::new(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..18)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
                     comment: String::new(),
-                    span: TextRange::default()
+                    span: single_line_textrange(4..11)
                 },
             ]
         );

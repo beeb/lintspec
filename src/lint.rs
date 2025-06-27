@@ -16,7 +16,7 @@ use crate::{
     config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
-    natspec::{NatSpec, NatSpecItem, NatSpecKind},
+    natspec::{NatSpec, NatSpecKind},
     parser::{Parse, ParsedDocument},
 };
 
@@ -495,13 +495,6 @@ pub fn check_notice_and_dev(
         (true, Req::Ignored, Req::Ignored) => {}
     }
     res
-}
-
-pub fn find_natspec_item_span(
-    original_comment: &str,
-    natspec_item: &NatSpecItem,
-) -> Option<TextRange> {
-    None
 }
 
 #[cfg(test)]

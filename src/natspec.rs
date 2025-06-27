@@ -1,5 +1,5 @@
 //! `NatSpec` Comment Parser
-use std::{cmp::Ordering, ops::Range};
+use std::ops::Range;
 
 use derive_more::IsVariant;
 use winnow::{
@@ -195,30 +195,20 @@ pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
         .expect("there should be one span at least");
     while let Some(c) = char_iter.next() {
         current_index.advance(c, char_iter.peek());
-        if inside_span {
-            match current_index.utf8.cmp(&current_byte_span.end) {
-                Ordering::Equal => {
-                    current_natspec_item.span.end = current_index;
-                    inside_span = false;
-                    // look at next span
-                    current_byte_span = match byte_spans_iter.next() {
-                        Some(s) => s,
-                        None => break,
-                    };
-                    current_natspec_item = items_iter
-                        .next()
-                        .expect("items list and spans list should have the same size");
-                }
-                Ordering::Greater | Ordering::Less => {}
-            }
-        } else {
-            match current_index.utf8.cmp(&current_byte_span.start) {
-                Ordering::Equal => {
-                    current_natspec_item.span.start = current_index;
-                    inside_span = true; // we keep looking at the same item + byte span
-                }
-                Ordering::Greater | Ordering::Less => {}
-            }
+        if inside_span && current_index.utf8 == current_byte_span.end {
+            current_natspec_item.span.end = current_index;
+            inside_span = false;
+            // look at next span
+            current_byte_span = match byte_spans_iter.next() {
+                Some(s) => s,
+                None => break,
+            };
+            current_natspec_item = items_iter
+                .next()
+                .expect("items list and spans list should have the same size");
+        } else if current_index.utf8 == current_byte_span.start {
+            current_natspec_item.span.start = current_index;
+            inside_span = true; // we keep looking at the same item + byte span
         }
     }
     Ok(natspec)
@@ -613,15 +603,24 @@ Another notice
 
     #[test]
     fn test_multiline_empty() {
-        let comment = "/**
+        let mut comment = "/**
         */";
-        let res = parse_comment.parse(comment);
+        let res = parse_comment(&mut comment); // this is fine
+
+        // let comment = "/**
+        // */";
+        // let res = parse_comment.parse(comment); // this errors
+
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
 
-        let comment = "/** */";
-        let res = parse_comment.parse(comment);
+        let mut comment = "/** */";
+        let res = parse_comment(&mut comment); // this is fine
+
+        // let comment = "/** */";
+        // let res = parse_comment.parse(comment); // this errors
+
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
