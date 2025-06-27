@@ -833,11 +833,13 @@ mod tests {
                     kind: NatSpecKind::Inheritdoc {
                         parent: "IParserTest".to_string()
                     },
-                    comment: String::new()
+                    comment: String::new(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "Dev comment for the function".to_string()
+                    comment: "Dev comment for the function".to_string(),
+                    span: TextRange::default()
                 }
             ]
         );
@@ -858,7 +860,8 @@ mod tests {
                 kind: NatSpecKind::Inheritdoc {
                     parent: "IParserTest".to_string()
                 },
-                comment: String::new()
+                comment: String::new(),
+                span: TextRange::default()
             },]
         );
     }
@@ -878,7 +881,8 @@ mod tests {
                 kind: NatSpecKind::Inheritdoc {
                     parent: "IParserTest".to_string()
                 },
-                comment: String::new()
+                comment: String::new(),
+                span: TextRange::default()
             },]
         );
     }
@@ -897,13 +901,15 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "The description of the modifier".to_string()
+                    comment: "The description of the modifier".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param1".to_string()
                     },
-                    comment: "The only parameter".to_string()
+                    comment: "The only parameter".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -922,7 +928,8 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
-                comment: "The description of the modifier".to_string()
+                comment: "The description of the modifier".to_string(),
+                span: TextRange::default()
             },]
         );
     }
@@ -941,23 +948,27 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some private stuff".to_string()
+                    comment: "Some private stuff".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "Dev comment for the private function".to_string()
+                    comment: "Dev comment for the private function".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
-                    comment: "The parameter name".to_string()
+                    comment: "The parameter name".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
-                    comment: "The returned value".to_string()
+                    comment: "The returned value".to_string(),
+                    span: TextRange::default()
                 }
             ]
         );
@@ -977,15 +988,18 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some internal stuff".to_string()
+                    comment: "Some internal stuff".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Separate line".to_string()
+                    comment: "Separate line".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Third one".to_string()
+                    comment: "Third one".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1005,11 +1019,13 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some internal stuff".to_string()
+                    comment: "Some internal stuff".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Separate line".to_string()
+                    comment: "Separate line".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1028,7 +1044,8 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
-                comment: "Thrown whenever something goes wrong".to_string()
+                comment: "Thrown whenever something goes wrong".to_string(),
+                span: TextRange::default()
             },]
         );
     }
@@ -1046,7 +1063,8 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
-                comment: "Emitted whenever something happens".to_string()
+                comment: "Emitted whenever something happens".to_string(),
+                span: TextRange::default()
             },]
         );
     }
@@ -1065,23 +1083,27 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "A struct holding 2 variables of type uint256".to_string()
+                    comment: "A struct holding 2 variables of type uint256".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "a".to_string()
                     },
-                    comment: "The first variable".to_string()
+                    comment: "The first variable".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "b".to_string()
                     },
-                    comment: "The second variable".to_string()
+                    comment: "The second variable".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "This is definitely a struct".to_string()
+                    comment: "This is definitely a struct".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1101,15 +1123,18 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "View function with no parameters".to_string()
+                    comment: "View function with no parameters".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "Natspec for the return value is missing".to_string()
+                    comment: "Natspec for the return value is missing".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: "The returned value".to_string()
+                    comment: "The returned value".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1129,23 +1154,27 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "A function with different style of natspec".to_string()
+                    comment: "A function with different style of natspec".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param1".to_string()
                     },
-                    comment: "The first parameter".to_string()
+                    comment: "The first parameter".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_param2".to_string()
                     },
-                    comment: "The second parameter".to_string()
+                    comment: "The second parameter".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: "The returned value".to_string()
+                    comment: "The returned value".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1179,11 +1208,13 @@ mod tests {
                     kind: NatSpecKind::Inheritdoc {
                         parent: "IParserTest".to_string()
                     },
-                    comment: String::new()
+                    comment: String::new(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "Providing context".to_string()
+                    comment: "Providing context".to_string(),
+                    span: TextRange::default()
                 }
             ]
         );
@@ -1227,19 +1258,22 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some private stuff".to_string()
+                    comment: "Some private stuff".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
-                    comment: "The parameter name".to_string()
+                    comment: "The parameter name".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
-                    comment: "The returned value".to_string()
+                    comment: "The returned value".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1259,19 +1293,22 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Some private stuff".to_string()
+                    comment: "Some private stuff".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
                         name: "_paramName".to_string()
                     },
-                    comment: "The parameter name".to_string()
+                    comment: "The parameter name".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
                         name: Some("_returned".to_string())
                     },
-                    comment: "The returned value".to_string()
+                    comment: "The returned value".to_string(),
+                    span: TextRange::default()
                 },
             ]
         );
@@ -1303,11 +1340,13 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "Linter fail".to_string()
+                    comment: "Linter fail".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Dev,
-                    comment: "What have I done".to_string()
+                    comment: "What have I done".to_string(),
+                    span: TextRange::default()
                 }
             ]
         );
@@ -1327,15 +1366,18 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Notice,
-                    comment: "fun fact: there are extra spaces after the 1st return".to_string()
+                    comment: "fun fact: there are extra spaces after the 1st return".to_string(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: String::new()
+                    comment: String::new(),
+                    span: TextRange::default()
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return { name: None },
-                    comment: String::new()
+                    comment: String::new(),
+                    span: TextRange::default()
                 },
             ]
         );
