@@ -1,12 +1,12 @@
 use std::{env, fs::File};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser as _;
 use lintspec::{
-    config::{read_config, write_default_config, Args, Commands},
+    config::{Args, Commands, read_config, write_default_config},
     error::Error,
     files::find_sol_files,
-    lint::{lint, ValidationOptions},
+    lint::{ValidationOptions, lint},
     print_reports,
 };
 

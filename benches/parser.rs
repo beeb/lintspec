@@ -1,7 +1,7 @@
 use std::fs::File;
 
-use divan::{black_box, Bencher};
-use lintspec::parser::{slang::SlangParser, Parse, ParsedDocument};
+use divan::{Bencher, black_box};
+use lintspec::parser::{Parse, ParsedDocument, slang::SlangParser};
 
 const FILES: &[&str] = &[
     "test-data/BasicSample.sol",

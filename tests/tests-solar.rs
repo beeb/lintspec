@@ -1,6 +1,6 @@
 #![cfg(feature = "solar")]
 use lintspec::{
-    lint::{lint, ValidationOptions},
+    lint::{ValidationOptions, lint},
     parser::{slang::SlangParser, solar::SolarParser},
 };
 use similar_asserts::assert_eq;
