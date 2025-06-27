@@ -22,8 +22,9 @@ anyhow = "1.0.95"
 bon = "3.3.2"
 clap = { version = "4.5.29", features = ["derive"] }
 derive_more = { version = "2.0.1", features = [
-    "from",
+    "add",
     "display",
+    "from",
     "is_variant",
     "try_into",
 ] }
