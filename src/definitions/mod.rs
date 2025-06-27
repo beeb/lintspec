@@ -221,9 +221,7 @@ impl Definition {
             Definition::Modifier(d) => Some(&mut d.span),
             Definition::Struct(d) => Some(&mut d.span),
             Definition::Variable(d) => Some(&mut d.span),
-            Definition::NatspecParsingError(Error::NatspecParsingError {
-                ref mut span, ..
-            }) => Some(span),
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => Some(span),
             Definition::NatspecParsingError(_) => None,
         }
     }
