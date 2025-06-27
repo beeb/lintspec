@@ -184,31 +184,29 @@ pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
     if natspec.items.is_empty() {
         return Ok(natspec);
     }
+
     let mut current_index = TextIndex::ZERO;
-    let mut items_iter = natspec.items.iter_mut();
-    let mut byte_spans_iter = spans.iter();
     let mut char_iter = input.chars().peekable();
-    let mut inside_span = false;
-    let mut current_natspec_item = items_iter.next().expect("there sould be one item at least");
-    let mut current_byte_span = byte_spans_iter
-        .next()
-        .expect("there should be one span at least");
-    while let Some(c) = char_iter.next() {
-        current_index.advance(c, char_iter.peek());
-        if inside_span && current_index.utf8 == current_byte_span.end {
-            current_natspec_item.span.end = current_index;
-            inside_span = false;
-            // look at next span
-            current_byte_span = match byte_spans_iter.next() {
-                Some(s) => s,
-                None => break,
-            };
-            current_natspec_item = items_iter
-                .next()
-                .expect("items list and spans list should have the same size");
-        } else if current_index.utf8 == current_byte_span.start {
-            current_natspec_item.span.start = current_index;
-            inside_span = true; // we keep looking at the same item + byte span
+    for (natspec_item, byte_span) in natspec.items.iter_mut().zip(spans.iter()) {
+        if current_index.utf8 == byte_span.start {
+            natspec_item.span.start = current_index;
+        } else {
+            // find start offset
+            while let Some(c) = char_iter.next() {
+                current_index.advance(c, char_iter.peek());
+                if current_index.utf8 == byte_span.start {
+                    natspec_item.span.start = current_index;
+                    break;
+                }
+            }
+        }
+        // find end offset
+        while let Some(c) = char_iter.next() {
+            current_index.advance(c, char_iter.peek());
+            if current_index.utf8 == byte_span.end {
+                natspec_item.span.end = current_index;
+                break;
+            }
         }
     }
     Ok(natspec)
