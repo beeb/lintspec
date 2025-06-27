@@ -510,7 +510,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             TerminalKind::SingleLineNatSpecComment,
         ]) {
             let comment = &cursor.node().unparse();
-            let trimmed = comment.trim_start();
+            let mut trimmed = comment.trim_start();
             if trimmed.starts_with("////") || trimmed.starts_with("/***") {
                 // avoid a parsing error in those cases, we simply ignore those as if they were non-NatSpec comments
                 continue;
@@ -518,7 +518,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             items.push((
                 cursor.node().kind().to_string(), // the node type to differentiate multiline from single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
-                parse_comment(&mut comment.as_str())
+                parse_comment(&mut trimmed)
                     .map_err(|e| Error::NatspecParsingError {
                         parent: extract_parent_name(cursor.clone()),
                         span: textrange(cursor.text_range()),

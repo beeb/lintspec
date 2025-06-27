@@ -450,10 +450,10 @@ mod tests {
     #[test]
     fn test_single_line() {
         let cases = [
-            ("/// Foo bar\n", NatSpecKind::Notice, "Foo bar"),
-            ("///  Baz\n", NatSpecKind::Notice, "Baz"),
+            ("/// Foo bar", NatSpecKind::Notice, "Foo bar"),
+            ("///  Baz", NatSpecKind::Notice, "Baz"),
             (
-                "/// @notice  Hello world\n",
+                "/// @notice  Hello world",
                 NatSpecKind::Notice,
                 "Hello world",
             ),
