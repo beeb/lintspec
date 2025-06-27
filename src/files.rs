@@ -1,10 +1,10 @@
 //! Find Solidity files to analyze
 use std::{
     path::{Path, PathBuf},
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
 };
 
-use ignore::{types::TypesBuilder, WalkBuilder, WalkState};
+use ignore::{WalkBuilder, WalkState, types::TypesBuilder};
 
 use crate::error::{Error, Result};
 

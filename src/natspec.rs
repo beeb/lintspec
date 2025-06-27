@@ -3,12 +3,12 @@ use std::ops::Range;
 
 use derive_more::IsVariant;
 use winnow::{
+    LocatingSlice, ModalResult, Parser,
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, cut_err, delimited, not, opt, repeat, separated},
     error::{StrContext, StrContextValue},
     seq,
     token::{take_till, take_until},
-    LocatingSlice, ModalResult, Parser,
 };
 
 use crate::definitions::{Identifier, TextIndex, TextRange};

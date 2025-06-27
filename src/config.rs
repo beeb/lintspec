@@ -5,9 +5,9 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use derive_more::IsVariant;
 use figment::{
+    Figment, Metadata, Profile, Provider,
     providers::{Env, Format as _, Toml},
     value::{Dict, Map},
-    Figment, Metadata, Profile, Provider,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;

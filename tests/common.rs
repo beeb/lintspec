@@ -1,5 +1,5 @@
 use lintspec::{
-    lint::{lint, FileDiagnostics, ValidationOptions},
+    lint::{FileDiagnostics, ValidationOptions, lint},
     parser::slang::SlangParser,
     print_reports,
 };

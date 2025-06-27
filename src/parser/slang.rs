@@ -14,13 +14,13 @@ use slang_solidity::{
 
 use crate::{
     definitions::{
+        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
         event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration, Attributes, Definition,
-        Identifier, Parent, TextIndex, TextRange, Visibility,
+        structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
-    natspec::{parse_comment, NatSpec},
+    natspec::{NatSpec, parse_comment},
     utils::{detect_solidity_version, get_latest_supported_version},
 };
 
@@ -71,20 +71,12 @@ impl SlangParser {
                 4 => {
                     let def = FunctionDefinition::extract(m)
                         .unwrap_or_else(Definition::NatspecParsingError);
-                    if out.contains(&def) {
-                        None
-                    } else {
-                        Some(def)
-                    }
+                    if out.contains(&def) { None } else { Some(def) }
                 }
                 5 => {
                     let def = ModifierDefinition::extract(m)
                         .unwrap_or_else(Definition::NatspecParsingError);
-                    if out.contains(&def) {
-                        None
-                    } else {
-                        Some(def)
-                    }
+                    if out.contains(&def) { None } else { Some(def) }
                 }
                 6 => Some(
                     StructDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
@@ -800,9 +792,7 @@ mod tests {
                 items
                     .iter()
                     .find_map(|d| match d {
-                        $item_variant(ref def) if def.name == name && def.parent == parent => {
-                            Some(def)
-                        }
+                        $item_variant(def) if def.name == name && def.parent == parent => Some(def),
                         _ => None,
                     })
                     .unwrap()

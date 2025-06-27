@@ -1,9 +1,9 @@
 use std::fs::File;
 
-use divan::{black_box, Bencher};
+use divan::{Bencher, black_box};
 use lintspec::{
-    lint::{lint, Validate as _, ValidationOptions},
-    parser::{slang::SlangParser, Parse as _, ParsedDocument},
+    lint::{Validate as _, ValidationOptions, lint},
+    parser::{Parse as _, ParsedDocument, slang::SlangParser},
 };
 
 const FILES: &[&str] = &[

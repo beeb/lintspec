@@ -1,6 +1,6 @@
 //! Parsing and validation of error definitions.
 use crate::{
-    lint::{check_notice_and_dev, check_params, ItemDiagnostics},
+    lint::{ItemDiagnostics, check_notice_and_dev, check_params},
     natspec::NatSpec,
 };
 
@@ -80,7 +80,7 @@ mod tests {
 
     use crate::{
         definitions::Definition,
-        parser::{slang::SlangParser, Parse as _},
+        parser::{Parse as _, slang::SlangParser},
     };
 
     use super::*;
