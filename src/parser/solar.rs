@@ -250,9 +250,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                     .iter_mut()
                     .for_each(|i| populate_span(&mapping, &mut i.span));
             }
-            Definition::NatspecParsingError(Error::NatspecParsingError {
-                ref mut span, ..
-            }) => {
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 populate_span(&mapping, span);
             }
             Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
