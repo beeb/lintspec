@@ -47,7 +47,7 @@ toml = "0.8.20"
 winnow = "0.7.2"
 
 [dev-dependencies]
-divan = { version = "2.10.1", package = "codspeed-divan-compat" }
+divan = { version = "3.0.2", package = "codspeed-divan-compat" }
 insta = "1.42.1"
 similar-asserts = "1.6.1"
 
