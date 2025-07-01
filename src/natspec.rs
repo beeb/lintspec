@@ -3,13 +3,14 @@ use std::ops::Range;
 
 use derive_more::IsVariant;
 use winnow::{
-    LocatingSlice, ModalResult, Parser,
+    LocatingSlice,
     ascii::{line_ending, space0, space1, till_line_ending},
     combinator::{alt, cut_err, delimited, not, opt, repeat, separated},
     error::{StrContext, StrContextValue},
     seq,
-    token::{take_till, take_until},
+    token::{rest, take_till, take_until},
 };
+pub use winnow::{ModalResult, Parser};
 
 use crate::definitions::{Identifier, TextIndex, TextRange};
 
@@ -179,12 +180,16 @@ impl From<NatSpecItem> for NatSpec {
 
 /// Parse a Solidity doc-comment to extract the `NatSpec` information
 pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
+    // consume input to avoid errors when used with `Parser::parse`
+    let input = rest::<&str, _>.parse_next(input)?;
+    // wrap in a `LocatingSlice` to track offsets/spans
     let (mut natspec, spans) = alt((single_line_comment, multiline_comment, empty_multiline))
         .parse_next(&mut LocatingSlice::new(input))?;
     if natspec.items.is_empty() {
         return Ok(natspec);
     }
 
+    // convert byte offsets to `TextIndex`
     let mut current_index = TextIndex::ZERO;
     let mut char_iter = input.chars().peekable();
     for (natspec_item, byte_span) in natspec.items.iter_mut().zip(spans.iter()) {
@@ -219,7 +224,7 @@ fn ident(input: &mut LocatingSlice<&str>) -> ModalResult<String> {
         .parse_next(input)
 }
 
-/// Parse a [`NatSpecKind`] (tag followed by an optional identifier)"
+/// Parse a [`NatSpecKind`] (tag followed by an optional identifier)
 ///
 /// For `@return`, the identifier, if present, is not included in the `NatSpecItem` for now. A post-processing
 /// step ([`NatSpecItem::populate_return`]) is needed to extract the name.
@@ -601,16 +606,16 @@ Another notice
 
     #[test]
     fn test_multiline_empty() {
-        let mut comment = "/**
+        let comment = "/**
         */";
-        let res = parse_comment.parse_next(&mut comment);
+        let res = parse_comment.parse(comment);
 
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
         assert_eq!(res, NatSpec::default());
 
-        let mut comment = "/** */";
-        let res = parse_comment.parse_next(&mut comment);
+        let comment = "/** */";
+        let res = parse_comment.parse(comment);
 
         assert!(res.is_ok(), "{res:?}");
         let res = res.unwrap();
