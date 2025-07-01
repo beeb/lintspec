@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.6.1] - 2025-06-27
+
+### Added
+
+- **(lint)** orphan params generate diagnostics ([#99](https://github.com/beeb/lintspec/pull/99)) - ([10de7ad](https://github.com/beeb/lintspec/commit/10de7adf96d7118148c8670fd1fd7dd557a840ad))
+
+- **(lint)** refine diagnostic range for extra params ([#100](https://github.com/beeb/lintspec/pull/100)) - ([56e1ef2](https://github.com/beeb/lintspec/commit/56e1ef2a7b80dcaaafb0acf120ece3ee0801b04f))
+
+
+
+### Changed
+
+- **(changelog)** automatically assign features to the "Added" group ([#94](https://github.com/beeb/lintspec/pull/94)) - ([eff452d](https://github.com/beeb/lintspec/commit/eff452dc0ab971977b37d20620d860ec019cb846))
+
+- **(flake)** reduce toolchain scope ([#96](https://github.com/beeb/lintspec/pull/96)) - ([d247d97](https://github.com/beeb/lintspec/commit/d247d974c6dea3ebff59f44c6d10901b62b418e8))
+
+
+-  rust edition 2024 ([#101](https://github.com/beeb/lintspec/pull/101)) - ([7498d5a](https://github.com/beeb/lintspec/commit/7498d5a463e7eafc2bea01bc62165a66ceeb8ff6))
+
+
+
+
+**Full Changelog**: [0.6.0...0.6.1](https://github.com/beeb/lintspec/compare/v0.6.0...v0.6.1)
+
 ## [0.6.0] - 2025-06-04
 
 ### Added
