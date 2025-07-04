@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.6.2] - 2025-07-04
+
+### Added
+
+- **(bench)** add more benchmarks ([#105](https://github.com/beeb/lintspec/pull/105)) - ([f2a3d9c](https://github.com/beeb/lintspec/commit/f2a3d9c1f60ca185d4bd8712886f1cba37366f59))
+
+
+
+### Changed
+
+- **(deps)** update deps ([#103](https://github.com/beeb/lintspec/pull/103)) - ([349bc06](https://github.com/beeb/lintspec/commit/349bc06f41f634178a8442500b26b65fb5600e90))
+
+
+
+### Fixed
+
+- **(natspec)** consume input in parser to avoid winnow errors ([#102](https://github.com/beeb/lintspec/pull/102)) - ([bf5e21f](https://github.com/beeb/lintspec/commit/bf5e21f1fe4d6836a669bacff687c16053424cf3))
+
+
+
+
+
+
+**Full Changelog**: [0.6.1...0.6.2](https://github.com/beeb/lintspec/compare/v0.6.1...v0.6.2)
+
 ## [0.6.1] - 2025-06-27
 
 ### Added
