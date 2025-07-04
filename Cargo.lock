@@ -1454,7 +1454,7 @@ dependencies = [
  "similar-asserts",
  "slang_solidity",
  "solar-parse",
- "thiserror 2.0.12",
+ "thiserror",
  "toml",
  "winnow",
 ]
@@ -1495,13 +1495,12 @@ checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 
 [[package]]
 name = "metaslang_cst"
-version = "0.18.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f39368da9228d99987bd8885b74c98eb93bfa94e9d348b351e646447781f94"
+version = "1.2.0"
+source = "git+https://github.com/NomicFoundation/slang#8e718dd31e98604330dc2345d73d19bdcaed43ec"
 dependencies = [
  "nom",
  "serde",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
@@ -1737,7 +1736,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1db05f56d34358a8b1066f67cbb203ee3e7ed2ba674a6263a1d5ec6db2204323"
 dependencies = [
  "memchr",
- "thiserror 2.0.12",
+ "thiserror",
  "ucd-trie",
 ]
 
@@ -2377,16 +2376,15 @@ dependencies = [
 
 [[package]]
 name = "slang_solidity"
-version = "0.18.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8aedd5543605d5a69ac186cf0afe69e3472b1e3898bdd864b40aa87356298cb"
+version = "1.2.0"
+source = "git+https://github.com/NomicFoundation/slang#8e718dd31e98604330dc2345d73d19bdcaed43ec"
 dependencies = [
  "metaslang_cst",
  "semver 1.0.26",
  "serde",
  "strum 0.26.3",
  "strum_macros 0.26.4",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
@@ -2461,7 +2459,7 @@ dependencies = [
  "solar-config",
  "solar-data-structures",
  "solar-macros",
- "thiserror 2.0.12",
+ "thiserror",
  "tracing",
  "unicode-width 0.2.1",
 ]
@@ -2661,31 +2659,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
 dependencies = [
- "thiserror-impl 2.0.12",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.104",
+ "thiserror-impl",
 ]
 
 [[package]]
