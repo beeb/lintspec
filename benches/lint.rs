@@ -11,6 +11,7 @@ const FILES: &[&str] = &[
     "test-data/ParserTest.sol",
     "test-data/InterfaceSample.sol",
     "test-data/LibrarySample.sol",
+    "test-data/Fuzzers.sol",
 ];
 
 fn main() {
@@ -43,6 +44,16 @@ fn lint_only(bencher: Bencher, path: &str) {
 #[divan::bench(args = FILES)]
 fn lint_e2e(bencher: Bencher, path: &str) {
     let parser = SlangParser::builder().skip_version_detection(true).build();
+    let options = ValidationOptions::default();
+    bencher.bench_local(move || {
+        black_box(lint(parser.clone(), path, &options, false).ok());
+    });
+}
+
+#[cfg(feature = "solar")]
+#[divan::bench(args = FILES)]
+fn lint_e2e_solar(bencher: Bencher, path: &str) {
+    let parser = lintspec::parser::solar::SolarParser {};
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
         black_box(lint(parser.clone(), path, &options, false).ok());
