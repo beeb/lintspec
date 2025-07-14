@@ -471,10 +471,10 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
         let mut sub_cursor = cursor.spawn().with_edges();
         let mut found = false;
         while sub_cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
-            if let Some(label) = sub_cursor.label() {
-                if label.to_string() != "name" {
-                    continue;
-                }
+            if let Some(label) = sub_cursor.label()
+                && label.to_string() != "name"
+            {
+                continue;
             }
             found = true;
             out.push(Identifier {
@@ -545,11 +545,11 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
     let mut iter = items.into_iter().rev().peekable();
     while let Some((_, item_line, item)) = iter.next() {
         res.push(item);
-        if let Some((next_kind, next_line, _)) = iter.peek() {
-            if next_kind == "MultiLineNatSpecComment" || *next_line < item_line - 1 {
-                // the next comments up should be ignored
-                break;
-            }
+        if let Some((next_kind, next_line, _)) = iter.peek()
+            && (next_kind == "MultiLineNatSpecComment" || *next_line < item_line - 1)
+        {
+            // the next comments up should be ignored
+            break;
         }
     }
     if res.is_empty() {
@@ -570,10 +570,10 @@ pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
     let mut cursor = cursor.spawn().with_edges();
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
-        if let Some(label) = cursor.label() {
-            if label.to_string() != "name" {
-                continue;
-            }
+        if let Some(label) = cursor.label()
+            && label.to_string() != "name"
+        {
+            continue;
         }
         out.push(Identifier {
             name: Some(cursor.node().unparse().trim().to_string()),

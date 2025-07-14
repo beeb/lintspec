@@ -135,10 +135,10 @@ impl NatSpecItem {
                 })
             })
             .map(ToOwned::to_owned);
-        if let Some(name) = &name {
-            if let Some(comment) = self.comment.strip_prefix(name) {
-                self.comment = comment.trim_start().to_string();
-            }
+        if let Some(name) = &name
+            && let Some(comment) = self.comment.strip_prefix(name)
+        {
+            self.comment = comment.trim_start().to_string();
         }
         self.kind = NatSpecKind::Return { name }
     }
