@@ -47,11 +47,11 @@ pub fn find_sol_files<T: AsRef<Path>>(
             path: path.as_ref().to_path_buf(),
             err,
         })?;
-        if let Some(ext) = path.extension() {
+        if let Some(ext) = path.extension()
+            && ext != "sol"
+        {
             // if users submit paths to non-solidity files, we ignore them
-            if ext != "sol" {
-                continue;
-            }
+            continue;
         }
         if let Some(ref mut w) = walker {
             w.add(path);

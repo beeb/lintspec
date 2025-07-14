@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment: crates-io
     steps:
       - name: Generate GitHub token
         uses: actions/create-github-app-token@v2
@@ -44,6 +45,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    environment: crates-io
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false

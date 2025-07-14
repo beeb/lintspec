@@ -543,11 +543,11 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
     let mut iter = items.into_iter().rev().peekable();
     while let Some((_, item_line, item)) = iter.next() {
         res.push(item);
-        if let Some((next_kind, next_line, _)) = iter.peek() {
-            if next_kind == "MultiLineNatSpecComment" || *next_line < item_line - 1 {
-                // the next comments up should be ignored
-                break;
-            }
+        if let Some((next_kind, next_line, _)) = iter.peek()
+            && (next_kind == "MultiLineNatSpecComment" || *next_line < item_line - 1)
+        {
+            // the next comments up should be ignored
+            break;
         }
     }
     if res.is_empty() {

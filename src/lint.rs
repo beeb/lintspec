@@ -325,14 +325,14 @@ pub fn check_params(
                 Some(_) => {}
             }
         }
-    } else if let Some(natspec) = natspec {
+    } else if let Some(natspec) = natspec
+        && natspec.has_param()
+    {
         // the rule is to forbid `@param`
-        if natspec.has_param() {
-            res.push(Diagnostic {
-                span: default_span,
-                message: "@param is forbidden".to_string(),
-            });
-        }
+        res.push(Diagnostic {
+            span: default_span,
+            message: "@param is forbidden".to_string(),
+        });
     }
     res.sort_unstable_by_key(|d| d.span.start.utf8);
     res
@@ -409,14 +409,14 @@ pub fn check_returns(
                 message: "too many unnamed returns".to_string(),
             });
         }
-    } else if let Some(natspec) = natspec {
+    } else if let Some(natspec) = natspec
+        && natspec.has_return()
+    {
         // the rule is to forbid `@return`
-        if natspec.has_return() {
-            res.push(Diagnostic {
-                span: default_span,
-                message: "@return is forbidden".to_string(),
-            });
-        }
+        res.push(Diagnostic {
+            span: default_span,
+            message: "@return is forbidden".to_string(),
+        });
     }
     res
 }

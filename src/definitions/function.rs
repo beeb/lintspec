@@ -94,21 +94,14 @@ impl Validate for FunctionDefinition {
             Visibility::Private => options.functions.private,
             Visibility::Public => options.functions.public,
         };
-        if let Some(natspec) = &self.natspec {
-            // if there is `inheritdoc`, no further validation is required
-            if natspec
+        if let Some(natspec) = &self.natspec
+            && natspec
                 .items
                 .iter()
                 .any(|n| matches!(n.kind, NatSpecKind::Inheritdoc { .. }))
-            {
-                return out;
-            } else if options.inheritdoc && self.requires_inheritdoc() {
-                out.diags.push(Diagnostic {
-                    span: self.span(),
-                    message: "@inheritdoc is missing".to_string(),
-                });
-                return out;
-            }
+        {
+            // if there is `inheritdoc`, no further validation is required
+            return out;
         } else if options.inheritdoc && self.requires_inheritdoc() {
             out.diags.push(Diagnostic {
                 span: self.span(),
