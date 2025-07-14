@@ -2,8 +2,8 @@
 use solar_parse::{
     Parser,
     ast::{
-        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, Span,
-        VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, ParameterList, Span,
+        Spanned, VariableDefinition,
         interface::{
             Session,
             source_map::{FileName, SourceMap},
@@ -373,9 +373,9 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params = variable_definitions_to_identifiers(self.header.parameters, visitor);
+        let params = variable_definitions_to_identifiers(Some(&self.header.parameters), visitor);
 
-        let returns = variable_definitions_to_identifiers(self.header.returns, visitor);
+        let returns = variable_definitions_to_identifiers(self.header.returns.as_ref(), visitor);
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
                 || {
@@ -562,7 +562,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
 
 impl Extract for &solar_parse::ast::ItemError<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params = variable_definitions_to_identifiers(self.parameters, visitor);
+        let params = variable_definitions_to_identifiers(Some(&self.parameters), visitor);
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
@@ -592,7 +592,7 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
 
 impl Extract for &solar_parse::ast::ItemEvent<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let params = variable_definitions_to_identifiers(self.parameters, visitor);
+        let params = variable_definitions_to_identifiers(Some(&self.parameters), visitor);
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => extracted.map_or_else(
@@ -635,9 +635,12 @@ impl From<&ItemContract<'_>> for Parent {
 
 /// Convert a list of [`VariableDefinition`] (used for fn params or returns) into an [`Identifier`]
 fn variable_definitions_to_identifiers(
-    variable_definitions: &[VariableDefinition<'_>],
+    variable_definitions: Option<&ParameterList>,
     visitor: &mut LintspecVisitor,
 ) -> Vec<Identifier> {
+    let Some(variable_definitions) = variable_definitions else {
+        return Vec::new();
+    };
     variable_definitions
         .iter()
         .map(|r: &VariableDefinition<'_>| {
@@ -700,9 +703,23 @@ fn extract_natspec(
     Ok(Some((combined, docs.span())))
 }
 
+/// Convert a spanned [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
+impl From<Option<Spanned<solar_parse::ast::Visibility>>> for Visibility {
+    fn from(visibility: Option<Spanned<solar_parse::ast::Visibility>>) -> Self {
+        visibility.as_deref().into()
+    }
+}
+
 /// Convert solar's [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
 impl From<Option<solar_parse::ast::Visibility>> for Visibility {
     fn from(visibility: Option<solar_parse::ast::Visibility>) -> Self {
+        visibility.as_ref().into()
+    }
+}
+
+/// Convert a reference to [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
+impl From<Option<&solar_parse::ast::Visibility>> for Visibility {
+    fn from(visibility: Option<&solar_parse::ast::Visibility>) -> Self {
         match visibility {
             Some(solar_parse::ast::Visibility::Public) => Visibility::Public,
             Some(solar_parse::ast::Visibility::Private) => Visibility::Private,
