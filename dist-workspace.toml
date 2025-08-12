@@ -24,3 +24,6 @@ runner = "ubuntu-22.04"
 
 [dist.github-custom-runners.aarch64-unknown-linux-gnu]
 runner = "ubuntu-22.04"
+
+[dist.github-custom-runners.x86_64-pc-windows-msvc]
+runner = "windows-latest"
