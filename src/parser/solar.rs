@@ -75,7 +75,7 @@ impl Parse for SolarParser {
             .build();
 
         let definitions = sess
-            .enter(|| -> solar_parse::interface::Result<_> {
+            .enter_sequential(|| -> solar_parse::interface::Result<_> {
                 let arena = solar_parse::ast::Arena::new();
 
                 let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
