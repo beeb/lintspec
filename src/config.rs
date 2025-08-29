@@ -1,5 +1,5 @@
 //! Tool configuration parsing and validation
-use std::{fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -587,7 +587,10 @@ pub struct Args {
 
 /// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
 pub fn read_config(args: Args) -> Result<Config> {
-    let mut config: Config = Config::figment(args.config).extract()?;
+    let config_path = args
+        .config
+        .or_else(|| env::var("LS_CONFIG_PATH").ok().map(Into::into));
+    let mut config: Config = Config::figment(config_path).extract()?;
     // paths
     config.lintspec.paths.extend(args.paths);
     config.lintspec.exclude.extend(args.exclude);
