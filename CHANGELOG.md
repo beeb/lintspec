@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file. See [conven
 
 ### Added
 
-- **(config)** add config path CLI argument ([#121](https://github.com/beeb/lintspec/pull/121)) - ([465ced3](https://github.com/beeb/lintspec/commit/465ced31f62954157664ccbb4c7b810d1415f542))
+- **(config)** [**breaking**] add config path CLI argument ([#121](https://github.com/beeb/lintspec/pull/121)) - ([465ced3](https://github.com/beeb/lintspec/commit/465ced31f62954157664ccbb4c7b810d1415f542))
 
 
 
