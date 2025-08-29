@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.7.0] - 2025-08-29
+
+### Added
+
+- **(config)** add config path CLI argument ([#121](https://github.com/beeb/lintspec/pull/121)) - ([465ced3](https://github.com/beeb/lintspec/commit/465ced31f62954157664ccbb4c7b810d1415f542))
+
+
+
+### Changed
+
+- **(deps)** update deps ([#117](https://github.com/beeb/lintspec/pull/117)) - ([d728fb1](https://github.com/beeb/lintspec/commit/d728fb12343b5d141f335b926ca539f5cd805eb0))
+
+
+-  update actions in cargo-dist ([#116](https://github.com/beeb/lintspec/pull/116)) - ([6c93c22](https://github.com/beeb/lintspec/commit/6c93c22a7c64544d73917125b6c0ea40fb1a3b4d))
+
+
+
+
+**Full Changelog**: [0.6.2...0.7.0](https://github.com/beeb/lintspec/compare/v0.6.2...v0.7.0)
+
 ## [0.6.2] - 2025-08-12
 
 ### Added
