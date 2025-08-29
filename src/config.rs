@@ -1,5 +1,5 @@
 //! Tool configuration parsing and validation
-use std::{fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -405,9 +405,9 @@ impl Config {
 
     /// Create a Figment which reads the config from the default file and environment variables
     #[must_use]
-    pub fn figment() -> Figment {
+    pub fn figment(config_path: Option<PathBuf>) -> Figment {
         Figment::from(Config::default())
-            .admerge(Toml::file(".lintspec.toml"))
+            .admerge(Toml::file(config_path.unwrap_or(".lintspec.toml".into())))
             .admerge(Env::prefixed("LS_").split("_").map(|k| {
                 // special case for parameters with an underscore in the name
                 match k.as_str() {
@@ -451,6 +451,12 @@ pub struct Args {
     /// To exclude paths based on a pattern, use a `.nsignore` file (same syntax as `.gitignore`).
     #[arg(short, long, value_hint = clap::ValueHint::AnyPath)]
     pub exclude: Vec<PathBuf>,
+
+    /// Optional path to a TOML config file
+    ///
+    /// If unspecified, the default path is `./.lintspec.toml`.
+    #[arg(long, value_hint = clap::ValueHint::FilePath)]
+    pub config: Option<PathBuf>,
 
     /// Write output to a file instead of stderr
     #[arg(short, long, value_hint = clap::ValueHint::FilePath)]
@@ -581,7 +587,10 @@ pub struct Args {
 
 /// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
 pub fn read_config(args: Args) -> Result<Config> {
-    let mut config: Config = Config::figment().extract()?;
+    let config_path = args
+        .config
+        .or_else(|| env::var("LS_CONFIG_PATH").ok().map(Into::into));
+    let mut config: Config = Config::figment(config_path).extract()?;
     // paths
     config.lintspec.paths.extend(args.paths);
     config.lintspec.exclude.extend(args.exclude);
