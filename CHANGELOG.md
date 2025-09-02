@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.7.1] - 2025-09-02
+
+### Changed
+
+
+-  make parser optional ([#124](https://github.com/beeb/lintspec/pull/124)) - ([3cde643](https://github.com/beeb/lintspec/commit/3cde64362167258ad3a3fa88083e8cf6e851e2f7))
+
+
+
+
+**Full Changelog**: [0.7.0...0.7.1](https://github.com/beeb/lintspec/compare/v0.7.0...v0.7.1)
+
 ## [0.7.0] - 2025-08-29
 
 ### Added
