@@ -102,7 +102,7 @@ impl Validate for ModifierDefinition {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "slang"))]
 mod tests {
     use std::sync::LazyLock;
 

@@ -1,3 +1,4 @@
+#![cfg(feature = "slang")]
 use lintspec::lint::ValidationOptions;
 
 mod common;

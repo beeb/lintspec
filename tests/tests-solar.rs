@@ -1,4 +1,4 @@
-#![cfg(feature = "solar")]
+#![cfg(all(feature = "slang", feature = "solar"))]
 use lintspec::{
     lint::{ValidationOptions, lint},
     parser::{slang::SlangParser, solar::SolarParser},

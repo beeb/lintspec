@@ -20,7 +20,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
       - uses: taiki-e/install-action@cargo-hack
       - name: Run tests
-        run: cargo hack nextest run --feature-powerset --depth 2
+        run: cargo hack nextest run --feature-powerset --exclude-no-default-features
 
   doctests:
     runs-on: ubuntu-latest
@@ -53,11 +53,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo doc --all-features --no-deps --document-private-items
+      - run: cargo +nightly doc --all-features --no-deps --document-private-items
         env:
           RUSTDOCFLAGS: '--cfg docsrs -D warnings'
 
@@ -82,7 +82,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: cargo hack
-        run: cargo hack check --feature-powerset --depth 2
+        run: cargo hack check --feature-powerset --exclude-no-default-features
 
   deny:
     runs-on: ubuntu-latest

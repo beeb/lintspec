@@ -1,3 +1,4 @@
+#![cfg(feature = "slang")]
 use lintspec::{
     config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::ValidationOptions,
