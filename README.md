@@ -190,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.4.1
+      - uses: beeb/lintspec@v0.7.0
         # all the lines below are optional
         with:
           working-directory: "./"
