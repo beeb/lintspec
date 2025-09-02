@@ -32,6 +32,7 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               cargo-dist
+              cargo-hack
               cargo-insta
               cargo-nextest
               toolchain

@@ -23,7 +23,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build -F solar
+        run: cargo codspeed build --all-features
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v3

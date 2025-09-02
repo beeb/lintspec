@@ -72,7 +72,7 @@ impl Validate for ErrorDefinition {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "slang"))]
 mod tests {
     use std::sync::LazyLock;
 

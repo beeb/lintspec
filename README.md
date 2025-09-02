@@ -72,7 +72,7 @@ An experimental (and very fast) parsing backend using [Solar](https://github.com
 by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
 
 ```bash
-cargo install lintspec -F solar
+cargo install lintspec --no-default-features -F solar
 ```
 
 With this backend, the parsing step is roughly 15x faster than with the default
@@ -94,6 +94,7 @@ Arguments:
 
 Options:
   -e, --exclude <EXCLUDE>        Path to a file or folder to exclude (can be used more than once)
+      --config <CONFIG>          Optional path to a TOML config file
   -o, --out <OUT>                Write output to a file instead of stderr
       --inheritdoc               Enforce that all public and external items have `@inheritdoc`
       --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
@@ -134,9 +135,11 @@ This will create a `.lintspec.toml` file with the default configuration in the c
 Environment variables (in capitals, with the `LS_` prefix) can also be used and take precedence over the
 configuration file. They use the same names as in the TOML config file and use the `_` character as delimiter for
 nested items.
+An additional `LS_CONFIG_PATH` variable is available to set an optional path to the TOML file (the default is `./.lintspec.toml`).
 
 Examples:
 
+- `LS_CONFIG_PATH=.config/lintspec.toml`
 - `LS_LINTSPEC_PATHS=[src,test]`
 - `LS_LINTSPEC_INHERITDOC=false`
 - `LS_LINTSPEC_NOTICE_OR_DEV=true`: if the setting name contains `_`, it is not considered a delimiter
@@ -187,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.6.0
+      - uses: beeb/lintspec@v0.7.0
         # all the lines below are optional
         with:
           working-directory: "./"
