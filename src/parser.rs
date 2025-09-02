@@ -3,8 +3,11 @@ use std::{io, path::Path};
 
 use crate::{definitions::Definition, error::Result};
 
+#[cfg_attr(docsrs, doc(cfg(feature = "slang")))]
+#[cfg(feature = "slang")]
 pub mod slang;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "solar")))]
 #[cfg(feature = "solar")]
 pub mod solar;
 

@@ -10,7 +10,7 @@ use lintspec::{
     print_reports,
 };
 
-#[cfg(not(feature = "solar"))]
+#[cfg(feature = "slang")]
 use lintspec::parser::slang::SlangParser;
 
 #[cfg(feature = "solar")]
@@ -19,6 +19,9 @@ use lintspec::parser::solar::SolarParser;
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 fn main() -> Result<()> {
+    #[cfg(not(any(feature = "slang", feature = "solar")))]
+    compile_error!("no parser enabled, please enable feature `slang` or `solar`.");
+
     dotenvy::dotenv().ok(); // load .env file if present
 
     // parse config from CLI args, environment variables and the `.lintspec.toml` file.
@@ -45,13 +48,14 @@ fn main() -> Result<()> {
     // lint all the requested Solidity files
     let options: ValidationOptions = (&config).into();
 
-    #[cfg(feature = "solar")]
-    let parser = SolarParser {};
-
-    #[cfg(not(feature = "solar"))]
+    #[allow(unused_variables)]
+    #[cfg(feature = "slang")]
     let parser = SlangParser::builder()
         .skip_version_detection(config.lintspec.skip_version_detection)
         .build();
+
+    #[cfg(feature = "solar")]
+    let parser = SolarParser {};
 
     let diagnostics = paths
         .par_iter()

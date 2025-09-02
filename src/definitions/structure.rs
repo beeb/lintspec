@@ -72,7 +72,7 @@ impl Validate for StructDefinition {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "slang"))]
 mod tests {
     use std::sync::LazyLock;
 

@@ -1,4 +1,5 @@
 #![allow(clippy::doc_markdown)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 use std::{io, path::Path, sync::Arc};
 
@@ -12,6 +13,9 @@ pub mod files;
 pub mod lint;
 pub mod natspec;
 pub mod parser;
+
+#[cfg_attr(docsrs, doc(cfg(feature = "slang")))]
+#[cfg(feature = "slang")]
 pub mod utils;
 
 /// Print the reports for a given file, either as pretty or compact text output

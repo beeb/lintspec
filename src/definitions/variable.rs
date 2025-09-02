@@ -129,7 +129,7 @@ impl Validate for VariableDeclaration {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "slang"))]
 mod tests {
     use std::sync::LazyLock;
 

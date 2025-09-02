@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use divan::{Bencher, black_box};
-use lintspec::parser::{Parse, ParsedDocument, slang::SlangParser};
+use lintspec::parser::{Parse, ParsedDocument};
 
 const FILES: &[&str] = &[
     "test-data/BasicSample.sol",
@@ -20,9 +20,12 @@ fn parse_file(mut parser: impl Parse, path: &str) -> ParsedDocument {
     parser.parse_document(file, Some(path), false).unwrap()
 }
 
+#[cfg(feature = "slang")]
 #[divan::bench(args = FILES)]
 fn parse_slang(bencher: Bencher, path: &str) {
-    let parser = SlangParser::builder().skip_version_detection(true).build();
+    let parser = lintspec::parser::slang::SlangParser::builder()
+        .skip_version_detection(true)
+        .build();
     bencher.bench_local(move || {
         black_box(parse_file(parser.clone(), path));
     });

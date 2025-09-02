@@ -2,7 +2,7 @@ name: Main workflow
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
 
 env:
@@ -20,7 +20,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
       - uses: taiki-e/install-action@cargo-hack
       - name: Run tests
-        run: cargo hack nextest run --feature-powerset --depth 2
+        run: cargo hack nextest run --feature-powerset --exclude-no-default-features
 
   doctests:
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
           cache-on-failure: true
       - run: cargo doc --all-features --no-deps --document-private-items
         env:
-          RUSTDOCFLAGS: '--cfg docsrs -D warnings'
+          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
 
   fmt:
     runs-on: ubuntu-latest

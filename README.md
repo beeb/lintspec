@@ -72,7 +72,7 @@ An experimental (and very fast) parsing backend using [Solar](https://github.com
 by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
 
 ```bash
-cargo install lintspec -F solar
+cargo install lintspec --no-default-features -F solar
 ```
 
 With this backend, the parsing step is roughly 15x faster than with the default

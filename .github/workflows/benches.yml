@@ -2,7 +2,7 @@ name: CodSpeed
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
   # `workflow_dispatch` allows CodSpeed to trigger backtest
   # performance analysis in order to generate initial data.
@@ -23,7 +23,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build -F solar
+        run: cargo codspeed build --all-features
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v3
