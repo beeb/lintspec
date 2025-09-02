@@ -2,7 +2,7 @@ name: Main workflow
 
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
   pull_request:
 
 env:
@@ -59,7 +59,7 @@ jobs:
           cache-on-failure: true
       - run: cargo doc --all-features --no-deps --document-private-items
         env:
-          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
+          RUSTDOCFLAGS: '--cfg docsrs -D warnings'
 
   fmt:
     runs-on: ubuntu-latest
