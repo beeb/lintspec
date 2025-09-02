@@ -4,7 +4,6 @@ use std::{fmt::Write as _, path::Path, sync::LazyLock};
 use regex::Regex;
 pub use semver;
 use semver::{Version, VersionReq};
-
 use slang_solidity::{
     cst::{NonterminalKind, Query, TextIndex},
     parser::Parser,
