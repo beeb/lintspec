@@ -57,7 +57,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo doc --all-features --no-deps --document-private-items
+      - run: cargo +nightly doc --all-features --no-deps --document-private-items
         env:
           RUSTDOCFLAGS: '--cfg docsrs -D warnings'
 
