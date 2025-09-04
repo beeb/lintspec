@@ -36,7 +36,29 @@ use crate::{
 use std::collections::HashMap;
 
 #[derive(Clone)]
-pub struct SolarParser {}
+pub struct SolarParser {
+    sess: Arc<Session>,
+}
+
+impl Default for SolarParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SolarParser {
+    #[must_use]
+    pub fn new() -> Self {
+        let source_map = SourceMap::empty();
+        let sess = Session::builder()
+            .source_map(Arc::new(source_map))
+            .with_buffer_emitter(ColorChoice::Auto)
+            .build();
+        Self {
+            sess: Arc::new(sess),
+        }
+    }
+}
 
 /// A parser using the [`solar_parse`] crate
 impl Parse for SolarParser {
@@ -49,7 +71,6 @@ impl Parse for SolarParser {
         let pathbuf = path
             .as_ref()
             .map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
-        let source_map = SourceMap::empty();
         let mut buf = String::new();
         input
             .read_to_string(&mut buf)
@@ -57,31 +78,28 @@ impl Parse for SolarParser {
                 path: pathbuf.clone(),
                 err,
             })?;
+        let source_map = self.sess.source_map();
         let source_file = source_map
             .new_source_file(
                 path.as_ref().map_or(FileName::Stdin, |p| {
                     FileName::Real(p.as_ref().to_path_buf())
                 }),
-                buf,
+                &buf,
             ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
                 path: pathbuf.clone(),
                 err,
             })?;
-        let source_map = Arc::new(source_map);
-        let sess = Session::builder()
-            .source_map(Arc::clone(&source_map))
-            .with_buffer_emitter(ColorChoice::Auto)
-            .build();
 
-        let definitions = sess
+        let definitions = self
+            .sess
             .enter_sequential(|| -> solar_parse::interface::Result<_> {
                 let arena = solar_parse::ast::Arena::new();
 
-                let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
+                let mut parser = Parser::from_source_file(&self.sess, &arena, &source_file);
 
                 let ast = parser.parse_file().map_err(|err| err.emit())?;
-                let mut visitor = LintspecVisitor::new(&source_map);
+                let mut visitor = LintspecVisitor::new(source_map);
 
                 let _ = visitor.visit_source_unit(&ast);
                 Ok(visitor.definitions)
@@ -89,24 +107,17 @@ impl Parse for SolarParser {
             .map_err(|_| Error::ParsingError {
                 path: pathbuf,
                 loc: TextIndex::ZERO,
-                message: sess
+                message: self
+                    .sess
                     .emitted_errors()
                     .expect("should have a Result")
                     .unwrap_err()
                     .to_string(),
             })?;
 
-        drop(source_map);
-        drop(sess);
-        let source_file =
-            Arc::into_inner(source_file).expect("all Arc references should have been dropped");
-
         Ok(ParsedDocument {
             definitions: complete_text_ranges(&source_file.src, definitions),
-            contents: keep_contents.then_some(
-                Arc::into_inner(source_file.src)
-                    .expect("all Arc references should have been dropped"),
-            ),
+            contents: keep_contents.then_some(buf),
         })
     }
 }

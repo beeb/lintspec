@@ -15,7 +15,7 @@ pub fn snapshot_content(path: &str, options: &ValidationOptions, keep_contents: 
     #[cfg(feature = "solar")]
     {
         let diags_solar = lint(
-            lintspec::parser::solar::SolarParser {},
+            lintspec::parser::solar::SolarParser::default(),
             path,
             options,
             keep_contents,

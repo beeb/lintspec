@@ -16,7 +16,7 @@ fn test_basic() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::default(),
         false,
@@ -37,7 +37,7 @@ fn test_fuzzers() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/Fuzzers.sol",
         &ValidationOptions::default(),
         false,
@@ -58,7 +58,7 @@ fn test_interface() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::default(),
         false,
@@ -79,7 +79,7 @@ fn test_library() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/LibrarySample.sol",
         &ValidationOptions::default(),
         false,
@@ -100,7 +100,7 @@ fn test_parsertest() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/ParserTest.sol",
         &ValidationOptions::default(),
         false,

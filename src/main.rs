@@ -55,7 +55,7 @@ fn main() -> Result<()> {
         .build();
 
     #[cfg(feature = "solar")]
-    let parser = SolarParser {};
+    let parser = SolarParser::default();
 
     let diagnostics = paths
         .par_iter()

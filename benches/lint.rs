@@ -58,7 +58,7 @@ fn lint_e2e(bencher: Bencher, path: &str) {
 #[cfg(feature = "solar")]
 #[divan::bench(args = FILES)]
 fn lint_e2e_solar(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::solar::SolarParser {};
+    let parser = lintspec::parser::solar::SolarParser::default();
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
         black_box(lint(parser.clone(), path, &options, false).ok());
