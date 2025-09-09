@@ -75,8 +75,8 @@ by installing with the `solar` feature flag enabled. This is only possible via `
 cargo install lintspec --no-default-features -F solar
 ```
 
-With this backend, the parsing step is roughly 15x faster than with the default
-[`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 2-3x can be expected on the
+With this backend, the parsing step is roughly 30x faster than with the default
+[`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 4-5x can be expected on the
 total execution time.
 **Note that Solar only supports Solidity >=0.8.0.**
 
@@ -229,20 +229,20 @@ Summary
   322.47 ± 16.01 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
 ```
 
-Using the experimental [Solar](https://github.com/paradigmxyz/solar) backend improves that by a further factor of 2-3x:
+Using the experimental [Solar](https://github.com/paradigmxyz/solar) backend improves that by a further factor of 4-5x:
 
 ```text
 Benchmark 1: lintspec src --compact --skip-version-detection
-  Time (mean ± σ):      44.8 ms ±   1.9 ms    [User: 308.8 ms, System: 49.8 ms]
-  Range (min … max):    41.3 ms …  49.9 ms    69 runs
+  Time (mean ± σ):      58.4 ms ±   4.3 ms    [User: 484.7 ms, System: 16.6 ms]
+  Range (min … max):    50.1 ms …  66.9 ms    52 runs
 
 Benchmark 2: lintspec-solar src --compact
-  Time (mean ± σ):      19.7 ms ±   0.7 ms    [User: 15.0 ms, System: 30.7 ms]
-  Range (min … max):    18.5 ms …  21.9 ms    143 runs
+  Time (mean ± σ):      12.2 ms ±   1.3 ms    [User: 21.5 ms, System: 8.5 ms]
+  Range (min … max):     9.9 ms …  16.5 ms    183 runs
 
 Summary
   lintspec-solar src --compact ran
-    2.27 ± 0.13 times faster than lintspec src --compact --skip-version-detection
+    4.77 ± 0.62 times faster than lintspec src --compact --skip-version-detection
 ```
 
 ### Features
