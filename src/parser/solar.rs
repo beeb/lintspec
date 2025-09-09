@@ -10,7 +10,7 @@ use solar_parse::{
         },
         visit::Visit,
     },
-    interface::ColorChoice,
+    interface::{ColorChoice, source_map::SourceFile},
 };
 use std::{
     collections::BTreeSet,
@@ -18,7 +18,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     str::FromStr as _,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use crate::{
@@ -30,13 +30,39 @@ use crate::{
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
-    parser::{Parse, ParsedDocument},
+    parser::{DocumentId, Parse, ParsedDocument},
 };
 
 use std::collections::HashMap;
 
+type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
+
 #[derive(Clone)]
-pub struct SolarParser {}
+pub struct SolarParser {
+    sess: Arc<Session>,
+    documents: Arc<Mutex<Documents>>,
+}
+
+impl Default for SolarParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SolarParser {
+    #[must_use]
+    pub fn new() -> Self {
+        let source_map = SourceMap::empty();
+        let sess = Session::builder()
+            .source_map(Arc::new(source_map))
+            .with_buffer_emitter(ColorChoice::Auto)
+            .build();
+        Self {
+            sess: Arc::new(sess),
+            documents: Arc::new(Mutex::new(Vec::default())),
+        }
+    }
+}
 
 /// A parser using the [`solar_parse`] crate
 impl Parse for SolarParser {
@@ -49,7 +75,6 @@ impl Parse for SolarParser {
         let pathbuf = path
             .as_ref()
             .map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
-        let source_map = SourceMap::empty();
         let mut buf = String::new();
         input
             .read_to_string(&mut buf)
@@ -57,6 +82,7 @@ impl Parse for SolarParser {
                 path: pathbuf.clone(),
                 err,
             })?;
+        let source_map = self.sess.source_map();
         let source_file = source_map
             .new_source_file(
                 path.as_ref().map_or(FileName::Stdin, |p| {
@@ -68,20 +94,16 @@ impl Parse for SolarParser {
                 path: pathbuf.clone(),
                 err,
             })?;
-        let source_map = Arc::new(source_map);
-        let sess = Session::builder()
-            .source_map(Arc::clone(&source_map))
-            .with_buffer_emitter(ColorChoice::Auto)
-            .build();
 
-        let definitions = sess
+        let definitions = self
+            .sess
             .enter_sequential(|| -> solar_parse::interface::Result<_> {
                 let arena = solar_parse::ast::Arena::new();
 
-                let mut parser = Parser::from_source_file(&sess, &arena, &source_file);
+                let mut parser = Parser::from_source_file(&self.sess, &arena, &source_file);
 
                 let ast = parser.parse_file().map_err(|err| err.emit())?;
-                let mut visitor = LintspecVisitor::new(&source_map);
+                let mut visitor = LintspecVisitor::new(source_map);
 
                 let _ = visitor.visit_source_unit(&ast);
                 Ok(visitor.definitions)
@@ -89,25 +111,43 @@ impl Parse for SolarParser {
             .map_err(|_| Error::ParsingError {
                 path: pathbuf,
                 loc: TextIndex::ZERO,
-                message: sess
+                message: self
+                    .sess
                     .emitted_errors()
                     .expect("should have a Result")
                     .unwrap_err()
                     .to_string(),
             })?;
 
-        drop(source_map);
-        drop(sess);
-        let source_file =
-            Arc::into_inner(source_file).expect("all Arc references should have been dropped");
-
+        let document_id = DocumentId::new();
+        if keep_contents {
+            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
+            documents.push((document_id, Arc::clone(&source_file)));
+        }
         Ok(ParsedDocument {
             definitions: complete_text_ranges(&source_file.src, definitions),
-            contents: keep_contents.then_some(
-                Arc::into_inner(source_file.src)
-                    .expect("all Arc references should have been dropped"),
-            ),
+            id: document_id,
         })
+    }
+
+    fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
+        let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
+        drop(sess);
+        Ok(Arc::try_unwrap(self.documents)
+            .expect("all references should have been dropped")
+            .into_inner()
+            .expect("mutex should not be poisoned")
+            .into_iter()
+            .map(|(id, doc)| {
+                let source_file = Arc::try_unwrap(doc)
+                    .expect("all SourceMap references should have been dropped");
+                (
+                    id,
+                    Arc::try_unwrap(source_file.src)
+                        .expect("all SourceFile references should have been dropped"),
+                )
+            })
+            .collect())
     }
 }
 

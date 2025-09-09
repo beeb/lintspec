@@ -27,6 +27,7 @@ pub fn print_reports(
     f: &mut impl io::Write,
     root_path: impl AsRef<Path>,
     file_diags: FileDiagnostics,
+    contents: String,
     compact: bool,
 ) -> std::result::Result<(), io::Error> {
     if compact {
@@ -38,10 +39,7 @@ pub fn print_reports(
             Ok(relative_path) => relative_path.to_string_lossy(),
             Err(_) => file_diags.path.to_string_lossy(),
         };
-        let source = Arc::new(NamedSource::new(
-            source_name,
-            file_diags.contents.unwrap_or_default(),
-        ));
+        let source = Arc::new(NamedSource::new(source_name, contents));
         for item_diags in file_diags.items {
             print_report(f, Arc::clone(&source), item_diags)?;
         }

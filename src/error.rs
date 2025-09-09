@@ -33,6 +33,11 @@ pub enum Error {
         message: String,
     },
 
+    /// [`Parse::get_sources`][crate::parser::Parse::get_sources] was called while other references (clones) still
+    /// existed
+    #[error("`Parse::get_sources` can only be called on the last parser instance")]
+    DanglingParserReferences,
+
     /// IO error
     #[error("IO error for {path:?}: {err}")]
     IOError { path: PathBuf, err: std::io::Error },

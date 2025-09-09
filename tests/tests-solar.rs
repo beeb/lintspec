@@ -16,14 +16,14 @@ fn test_basic() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/BasicSample.sol",
         &ValidationOptions::default(),
         false,
     )
     .unwrap()
     .unwrap();
-    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
 }
 
 #[test]
@@ -37,14 +37,14 @@ fn test_fuzzers() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/Fuzzers.sol",
         &ValidationOptions::default(),
         false,
     )
     .unwrap()
     .unwrap();
-    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
 }
 
 #[test]
@@ -58,14 +58,14 @@ fn test_interface() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/InterfaceSample.sol",
         &ValidationOptions::default(),
         false,
     )
     .unwrap()
     .unwrap();
-    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
 }
 
 #[test]
@@ -79,14 +79,14 @@ fn test_library() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/LibrarySample.sol",
         &ValidationOptions::default(),
         false,
     )
     .unwrap()
     .unwrap();
-    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
 }
 
 #[test]
@@ -100,12 +100,12 @@ fn test_parsertest() {
     .unwrap()
     .unwrap();
     let diags_solar = lint(
-        SolarParser {},
+        SolarParser::default(),
         "./test-data/ParserTest.sol",
         &ValidationOptions::default(),
         false,
     )
     .unwrap()
     .unwrap();
-    assert_eq!(slang: format!("{diags_slang:#?}"), solar: format!("{diags_solar:#?}"));
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
 }

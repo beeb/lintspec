@@ -17,7 +17,7 @@ use crate::{
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
     natspec::{NatSpec, NatSpecKind},
-    parser::{Parse, ParsedDocument},
+    parser::{DocumentId, Parse, ParsedDocument},
 };
 
 /// Diagnostics for a single Solidity file
@@ -27,9 +27,11 @@ pub struct FileDiagnostics {
     /// Path to the file
     pub path: PathBuf,
 
-    /// Contents of the file (can be an empty string if pretty output is not activated)
+    /// A unique ID for the document given by the parser
+    ///
+    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_sources`]).
     #[serde(skip_serializing)]
-    pub contents: Option<String>,
+    pub document_id: DocumentId,
 
     /// Diagnostics, grouped by source item (function, struct, etc.)
     pub items: Vec<ItemDiagnostics>,
@@ -133,7 +135,7 @@ pub fn lint(
         items.sort_unstable_by_key(|i| i.span.start);
         Some(FileDiagnostics {
             path: path.to_path_buf(),
-            contents: document.contents,
+            document_id: document.id,
             items,
         })
     }
