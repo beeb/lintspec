@@ -111,7 +111,7 @@ contract BasicSample is AbstractBasic {
     /**
      * @notice Modifier notice
      */
-    modifier transferFee(uint256 _receiver) {
+    modifier transferFee(uint256 _receiver) virtual {
         _;
     }
 
@@ -124,4 +124,14 @@ contract BasicSample is AbstractBasic {
      * @dev This func must be ignored
      */
     fallback() external {}
+}
+
+contract ChildContract is BasicSample {
+    constructor() BasicSample(true) {}
+
+    /// @dev inheritdoc is missing
+    /// @param _receiver the receiver
+    modifier transferFee(uint256 _receiver) override {
+        _;
+    }
 }

@@ -149,9 +149,13 @@ pub fn lint(
 #[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
 #[non_exhaustive]
 pub struct ValidationOptions {
-    /// Whether overridden, public and external functions should have an `@inheritdoc`
+    /// Whether public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+
+    /// Whether `override` internal functions and modifiers should have an `@inheritdoc`
+    #[builder(default = false)]
+    pub inheritdoc_override: bool,
 
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     #[builder(default)]
@@ -198,6 +202,7 @@ impl Default for ValidationOptions {
     fn default() -> Self {
         Self {
             inheritdoc: true,
+            inheritdoc_override: false,
             notice_or_dev: false,
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
@@ -216,6 +221,7 @@ impl From<Config> for ValidationOptions {
     fn from(value: Config) -> Self {
         Self {
             inheritdoc: value.lintspec.inheritdoc,
+            inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             constructors: value.constructors,
             enums: value.enums,
@@ -234,6 +240,7 @@ impl From<&Config> for ValidationOptions {
     fn from(value: &Config) -> Self {
         Self {
             inheritdoc: value.lintspec.inheritdoc,
+            inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
