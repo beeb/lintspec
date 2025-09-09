@@ -36,7 +36,7 @@ pub struct SlangParser {
     #[builder(default)]
     pub skip_version_detection: bool,
 
-    #[builder(default)]
+    #[builder(skip)]
     documents: Arc<Mutex<HashMap<DocumentId, String>>>,
 }
 
