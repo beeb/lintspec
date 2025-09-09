@@ -130,9 +130,10 @@ impl Parse for SolarParser {
         })
     }
 
-    fn get_sources(self) -> HashMap<DocumentId, String> {
-        drop(self.sess);
-        Arc::try_unwrap(self.documents)
+    fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
+        let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
+        drop(sess);
+        Ok(Arc::try_unwrap(self.documents)
             .expect("all references should have been dropped")
             .into_inner()
             .expect("mutex should not be poisoned")
@@ -146,7 +147,7 @@ impl Parse for SolarParser {
                         .expect("all SourceFile references should have been dropped"),
                 )
             })
-            .collect()
+            .collect())
     }
 }
 

@@ -12,7 +12,7 @@ use lintspec::{
 pub fn snapshot_content(path: &str, options: &ValidationOptions, keep_contents: bool) -> String {
     let parser = SlangParser::default();
     let diags_slang = lint(parser.clone(), path, options, keep_contents).unwrap();
-    let mut sources = parser.get_sources();
+    let mut sources = parser.get_sources().unwrap();
     let contents = diags_slang
         .as_ref()
         .and_then(|f| sources.remove(&f.document_id));
@@ -21,7 +21,7 @@ pub fn snapshot_content(path: &str, options: &ValidationOptions, keep_contents: 
     {
         let parser = lintspec::parser::solar::SolarParser::default();
         let diags_solar = lint(parser.clone(), path, options, keep_contents).unwrap();
-        let mut sources = parser.get_sources();
+        let mut sources = parser.get_sources().unwrap();
         let contents = diags_solar
             .as_ref()
             .and_then(|f| sources.remove(&f.document_id));

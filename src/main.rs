@@ -130,7 +130,8 @@ fn main() -> Result<()> {
     } else {
         let cwd = dunce::canonicalize(env::current_dir()?)?;
         let mut contents = if cfg!(any(feature = "slang", feature = "solar")) {
-            parser.get_sources()
+            // all other clones have been dropped
+            parser.get_sources()?
         } else {
             HashMap::default()
         };

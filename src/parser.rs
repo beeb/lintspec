@@ -35,7 +35,10 @@ pub struct ParsedDocument {
 }
 
 /// The trait implemented by all parsers
-pub trait Parse {
+///
+/// Ideally, cloning a parser should not duplicate the contents of the sources. The underlying data should be wrapped
+/// in an [`Arc`], so that the last clone of a parser is able to retrieve the sources' contents for all files.
+pub trait Parse: Clone {
     /// Parse a document from a reader and identify the relevant source items
     ///
     /// If a path is provided, then this can be used to enrich diagnostics.
@@ -51,5 +54,7 @@ pub trait Parse {
     ///
     /// This consumes the parser, so that ownership of the contents can be retrieved safely.
     /// Note that documents which were parsed with `keep_contents` to `false` will no be present in the map.
-    fn get_sources(self) -> HashMap<DocumentId, String>;
+    ///
+    /// This can return an error if there are more than one clone of the parser.
+    fn get_sources(self) -> Result<HashMap<DocumentId, String>>;
 }

@@ -147,11 +147,11 @@ impl Parse for SlangParser {
         })
     }
 
-    fn get_sources(self) -> HashMap<DocumentId, String> {
-        Arc::try_unwrap(self.documents)
-            .expect("all references should have been dropped")
+    fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
+        Ok(Arc::try_unwrap(self.documents)
+            .map_err(|_| Error::DanglingParserReferences)?
             .into_inner()
-            .expect("mutex should not be poisoned")
+            .expect("mutex should not be poisoned"))
     }
 }
 
