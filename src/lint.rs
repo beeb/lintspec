@@ -29,8 +29,7 @@ pub struct FileDiagnostics {
 
     /// A unique ID for the document given by the parser
     ///
-    /// Can be used to retrieve the document contents after parsing (via
-    /// [`Parse::get_contents`][crate::parser::Parse::get_contents]).
+    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_sources`]).
     #[serde(skip_serializing)]
     pub document_id: DocumentId,
 

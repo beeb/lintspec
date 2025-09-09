@@ -27,7 +27,7 @@ impl DocumentId {
 pub struct ParsedDocument {
     /// A unique ID for the document given by the parser
     ///
-    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_contents`]).
+    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_sources`]).
     pub id: DocumentId,
 
     /// The list of definitions found in the document
