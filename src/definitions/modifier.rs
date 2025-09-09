@@ -35,10 +35,10 @@ pub struct ModifierDefinition {
 impl ModifierDefinition {
     /// Check whether this modifier requires inheritdoc when we enforce it
     ///
-    /// Overridden modifiers must have inheritdoc.
-    fn requires_inheritdoc(&self) -> bool {
+    /// `override` modifiers must have inheritdoc.
+    fn requires_inheritdoc(&self, options: &ValidationOptions) -> bool {
         let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
-        parent_is_contract && self.attributes.r#override
+        options.inheritdoc_override && self.attributes.r#override && parent_is_contract
     }
 }
 
@@ -78,7 +78,7 @@ impl Validate for ModifierDefinition {
         {
             // if there is `inheritdoc`, no further validation is required
             return out;
-        } else if options.inheritdoc && self.requires_inheritdoc() {
+        } else if self.requires_inheritdoc(options) {
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "@inheritdoc is missing".to_string(),
@@ -229,17 +229,23 @@ mod tests {
 
     #[test]
     fn test_requires_inheritdoc() {
+        let options = ValidationOptions::builder()
+            .inheritdoc_override(true)
+            .build();
+
         let contents = "contract Test is ITest {
             modifier a() { _; }
         }";
         let res = parse_file(contents);
-        assert!(!res.requires_inheritdoc());
+        assert!(!res.requires_inheritdoc(&options));
+        assert!(!res.requires_inheritdoc(&ValidationOptions::default()));
 
         let contents = "contract Test is ITest {
             modifier e() override (ITest) { _; }
         }";
         let res = parse_file(contents);
-        assert!(res.requires_inheritdoc());
+        assert!(res.requires_inheritdoc(&options));
+        assert!(!res.requires_inheritdoc(&ValidationOptions::default()));
     }
 
     #[test]
@@ -248,7 +254,11 @@ mod tests {
             /// @inheritdoc ITest
             modifier foo() override (ITest) { _; }
         }";
-        let res = parse_file(contents).validate(&ValidationOptions::default());
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc_override(true)
+                .build(),
+        );
         assert!(res.diags.is_empty(), "{:#?}", res.diags);
     }
 
@@ -258,7 +268,11 @@ mod tests {
             /// @notice Test
             modifier foo() override (ITest) { _; }
         }";
-        let res = parse_file(contents).validate(&ValidationOptions::default());
+        let res = parse_file(contents).validate(
+            &ValidationOptions::builder()
+                .inheritdoc_override(true)
+                .build(),
+        );
         assert_eq!(res.diags.len(), 1);
         assert_eq!(res.diags[0].message, "@inheritdoc is missing");
     }

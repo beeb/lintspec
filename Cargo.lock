@@ -1498,7 +1498,7 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "lintspec"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "bon",
@@ -1523,6 +1523,7 @@ dependencies = [
  "solar-parse",
  "thiserror 2.0.16",
  "toml 0.9.5",
+ "uuid",
  "winnow",
 ]
 

@@ -271,6 +271,7 @@ impl WithParamsRules {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[skip_serializing_none]
 #[non_exhaustive]
+#[allow(clippy::struct_excessive_bools)]
 pub struct BaseConfig {
     /// Paths to files and folders to analyze
     #[builder(default)]
@@ -283,6 +284,10 @@ pub struct BaseConfig {
     /// Enforce that all public and external items have `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+
+    /// Enforce that internal functions and modifiers which are `override` have `@inheritdoc`
+    #[builder(default = false)]
+    pub inheritdoc_override: bool,
 
     /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
     #[builder(default)]
@@ -299,6 +304,7 @@ impl Default for BaseConfig {
             paths: Vec::default(),
             exclude: Vec::default(),
             inheritdoc: true,
+            inheritdoc_override: false,
             notice_or_dev: false,
             skip_version_detection: false,
         }
@@ -464,11 +470,16 @@ pub struct Args {
 
     /// Enforce that all public and external items have `@inheritdoc`
     ///
-    /// Functions which override a parent function also must have `@inheritdoc`.
-    ///
     /// Can be set with `--inheritdoc` (means true), `--inheritdoc=true` or `--inheritdoc=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub inheritdoc: Option<bool>,
+
+    /// Enforce that internal functions and modifiers which override a parent have `@inheritdoc`
+    ///
+    /// Can be set with `--inheritdoc-override` (means true), `--inheritdoc-override=true` or
+    /// `--inheritdoc-override=false`.
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub inheritdoc_override: Option<bool>,
 
     /// Do not distinguish between `@notice` and `@dev` when considering "required" validation rules.
     ///
@@ -614,6 +625,9 @@ pub fn read_config(args: Args) -> Result<Config> {
     // natspec config
     if let Some(inheritdoc) = args.inheritdoc {
         config.lintspec.inheritdoc = inheritdoc;
+    }
+    if let Some(inheritdoc_override) = args.inheritdoc_override {
+        config.lintspec.inheritdoc_override = inheritdoc_override;
     }
     if let Some(notice_or_dev) = args.notice_or_dev {
         config.lintspec.notice_or_dev = notice_or_dev;

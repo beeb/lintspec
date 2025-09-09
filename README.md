@@ -97,6 +97,7 @@ Options:
       --config <CONFIG>          Optional path to a TOML config file
   -o, --out <OUT>                Write output to a file instead of stderr
       --inheritdoc               Enforce that all public and external items have `@inheritdoc`
+      --inheritdoc-override      Enforce that `override` internal functions and modifiers have `@inheritdoc`
       --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
       --skip-version-detection   Skip the detection of the Solidity version from pragma statements
       --notice-ignored <TYPE>    Ignore `@notice` for these items (can be used more than once)

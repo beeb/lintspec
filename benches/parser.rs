@@ -34,6 +34,6 @@ fn parse_slang(bencher: Bencher, path: &str) {
 #[cfg(feature = "solar")]
 #[divan::bench(args = FILES)]
 fn parse_solar(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::solar::SolarParser {};
+    let parser = lintspec::parser::solar::SolarParser::default();
     bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
 }

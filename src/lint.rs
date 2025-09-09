@@ -17,7 +17,7 @@ use crate::{
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
     natspec::{NatSpec, NatSpecKind},
-    parser::{Parse, ParsedDocument},
+    parser::{DocumentId, Parse, ParsedDocument},
 };
 
 /// Diagnostics for a single Solidity file
@@ -27,9 +27,11 @@ pub struct FileDiagnostics {
     /// Path to the file
     pub path: PathBuf,
 
-    /// Contents of the file (can be an empty string if pretty output is not activated)
+    /// A unique ID for the document given by the parser
+    ///
+    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_sources`]).
     #[serde(skip_serializing)]
-    pub contents: Option<String>,
+    pub document_id: DocumentId,
 
     /// Diagnostics, grouped by source item (function, struct, etc.)
     pub items: Vec<ItemDiagnostics>,
@@ -133,7 +135,7 @@ pub fn lint(
         items.sort_unstable_by_key(|i| i.span.start);
         Some(FileDiagnostics {
             path: path.to_path_buf(),
-            contents: document.contents,
+            document_id: document.id,
             items,
         })
     }
@@ -149,9 +151,13 @@ pub fn lint(
 #[derive(Debug, Clone, PartialEq, Eq, bon::Builder)]
 #[non_exhaustive]
 pub struct ValidationOptions {
-    /// Whether overridden, public and external functions should have an `@inheritdoc`
+    /// Whether public and external functions should have an `@inheritdoc`
     #[builder(default = true)]
     pub inheritdoc: bool,
+
+    /// Whether `override` internal functions and modifiers should have an `@inheritdoc`
+    #[builder(default = false)]
+    pub inheritdoc_override: bool,
 
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     #[builder(default)]
@@ -198,6 +204,7 @@ impl Default for ValidationOptions {
     fn default() -> Self {
         Self {
             inheritdoc: true,
+            inheritdoc_override: false,
             notice_or_dev: false,
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
@@ -216,6 +223,7 @@ impl From<Config> for ValidationOptions {
     fn from(value: Config) -> Self {
         Self {
             inheritdoc: value.lintspec.inheritdoc,
+            inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             constructors: value.constructors,
             enums: value.enums,
@@ -234,6 +242,7 @@ impl From<&Config> for ValidationOptions {
     fn from(value: &Config) -> Self {
         Self {
             inheritdoc: value.lintspec.inheritdoc,
+            inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
