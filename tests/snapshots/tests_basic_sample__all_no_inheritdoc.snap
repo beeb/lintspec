@@ -1,6 +1,6 @@
 ---
 source: tests/tests-basic-sample.rs
-expression: generate_output(diags)
+expression: "snapshot_content(\"./test-data/BasicSample.sol\",\n&ValidationOptions::builder().inheritdoc(false).constructors(WithParamsRules::required()).enums(WithParamsRules::required()).modifiers(WithParamsRules::required()).structs(WithParamsRules::required()).variables(VariableConfig::builder().private(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).internal(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).build(),).build(),\ntrue,)"
 ---
 ./test-data/BasicSample.sol:5:5
 function AbstractBasic.overriddenFunction
@@ -54,3 +54,11 @@ function BasicSample.virtualFunction
 ./test-data/BasicSample.sol:111:5
 modifier BasicSample.transferFee
   @param _receiver is missing
+
+./test-data/BasicSample.sol:130:5
+constructor ChildContract.constructor
+  @notice is missing
+
+./test-data/BasicSample.sol:132:5
+modifier ChildContract.transferFee
+  @notice is missing

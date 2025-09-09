@@ -20,7 +20,9 @@ fn test_basic() {
 fn test_inheritdoc() {
     insta::assert_snapshot!(snapshot_content(
         "./test-data/BasicSample.sol",
-        &ValidationOptions::default(),
+        &ValidationOptions::builder()
+            .inheritdoc_override(true)
+            .build(),
         true,
     ));
 }
@@ -66,6 +68,7 @@ fn test_all() {
     insta::assert_snapshot!(snapshot_content(
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
+            .inheritdoc_override(true)
             .constructors(WithParamsRules::required())
             .enums(WithParamsRules::required())
             .modifiers(WithParamsRules::required())
@@ -97,6 +100,7 @@ fn test_all_no_inheritdoc() {
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
+            .inheritdoc_override(false)
             .constructors(WithParamsRules::required())
             .enums(WithParamsRules::required())
             .modifiers(WithParamsRules::required())
