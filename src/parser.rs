@@ -37,7 +37,8 @@ pub struct ParsedDocument {
 /// The trait implemented by all parsers
 ///
 /// Ideally, cloning a parser should not duplicate the contents of the sources. The underlying data should be wrapped
-/// in an [`Arc`], so that the last clone of a parser is able to retrieve the sources' contents for all files.
+/// in an [`Arc`][std::sync::Arc], so that the last clone of a parser is able to retrieve the sources' contents for
+/// all files.
 pub trait Parse: Clone {
     /// Parse a document from a reader and identify the relevant source items
     ///
