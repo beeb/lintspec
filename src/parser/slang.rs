@@ -1,7 +1,9 @@
 //! A parser with `[slang_solidity]` backend
 use std::{
+    collections::HashMap,
     io,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 use slang_solidity::{
@@ -21,6 +23,7 @@ use crate::{
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
+    parser::DocumentId,
     utils::{detect_solidity_version, get_latest_supported_version},
 };
 
@@ -32,6 +35,9 @@ use super::{Parse, ParsedDocument};
 pub struct SlangParser {
     #[builder(default)]
     pub skip_version_detection: bool,
+
+    #[builder(default)]
+    documents: Arc<Mutex<HashMap<DocumentId, String>>>,
 }
 
 impl SlangParser {
@@ -129,11 +135,23 @@ impl Parse for SlangParser {
                 message: error.message(),
             });
         }
+        let document_id = DocumentId::new();
+        if let Some(contents) = contents {
+            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
+            documents.insert(document_id, contents);
+        }
         let cursor = output.create_tree_cursor();
         Ok(ParsedDocument {
             definitions: Self::find_items(cursor),
-            contents,
+            id: document_id,
         })
+    }
+
+    fn get_sources(self) -> HashMap<DocumentId, String> {
+        Arc::try_unwrap(self.documents)
+            .expect("all references should have been dropped")
+            .into_inner()
+            .expect("mutex should not be poisoned")
     }
 }
 

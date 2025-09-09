@@ -1,5 +1,5 @@
 //! Solidity parser interface
-use std::{io, path::Path};
+use std::{collections::HashMap, io, path::Path};
 
 use crate::{definitions::Definition, error::Result};
 
@@ -11,14 +11,27 @@ pub mod slang;
 #[cfg(feature = "solar")]
 pub mod solar;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct DocumentId(uuid::Uuid);
+
+impl DocumentId {
+    /// Generate a new random and unique document ID
+    #[must_use]
+    pub fn new() -> Self {
+        DocumentId(uuid::Uuid::new_v4())
+    }
+}
+
 /// The result of parsing and identifying source items in a document
 #[derive(Debug)]
 pub struct ParsedDocument {
+    /// A unique ID for the document given by the parser
+    ///
+    /// Can be used to retrieve the document contents after parsing (via [`Parse::get_contents`]).
+    pub id: DocumentId,
+
     /// The list of definitions found in the document
     pub definitions: Vec<Definition>,
-
-    /// The contents of the file, if requested
-    pub contents: Option<String>,
 }
 
 /// The trait implemented by all parsers
@@ -33,4 +46,10 @@ pub trait Parse {
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument>;
+
+    /// Retrieve the contents of the source files after parsing is done
+    ///
+    /// This consumes the parser, so that ownership of the contents can be retrieved safely.
+    /// Note that documents which were parsed with `keep_contents` to `false` will no be present in the map.
+    fn get_sources(self) -> HashMap<DocumentId, String>;
 }

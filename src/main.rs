@@ -1,4 +1,4 @@
-use std::{env, fs::File};
+use std::{collections::HashMap, env, fs::File};
 
 use anyhow::{Result, bail};
 use clap::Parser as _;
@@ -7,6 +7,7 @@ use lintspec::{
     error::Error,
     files::find_sol_files,
     lint::{ValidationOptions, lint},
+    parser::Parse as _,
     print_reports,
 };
 
@@ -18,6 +19,7 @@ use lintspec::parser::solar::SolarParser;
 
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
     #[cfg(not(any(feature = "slang", feature = "solar")))]
     compile_error!("no parser enabled, please enable feature `slang` or `solar`.");
@@ -127,8 +129,22 @@ fn main() -> Result<()> {
         }
     } else {
         let cwd = dunce::canonicalize(env::current_dir()?)?;
+        let mut contents = if cfg!(any(feature = "slang", feature = "solar")) {
+            parser.get_sources()
+        } else {
+            HashMap::default()
+        };
         for file_diags in diagnostics {
-            print_reports(&mut output_file, &cwd, file_diags, config.output.compact)?;
+            let Some(source) = contents.remove(&file_diags.document_id) else {
+                continue;
+            };
+            print_reports(
+                &mut output_file,
+                &cwd,
+                file_diags,
+                source,
+                config.output.compact,
+            )?;
         }
     }
     std::process::exit(1); // indicate that there were diagnostics (errors)

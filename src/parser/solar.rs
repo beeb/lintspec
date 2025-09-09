@@ -10,7 +10,7 @@ use solar_parse::{
         },
         visit::Visit,
     },
-    interface::ColorChoice,
+    interface::{ColorChoice, source_map::SourceFile},
 };
 use std::{
     collections::BTreeSet,
@@ -18,7 +18,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     str::FromStr as _,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use crate::{
@@ -30,14 +30,17 @@ use crate::{
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
-    parser::{Parse, ParsedDocument},
+    parser::{DocumentId, Parse, ParsedDocument},
 };
 
 use std::collections::HashMap;
 
+type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
+
 #[derive(Clone)]
 pub struct SolarParser {
     sess: Arc<Session>,
+    documents: Arc<Mutex<Documents>>,
 }
 
 impl Default for SolarParser {
@@ -56,6 +59,7 @@ impl SolarParser {
             .build();
         Self {
             sess: Arc::new(sess),
+            documents: Arc::new(Mutex::new(Vec::default())),
         }
     }
 }
@@ -84,7 +88,7 @@ impl Parse for SolarParser {
                 path.as_ref().map_or(FileName::Stdin, |p| {
                     FileName::Real(p.as_ref().to_path_buf())
                 }),
-                &buf,
+                buf,
             ) // should never fail since the content was read already
             .map_err(|err| Error::IOError {
                 path: pathbuf.clone(),
@@ -115,10 +119,34 @@ impl Parse for SolarParser {
                     .to_string(),
             })?;
 
+        let document_id = DocumentId::new();
+        if keep_contents {
+            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
+            documents.push((document_id, Arc::clone(&source_file)));
+        }
         Ok(ParsedDocument {
             definitions: complete_text_ranges(&source_file.src, definitions),
-            contents: keep_contents.then_some(buf),
+            id: document_id,
         })
+    }
+
+    fn get_sources(self) -> HashMap<DocumentId, String> {
+        drop(self.sess);
+        Arc::try_unwrap(self.documents)
+            .expect("all references should have been dropped")
+            .into_inner()
+            .expect("mutex should not be poisoned")
+            .into_iter()
+            .map(|(id, doc)| {
+                let source_file = Arc::try_unwrap(doc)
+                    .expect("all SourceMap references should have been dropped");
+                (
+                    id,
+                    Arc::try_unwrap(source_file.src)
+                        .expect("all SourceFile references should have been dropped"),
+                )
+            })
+            .collect()
     }
 }
 
