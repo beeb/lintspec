@@ -37,10 +37,10 @@ pub struct FunctionDefinition {
 }
 
 impl FunctionDefinition {
-    /// Check whether this function requires inheritdoc when we enforce it
+    /// Check whether this function requires inheritdoc
     ///
-    /// External and public functions, as well as overridden internal functions must have inheritdoc.
-    fn requires_inheritdoc(&self) -> bool {
+    /// Public/external functions as well as internal override functions require @inheritdoc if enforced.
+    fn requires_inheritdoc(&self, options: &ValidationOptions) -> bool {
         let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
         let internal_override =
             self.attributes.visibility == Visibility::Internal && self.attributes.r#override;
@@ -48,7 +48,9 @@ impl FunctionDefinition {
             self.attributes.visibility,
             Visibility::External | Visibility::Public
         );
-        parent_is_contract && (internal_override || public_external)
+        ((options.inheritdoc && public_external)
+            || (options.inheritdoc_override && internal_override))
+            && parent_is_contract
     }
 }
 
@@ -102,7 +104,7 @@ impl Validate for FunctionDefinition {
         {
             // if there is `inheritdoc`, no further validation is required
             return out;
-        } else if options.inheritdoc && self.requires_inheritdoc() {
+        } else if self.requires_inheritdoc(options) {
             out.diags.push(Diagnostic {
                 span: self.span(),
                 message: "@inheritdoc is missing".to_string(),
@@ -291,35 +293,42 @@ mod tests {
 
     #[test]
     fn test_requires_inheritdoc() {
+        let options = ValidationOptions::builder()
+            .inheritdoc(true)
+            .inheritdoc_override(true)
+            .build();
         let contents = "contract Test is ITest {
             function a() internal returns (uint256) { }
         }";
         let res = parse_file(contents);
-        assert!(!res.requires_inheritdoc());
+        assert!(!res.requires_inheritdoc(&options));
 
         let contents = "contract Test is ITest {
             function b() private returns (uint256) { }
         }";
         let res = parse_file(contents);
-        assert!(!res.requires_inheritdoc());
+        assert!(!res.requires_inheritdoc(&options));
 
         let contents = "contract Test is ITest {
             function c() external returns (uint256) { }
         }";
         let res = parse_file(contents);
-        assert!(res.requires_inheritdoc());
+        assert!(res.requires_inheritdoc(&options));
+        assert!(!res.requires_inheritdoc(&ValidationOptions::builder().inheritdoc(false).build()));
 
         let contents = "contract Test is ITest {
             function d() public returns (uint256) { }
         }";
         let res = parse_file(contents);
-        assert!(res.requires_inheritdoc());
+        assert!(res.requires_inheritdoc(&options));
+        assert!(!res.requires_inheritdoc(&ValidationOptions::builder().inheritdoc(false).build()));
 
         let contents = "contract Test is ITest {
             function e() internal override (ITest) returns (uint256) { }
         }";
         let res = parse_file(contents);
-        assert!(res.requires_inheritdoc());
+        assert!(res.requires_inheritdoc(&options));
+        assert!(!res.requires_inheritdoc(&ValidationOptions::default()));
     }
 
     #[test]

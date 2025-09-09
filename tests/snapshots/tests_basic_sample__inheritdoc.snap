@@ -1,6 +1,6 @@
 ---
 source: tests/tests-basic-sample.rs
-expression: generate_output(diags)
+expression: "snapshot_content(\"./test-data/BasicSample.sol\",\n&ValidationOptions::builder().inheritdoc_override(true).build(), true,)"
 ---
 ./test-data/BasicSample.sol:5:5
 function AbstractBasic.overriddenFunction
@@ -54,3 +54,7 @@ function BasicSample.virtualFunction
 ./test-data/BasicSample.sol:111:5
 modifier BasicSample.transferFee
   @param _receiver is missing
+
+./test-data/BasicSample.sol:132:5
+modifier ChildContract.transferFee
+  @inheritdoc is missing
