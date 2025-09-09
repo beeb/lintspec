@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.8.0] - 2025-09-09
+
+### Added
+
+- **(parser)** [**breaking**] parsers own the source buffers ([#127](https://github.com/beeb/lintspec/pull/127)) - ([c9c77a0](https://github.com/beeb/lintspec/commit/c9c77a00481c0ccf0b7115a324a0c2b9163961b2))
+
+
+-  [**breaking**] add `inheritdoc_override` param for internal functions and modifiers ([#131](https://github.com/beeb/lintspec/pull/131)) - ([e956075](https://github.com/beeb/lintspec/commit/e9560755af7c1fb255028431a25e90facd5fe846))
+
+### Changed
+
+
+-  update codspeed action ([#129](https://github.com/beeb/lintspec/pull/129)) - ([501820d](https://github.com/beeb/lintspec/commit/501820d2164c56d4d1d43d19ec0f8e028aea9780))
+
+### Removed
+
+- **(slang)** [**breaking**] remove private field from builder ([#132](https://github.com/beeb/lintspec/pull/132)) - ([d83cb74](https://github.com/beeb/lintspec/commit/d83cb741a9c3054ba7c71b547196b414161db066))
+
+
+
+
+
+
+**Full Changelog**: [0.7.1...0.8.0](https://github.com/beeb/lintspec/compare/v0.7.1...v0.8.0)
+
 ## [0.7.1] - 2025-09-02
 
 ### Changed
