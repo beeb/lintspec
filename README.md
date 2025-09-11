@@ -86,8 +86,9 @@ total execution time.
 Usage: lintspec [OPTIONS] [PATH]... [COMMAND]
 
 Commands:
-  init  Create a `.lintspec.toml` config file with default values
-  help  Print this message or the help of the given subcommand(s)
+  init         Create a `.lintspec.toml` config file with default values
+  completions  Generate shell completion scripts
+  help         Print this message or the help of the given subcommand(s)
 
 Arguments:
   [PATH]...  One or more paths to files and folders to analyze
