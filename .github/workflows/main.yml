@@ -82,7 +82,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: cargo hack
-        run: cargo hack check --feature-powerset --exclude-no-default-features
+        run: cargo hack check --feature-powerset -F cli --at-least-one-of solar,slang
 
   deny:
     runs-on: ubuntu-latest
