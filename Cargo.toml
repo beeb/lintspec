@@ -9,12 +9,13 @@ name = "lintspec"
 readme = "./README.md"
 repository = "https://github.com/beeb/lintspec"
 rust-version = "1.88.0"
-version = "0.7.1"
+version = "0.8.0"
 
 [lints.clippy]
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+result_large_err = "allow"
 pedantic = { level = "warn", priority = -1 }
 
 [package.metadata.docs.rs]
@@ -22,9 +23,9 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-anyhow = "1.0.95"
+anyhow = { version = "1.0.95", optional = true }
 bon = "3.3.2"
-clap = { version = "4.5.29", features = ["derive"] }
+clap = { version = "4.5.29", features = ["derive"], optional = true }
 derive_more = { version = "2.0.1", features = [
     "add",
     "display",
@@ -32,13 +33,13 @@ derive_more = { version = "2.0.1", features = [
     "is_variant",
     "try_into",
 ] }
-dotenvy = "0.15.7"
+dotenvy = { version = "0.15.7", optional = true }
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 ignore = "0.4.23"
 itertools = "0.14.0"
-miette = { version = "7.5.0", features = ["fancy"] }
-rayon = "1.10.0"
+miette = { version = "7.5.0", features = ["fancy"], optional = true }
+rayon = { version = "1.10.0", optional = true }
 regex = { version = "1.11.1", optional = true }
 semver = "1.0.25"
 serde = { version = "1.0.217", features = ["derive"] }
@@ -65,7 +66,8 @@ name = "lint"
 harness = false
 
 [features]
-default = ["slang"]
+default = ["cli", "slang"]
+cli = ["dep:anyhow", "dep:clap", "dep:dotenvy", "dep:miette", "dep:rayon"]
 slang = ["dep:regex", "dep:slang_solidity"]
 solar = ["dep:solar-parse"]
 
