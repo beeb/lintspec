@@ -2,9 +2,9 @@
 use std::path::PathBuf;
 
 use lintspec::{
+    cli::print_reports,
     lint::{ValidationOptions, lint},
     parser::{Parse as _, slang::SlangParser},
-    print_reports,
 };
 
 #[allow(unused_variables)]
