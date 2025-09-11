@@ -26,6 +26,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 anyhow = { version = "1.0.95", optional = true }
 bon = "3.3.2"
 clap = { version = "4.5.29", features = ["derive"], optional = true }
+clap_complete = { version = "4.5.57", optional = true }
 derive_more = { version = "2.0.1", features = [
     "add",
     "display",
@@ -67,7 +68,14 @@ harness = false
 
 [features]
 default = ["cli", "slang"]
-cli = ["dep:anyhow", "dep:clap", "dep:dotenvy", "dep:miette", "dep:rayon"]
+cli = [
+    "dep:anyhow",
+    "dep:clap",
+    "dep:clap_complete",
+    "dep:dotenvy",
+    "dep:miette",
+    "dep:rayon",
+]
 slang = ["dep:regex", "dep:slang_solidity"]
 solar = ["dep:solar-parse"]
 

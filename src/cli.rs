@@ -6,9 +6,8 @@ use std::{
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
 use crate::{
     config::{Config, Req},
@@ -22,15 +21,24 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg(feature = "solar")]
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-solar");
 
-#[derive(Subcommand, Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
     /// Create a `.lintspec.toml` config file with default values
     Init,
+
+    /// Generate shell completion scripts
+    Completions {
+        /// The flavor of shell for which to generate the completion script
+        #[arg(short, long)]
+        shell: Shell,
+
+        /// The output directory for the file, prints to `stdout` if omitted
+        #[arg(short, long, value_hint = clap::ValueHint::DirPath)]
+        out: Option<PathBuf>,
+    },
 }
 
-#[derive(Parser, Debug, Clone, Serialize, Deserialize)]
-#[skip_serializing_none]
+#[derive(Parser, Debug, Clone)]
 #[command(version = VERSION, about, long_about = None)]
 #[non_exhaustive]
 pub struct Args {
