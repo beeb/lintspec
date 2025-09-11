@@ -20,7 +20,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
       - uses: taiki-e/install-action@cargo-hack
       - name: Run tests
-        run: cargo hack nextest run --feature-powerset --exclude-no-default-features
+        run: cargo hack nextest run --feature-powerset -F cli --at-least-one-of solar,slang
 
   doctests:
     runs-on: ubuntu-latest

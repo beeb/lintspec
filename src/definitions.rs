@@ -405,7 +405,8 @@ impl Validate for Definition {
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     #[display("constructor")]
@@ -426,7 +427,7 @@ pub enum ItemType {
     ExternalFunction,
     #[display("modifier")]
     Modifier,
-    #[value(skip)]
+    #[cfg_attr(feature = "cli", value(skip))]
     ParsingError,
     #[display("struct")]
     Struct,

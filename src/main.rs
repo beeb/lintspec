@@ -1,14 +1,16 @@
+#![cfg(feature = "cli")]
 use std::{collections::HashMap, env, fs::File};
 
 use anyhow::{Result, bail};
 use clap::Parser as _;
+use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
+
 use lintspec::{
-    config::{Args, Commands, read_config, write_default_config},
+    cli::{Args, Commands, print_reports, read_config, write_default_config},
     error::Error,
     files::find_sol_files,
     lint::{ValidationOptions, lint},
     parser::Parse as _,
-    print_reports,
 };
 
 #[cfg(feature = "slang")]
@@ -16,8 +18,6 @@ use lintspec::parser::slang::SlangParser;
 
 #[cfg(feature = "solar")]
 use lintspec::parser::solar::SolarParser;
-
-use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 #[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
