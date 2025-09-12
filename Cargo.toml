@@ -25,6 +25,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 anyhow = { version = "1.0.95", optional = true }
 bon = "3.3.2"
+boxcar = "0.2.14"
 clap = { version = "4.5.29", features = ["derive"], optional = true }
 clap_complete = { version = "4.5.57", optional = true }
 derive_more = { version = "2.0.1", features = [

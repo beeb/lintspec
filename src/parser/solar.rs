@@ -18,7 +18,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     str::FromStr as _,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use crate::{
@@ -35,12 +35,10 @@ use crate::{
 
 use std::collections::HashMap;
 
-type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
-
 #[derive(Clone)]
 pub struct SolarParser {
     sess: Arc<Session>,
-    documents: Arc<Mutex<Documents>>,
+    documents: Arc<boxcar::Vec<(DocumentId, Arc<SourceFile>)>>,
 }
 
 impl Default for SolarParser {
@@ -59,7 +57,7 @@ impl SolarParser {
             .build();
         Self {
             sess: Arc::new(sess),
-            documents: Arc::new(Mutex::new(Vec::default())),
+            documents: Arc::new(boxcar::Vec::default()),
         }
     }
 }
@@ -121,8 +119,7 @@ impl Parse for SolarParser {
 
         let document_id = DocumentId::new();
         if keep_contents {
-            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
-            documents.push((document_id, Arc::clone(&source_file)));
+            self.documents.push((document_id, Arc::clone(&source_file)));
         }
         Ok(ParsedDocument {
             definitions: complete_text_ranges(&source_file.src, definitions),
@@ -134,9 +131,7 @@ impl Parse for SolarParser {
         let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
         drop(sess);
         Ok(Arc::try_unwrap(self.documents)
-            .expect("all references should have been dropped")
-            .into_inner()
-            .expect("mutex should not be poisoned")
+            .map_err(|_| Error::DanglingParserReferences)?
             .into_iter()
             .map(|(id, doc)| {
                 let source_file = Arc::try_unwrap(doc)

@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use slang_solidity::{
@@ -37,7 +37,7 @@ pub struct SlangParser {
     pub skip_version_detection: bool,
 
     #[builder(skip)]
-    documents: Arc<Mutex<HashMap<DocumentId, String>>>,
+    documents: Arc<boxcar::Vec<(DocumentId, String)>>,
 }
 
 impl SlangParser {
@@ -137,8 +137,7 @@ impl Parse for SlangParser {
         }
         let document_id = DocumentId::new();
         if let Some(contents) = contents {
-            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
-            documents.insert(document_id, contents);
+            self.documents.push((document_id, contents));
         }
         let cursor = output.create_tree_cursor();
         Ok(ParsedDocument {
@@ -150,8 +149,8 @@ impl Parse for SlangParser {
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
         Ok(Arc::try_unwrap(self.documents)
             .map_err(|_| Error::DanglingParserReferences)?
-            .into_inner()
-            .expect("mutex should not be poisoned"))
+            .into_iter()
+            .collect())
     }
 }
 
