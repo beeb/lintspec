@@ -244,7 +244,7 @@ macro_rules! cli_rule_override {
 }
 
 /// Read the configuration from config file, environment variables and parsed CLI arguments (passed as argument)
-pub fn read_config(args: Args) -> std::result::Result<Config, figment::Error> {
+pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     let config_path = args
         .config
         .or_else(|| env::var("LS_CONFIG_PATH").ok().map(Into::into));
@@ -322,7 +322,7 @@ pub fn print_reports(
     file_diags: FileDiagnostics,
     contents: String,
     compact: bool,
-) -> std::result::Result<(), io::Error> {
+) -> Result<(), io::Error> {
     if compact {
         for item_diags in file_diags.items {
             item_diags.print_compact(f, &file_diags.path, &root_path)?;
@@ -347,7 +347,7 @@ fn print_report(
     f: &mut impl io::Write,
     source: Arc<NamedSource<String>>,
     item: ItemDiagnostics,
-) -> std::result::Result<(), io::Error> {
+) -> Result<(), io::Error> {
     let msg = if let Some(parent) = &item.parent {
         format!("{} {}.{}", item.item_type, parent, item.name)
     } else {

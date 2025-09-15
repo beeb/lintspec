@@ -15,7 +15,6 @@ version = "0.9.0"
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
-result_large_err = "allow"
 pedantic = { level = "warn", priority = -1 }
 
 [package.metadata.docs.rs]
