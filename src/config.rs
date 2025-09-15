@@ -341,8 +341,8 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn from(provider: impl Provider) -> std::result::Result<Config, figment::Error> {
-        Figment::from(provider).extract()
+    pub fn from(provider: impl Provider) -> Result<Config, Box<figment::Error>> {
+        Figment::from(provider).extract().map_err(Box::new)
     }
 
     /// Create a Figment which reads the config from the default file and environment variables
@@ -367,7 +367,7 @@ impl Provider for Config {
         Metadata::named("LintSpec Config")
     }
 
-    fn data(&self) -> std::result::Result<Map<Profile, Dict>, figment::Error> {
+    fn data(&self) -> Result<Map<Profile, Dict>, figment::Error> {
         figment::providers::Serialized::defaults(Config::default()).data()
     }
 }
