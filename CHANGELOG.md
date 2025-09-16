@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.9.1] - 2025-09-16
+
+### Changed
+
+
+-  box large errors ([#141](https://github.com/beeb/lintspec/pull/141)) - ([dad3b26](https://github.com/beeb/lintspec/commit/dad3b26b97ab34f48056f882e6453c4b122f5376))
+
+### Fixed
+
+
+-  compact output ([#143](https://github.com/beeb/lintspec/pull/143)) - ([81aa462](https://github.com/beeb/lintspec/commit/81aa46276a656898bda7b3dda8915af412e4c69e))
+
+
+
+
+**Full Changelog**: [0.9.0...0.9.1](https://github.com/beeb/lintspec/compare/v0.9.0...v0.9.1)
+
+
 ## [0.9.0] - 2025-09-11
 
 ### Added
