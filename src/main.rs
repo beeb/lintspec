@@ -154,9 +154,7 @@ fn main() -> Result<()> {
             HashMap::default()
         };
         for file_diags in diagnostics {
-            let Some(source) = contents.remove(&file_diags.document_id) else {
-                continue;
-            };
+            let source = contents.remove(&file_diags.document_id).unwrap_or_default();
             print_reports(
                 &mut output_file,
                 &cwd,
