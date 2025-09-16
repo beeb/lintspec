@@ -59,6 +59,14 @@
               allowBuiltinFetchGit = true;
             };
 
+            nativeBuildInputs = [ pkgs.installShellFiles ];
+            postInstall = lib.optionalString (pkgs.stdenv.buildPlatform.canExecute pkgs.stdenv.hostPlatform) ''
+              installShellCompletion --cmd lintspec \
+                --bash <($out/bin/lintspec completions -s bash) \
+                --fish <($out/bin/lintspec completions -s fish) \
+                --zsh <($out/bin/lintspec completions -s zsh)
+            '';
+
             doCheck = false;
           };
         }

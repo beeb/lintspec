@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.9.1] - 2025-09-16
+
+### Changed
+
+
+-  box large errors ([#141](https://github.com/beeb/lintspec/pull/141)) - ([dad3b26](https://github.com/beeb/lintspec/commit/dad3b26b97ab34f48056f882e6453c4b122f5376))
+
+### Fixed
+
+
+-  compact output ([#143](https://github.com/beeb/lintspec/pull/143)) - ([81aa462](https://github.com/beeb/lintspec/commit/81aa46276a656898bda7b3dda8915af412e4c69e))
+
+
+
+
+**Full Changelog**: [0.9.0...0.9.1](https://github.com/beeb/lintspec/compare/v0.9.0...v0.9.1)
+
+
+## [0.9.0] - 2025-09-11
+
+### Added
+
+- **(cli)** add command to generate shell completions ([#137](https://github.com/beeb/lintspec/pull/137)) - ([d387cad](https://github.com/beeb/lintspec/commit/d387cadaeeefb7c76dcad195bf4aed024cacb366))
+
+- **(flake)** add shell completions generation ([#139](https://github.com/beeb/lintspec/pull/139)) - ([7ab149e](https://github.com/beeb/lintspec/commit/7ab149e85d8ff5d1f51a372cebd9be5bd252516f))
+
+
+-  [**breaking**] add `cli` feature flag to make more dependencies optional ([#136](https://github.com/beeb/lintspec/pull/136)) - ([3c68daf](https://github.com/beeb/lintspec/commit/3c68dafdfe84754bd482f8e08ba25f7a0388b8aa))
+
+### Changed
+
+
+-  update example config ([#133](https://github.com/beeb/lintspec/pull/133)) - ([c748986](https://github.com/beeb/lintspec/commit/c7489867dc34a50dd76745ffd3f12dfbc58629ab))
+
+### Documentation
+
+
+-  readme ([#135](https://github.com/beeb/lintspec/pull/135)) - ([4eaa395](https://github.com/beeb/lintspec/commit/4eaa395fa72eb92b53cb6bf414a0e12893ceb7c3))
+-  update readme ([#138](https://github.com/beeb/lintspec/pull/138)) - ([29e0ef4](https://github.com/beeb/lintspec/commit/29e0ef43ccd6a8b2f3287aad3157f7dba259c36b))
+
+
+
+
+**Full Changelog**: [0.8.0...0.9.0](https://github.com/beeb/lintspec/compare/v0.8.0...v0.9.0)
+
+
 ## [0.8.0] - 2025-09-09
 
 ### Added

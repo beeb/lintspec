@@ -2,7 +2,8 @@
 use std::{collections::HashMap, env, fs::File};
 
 use anyhow::{Result, bail};
-use clap::Parser as _;
+use clap::{CommandFactory as _, Parser as _};
+use clap_complete::{generate, generate_to};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 use lintspec::{
@@ -28,11 +29,28 @@ fn main() -> Result<()> {
 
     // parse config from CLI args, environment variables and the `.lintspec.toml` file.
     let args = Args::parse();
-    if let Some(Commands::Init) = args.command {
-        let path = write_default_config()?;
-        println!("Default config was written to {}", path.display());
-        println!("Exiting");
-        return Ok(());
+    match &args.command {
+        Some(Commands::Init) => {
+            let path = write_default_config()?;
+            println!("Default config was written to {}", path.display());
+            println!("Exiting");
+            return Ok(());
+        }
+        Some(Commands::Completions { shell, out }) => {
+            let mut cli = Args::command();
+            if let Some(out) = out {
+                generate_to(*shell, &mut cli, env!("CARGO_PKG_NAME"), out)?;
+            } else {
+                generate(
+                    *shell,
+                    &mut cli,
+                    env!("CARGO_PKG_NAME"),
+                    &mut std::io::stdout(),
+                );
+            }
+            return Ok(());
+        }
+        None => {}
     }
 
     let config = read_config(args)?;
@@ -136,9 +154,7 @@ fn main() -> Result<()> {
             HashMap::default()
         };
         for file_diags in diagnostics {
-            let Some(source) = contents.remove(&file_diags.document_id) else {
-                continue;
-            };
+            let source = contents.remove(&file_diags.document_id).unwrap_or_default();
             print_reports(
                 &mut output_file,
                 &cwd,
