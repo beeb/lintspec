@@ -1,7 +1,6 @@
 #![cfg(feature = "cli")]
 use std::{collections::HashMap, env, fs::File};
 
-use anyhow::{Result, bail};
 use clap::{CommandFactory as _, Parser as _};
 use clap_complete::{generate, generate_to};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
@@ -21,7 +20,7 @@ use lintspec::parser::slang::SlangParser;
 use lintspec::parser::solar::SolarParser;
 
 #[allow(clippy::too_many_lines)]
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(any(feature = "slang", feature = "solar")))]
     compile_error!("no parser enabled, please enable feature `slang` or `solar`.");
 
@@ -62,7 +61,7 @@ fn main() -> Result<()> {
         config.output.sort,
     )?;
     if paths.is_empty() {
-        bail!("no Solidity file found, nothing to analyze");
+        return Err(String::from("no Solidity file found, nothing to analyze").into());
     }
 
     // lint all the requested Solidity files
@@ -86,10 +85,9 @@ fn main() -> Result<()> {
                 &options,
                 !config.output.compact && !config.output.json,
             )
-            .map_err(Into::into)
             .transpose()
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     // check if we should output to file or to stderr/stdout
     let mut output_file: Box<dyn std::io::Write> = match config.output.out {

@@ -8,7 +8,6 @@ use figment::{
     value::{Dict, Map},
 };
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
 /// The requirement for a specific tag in the natspec comment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, IsVariant)]
@@ -206,7 +205,6 @@ impl WithParamsRules {
 
 /// General config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
-#[skip_serializing_none]
 #[non_exhaustive]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BaseConfig {
@@ -250,10 +248,10 @@ impl Default for BaseConfig {
 
 /// Output config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
-#[skip_serializing_none]
 #[non_exhaustive]
 pub struct OutputConfig {
     /// Path to a file to write the output to (instead of stderr)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub out: Option<PathBuf>,
 
     /// Output diagnostics in JSON format
@@ -271,7 +269,6 @@ pub struct OutputConfig {
 
 /// The parsed and validated config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
-#[skip_serializing_none]
 #[non_exhaustive]
 pub struct Config {
     /// General config for the tool

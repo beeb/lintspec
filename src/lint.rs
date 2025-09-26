@@ -9,7 +9,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use itertools::Itertools;
 use serde::Serialize;
 
 use crate::{
@@ -292,7 +291,8 @@ pub fn check_params(
             .iter()
             .filter_map(|p| p.name.as_ref().map(|n| (n, &p.span)))
             .collect();
-        let natspec_counts = natspec
+        let mut natspec_counts = HashMap::<_, usize>::new();
+        natspec
             .items
             .iter()
             .filter_map(|i| {
@@ -302,7 +302,8 @@ pub fn check_params(
                     None
                 }
             })
-            .counts();
+            .for_each(|item| *natspec_counts.entry(item).or_default() += 1);
+
         for item in &natspec.items {
             let NatSpecKind::Param { name } = &item.kind else {
                 continue;
