@@ -22,7 +22,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-anyhow = { version = "1.0.95", optional = true }
 bon = "3.3.2"
 clap = { version = "4.5.29", features = ["derive"], optional = true }
 clap_complete = { version = "4.5.57", optional = true }
@@ -66,7 +65,7 @@ harness = false
 [features]
 default = ["cli", "slang"]
 cli = [
-    "dep:anyhow",
+
     "dep:clap",
     "dep:clap_complete",
     "dep:dotenvy",

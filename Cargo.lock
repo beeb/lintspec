@@ -1325,7 +1325,6 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 name = "lintspec"
 version = "0.9.1"
 dependencies = [
- "anyhow",
  "bon",
  "clap",
  "clap_complete",

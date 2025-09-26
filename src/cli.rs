@@ -1,10 +1,11 @@
 use std::{
-    env, fs, io,
+    env,
+    error::Error,
+    fs, io,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use anyhow::Result;
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
@@ -300,7 +301,7 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
 ///
 /// If a file already exists with the same name, it gets renamed to `.lintspec.bck.toml` before writing the default
 /// config.
-pub fn write_default_config() -> Result<PathBuf> {
+pub fn write_default_config() -> Result<PathBuf, Box<dyn Error>> {
     let config = Config::default();
     let path = PathBuf::from(".lintspec.toml");
     if path.exists() {
