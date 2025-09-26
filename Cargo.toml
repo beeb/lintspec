@@ -65,7 +65,6 @@ harness = false
 [features]
 default = ["cli", "slang"]
 cli = [
-
     "dep:clap",
     "dep:clap_complete",
     "dep:dotenvy",
