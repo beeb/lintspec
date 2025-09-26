@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.9.2] - 2025-09-26
+
+### Removed
+
+
+-  remove mac x86 target ([#145](https://github.com/beeb/lintspec/pull/145)) - ([6058c00](https://github.com/beeb/lintspec/commit/6058c00adfc16d5f5663c5f891cb46ee778b8bb0))
+-  remove dependencies ([#147](https://github.com/beeb/lintspec/pull/147)) - ([cdcdb78](https://github.com/beeb/lintspec/commit/cdcdb78430f1a231512e3f4bf2ec13ae50520ea6))
+
+
+
+
+**Full Changelog**: [0.9.1...0.9.2](https://github.com/beeb/lintspec/compare/v0.9.1...v0.9.2)
+
+
 ## [0.9.1] - 2025-09-16
 
 ### Changed
