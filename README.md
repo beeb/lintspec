@@ -101,6 +101,12 @@ Options:
       --inheritdoc-override      Enforce that `override` internal functions and modifiers have `@inheritdoc`
       --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
       --skip-version-detection   Skip the detection of the Solidity version from pragma statements
+      --title-ignored <TYPE>     Ignore `@title` for these items (can be used more than once)
+      --title-required <TYPE>    Enforce `@title` for these items (can be used more than once)
+      --title-forbidden <TYPE>   Forbid `@title` for these items (can be used more than once)
+      --author-ignored <TYPE>    Ignore `@author` for these items (can be used more than once)
+      --author-required <TYPE>   Enforce `@author` for these items (can be used more than once)
+      --author-forbidden <TYPE>  Forbid `@author` for these items (can be used more than once)
       --notice-ignored <TYPE>    Ignore `@notice` for these items (can be used more than once)
       --notice-required <TYPE>   Enforce `@notice` for these items (can be used more than once)
       --notice-forbidden <TYPE>  Forbid `@notice` for these items (can be used more than once)
