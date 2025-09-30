@@ -423,6 +423,9 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemContract<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
+        if matches!(self.kind, ContractKind::Interface | ContractKind::Library) {
+            return None;
+        }
         let name = self.name.to_string();
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {

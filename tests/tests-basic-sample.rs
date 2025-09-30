@@ -107,6 +107,13 @@ fn test_all() {
                     )
                     .build(),
             )
+            .contracts(
+                ContractRules::builder()
+                    .title(Req::Required)
+                    .author(Req::Required)
+                    .notice(Req::Required)
+                    .build()
+            )
             .build(),
         true,
     ));

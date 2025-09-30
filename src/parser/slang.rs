@@ -92,9 +92,11 @@ impl SlangParser {
                 7 => Some(
                     VariableDeclaration::extract(m).unwrap_or_else(Definition::NatspecParsingError),
                 ),
-                8 => Some(
-                    ContractDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
-                ),
+                8 => {
+                    let def = ContractDefinition::extract(m)
+                        .unwrap_or_else(Definition::NatspecParsingError);
+                    if out.contains(&def) { None } else { Some(def) }
+                }
                 _ => unreachable!(),
             };
             if let Some(def) = def {
