@@ -19,8 +19,8 @@ use crate::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, contract::ContractDefinition,
         enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, modifier::ModifierDefinition, structure::StructDefinition,
-        variable::VariableDeclaration,
+        function::FunctionDefinition, interface::InterfaceDefinition, modifier::ModifierDefinition,
+        structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -55,6 +55,7 @@ impl SlangParser {
             StructDefinition::query(),
             VariableDeclaration::query(),
             ContractDefinition::query(),
+            InterfaceDefinition::query(),
         ]
     }
 
@@ -94,6 +95,11 @@ impl SlangParser {
                 ),
                 8 => {
                     let def = ContractDefinition::extract(m)
+                        .unwrap_or_else(Definition::NatspecParsingError);
+                    if out.contains(&def) { None } else { Some(def) }
+                }
+                9 => {
+                    let def = InterfaceDefinition::extract(m)
                         .unwrap_or_else(Definition::NatspecParsingError);
                     if out.contains(&def) { None } else { Some(def) }
                 }
@@ -500,6 +506,40 @@ impl Extract for ContractDefinition {
         .into())
     }
 }
+
+impl Extract for InterfaceDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@iface [InterfaceDefinition
+            @iface_name name:[Identifier]
+            @iface_spec inheritance:[InheritanceSpecifier]?
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let iface = capture(&m, "iface")?;
+        let name = capture(&m, "iface_name")?;
+        let spec = capture_opt(&m, "iface_spec")?;
+
+        let span_start = find_definition_start(&iface);
+        let span_end = spec
+            .as_ref()
+            .map_or_else(|| name.text_range().end.into(), find_definition_end);
+        let span = span_start..span_end;
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&iface.clone(), &[])?;
+
+        Ok(InterfaceDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
+
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
     match m.capture(name).map(|(_, mut captures)| captures.next()) {

@@ -17,6 +17,7 @@ use structure::StructDefinition;
 use variable::VariableDeclaration;
 
 use crate::{
+    definitions::interface::InterfaceDefinition,
     error::Error,
     lint::{Diagnostic, ItemDiagnostics, Validate, ValidationOptions},
 };
@@ -27,6 +28,7 @@ pub mod enumeration;
 pub mod error;
 pub mod event;
 pub mod function;
+pub mod interface;
 pub mod modifier;
 pub mod structure;
 pub mod variable;
@@ -153,6 +155,7 @@ pub enum Parent {
 #[derive(Debug, From, TryInto, IsVariant)]
 pub enum Definition {
     Contract(ContractDefinition),
+    Interface(InterfaceDefinition),
     Constructor(ConstructorDefinition),
     Enumeration(EnumDefinition),
     Error(ErrorDefinition),
@@ -174,6 +177,7 @@ impl PartialEq for Definition {
         // require adding a field in the definition just for that.
         match (self, other) {
             (Self::Contract(a), Self::Contract(b)) => a.span.start == b.span.start,
+            (Self::Interface(a), Self::Interface(b)) => a.span.start == b.span.start,
             (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
             (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
             (Self::Error(a), Self::Error(b)) => a.span.start == b.span.start,
@@ -200,6 +204,7 @@ impl Definition {
     pub fn span(&self) -> Option<TextRange> {
         match self {
             Definition::Contract(d) => Some(d.span()),
+            Definition::Interface(d) => Some(d.span()),
             Definition::Constructor(d) => Some(d.span()),
             Definition::Enumeration(d) => Some(d.span()),
             Definition::Error(d) => Some(d.span()),
@@ -219,6 +224,7 @@ impl Definition {
     pub fn span_mut(&mut self) -> Option<&mut TextRange> {
         match self {
             Definition::Contract(d) => Some(&mut d.span),
+            Definition::Interface(d) => Some(&mut d.span),
             Definition::Constructor(d) => Some(&mut d.span),
             Definition::Enumeration(d) => Some(&mut d.span),
             Definition::Error(d) => Some(&mut d.span),
@@ -237,6 +243,15 @@ impl Definition {
     pub fn to_contract(self) -> Option<ContractDefinition> {
         match self {
             Definition::Contract(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Convert to the inner contract definition
+    #[must_use]
+    pub fn to_interface(self) -> Option<InterfaceDefinition> {
+        match self {
+            Definition::Interface(def) => Some(def),
             _ => None,
         }
     }
@@ -318,6 +333,15 @@ impl Definition {
     pub fn as_contract(&self) -> Option<&ContractDefinition> {
         match self {
             Definition::Contract(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner constructor definition
+    #[must_use]
+    pub fn as_interface(&self) -> Option<&InterfaceDefinition> {
+        match self {
+            Definition::Interface(def) => Some(def),
             _ => None,
         }
     }
@@ -418,6 +442,7 @@ impl Validate for Definition {
                 }
             }
             Definition::Contract(def) => def.validate(options),
+            Definition::Interface(def) => def.validate(options),
             Definition::Constructor(def) => def.validate(options),
             Definition::Enumeration(def) => def.validate(options),
             Definition::Error(def) => def.validate(options),
@@ -437,6 +462,8 @@ impl Validate for Definition {
 pub enum ContractType {
     #[display("contract")]
     Contract,
+    #[display("interface")]
+    Interface,
 }
 
 /// A type of source item (function, struct, etc.)
@@ -446,6 +473,8 @@ pub enum ContractType {
 pub enum ItemType {
     #[display("contract")]
     Contract,
+    #[display("interface")]
+    Interface,
     #[display("constructor")]
     Constructor,
     #[display("enum")]

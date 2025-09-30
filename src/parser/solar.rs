@@ -26,8 +26,8 @@ use crate::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, contract::ContractDefinition,
         enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, modifier::ModifierDefinition, structure::StructDefinition,
-        variable::VariableDeclaration,
+        function::FunctionDefinition, interface::InterfaceDefinition, modifier::ModifierDefinition,
+        structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -212,8 +212,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 register_span(&mut offsets, span);
             }
-            Definition::Variable(_)
-            | Definition::Contract(_)
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Variable(_)
             | Definition::NatspecParsingError(_) => {}
         }
     }
@@ -296,8 +297,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 populate_span(&mapping, span);
             }
-            Definition::Variable(_)
-            | Definition::Contract(_)
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Variable(_)
             | Definition::NatspecParsingError(_) => {}
         }
     }
@@ -423,7 +425,7 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemContract<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        if matches!(self.kind, ContractKind::Interface | ContractKind::Library) {
+        if matches!(self.kind, ContractKind::Library) {
             return None;
         }
         let name = self.name.to_string();
@@ -477,14 +479,21 @@ impl Extract for &solar_parse::ast::ItemContract<'_> {
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
-        Some(
-            ContractDefinition {
+        Some(match self.kind {
+            ContractKind::Contract | ContractKind::AbstractContract => ContractDefinition {
                 name,
                 span,
                 natspec,
             }
             .into(),
-        )
+            ContractKind::Interface => InterfaceDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
+            ContractKind::Library => unimplemented!(),
+        })
     }
 }
 

@@ -166,6 +166,10 @@ pub struct ValidationOptions {
     #[builder(default)]
     pub contracts: ContractRules,
 
+    /// Validation options for interfaces
+    #[builder(default)]
+    pub interfaces: ContractRules,
+
     /// Validation options for constructors
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
@@ -210,6 +214,7 @@ impl Default for ValidationOptions {
             inheritdoc_override: false,
             notice_or_dev: false,
             contracts: ContractRules::default(),
+            interfaces: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -230,6 +235,7 @@ impl From<Config> for ValidationOptions {
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             contracts: value.contracts,
+            interfaces: value.interfaces,
             constructors: value.constructors,
             enums: value.enums,
             errors: value.errors,
@@ -250,6 +256,7 @@ impl From<&Config> for ValidationOptions {
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
             contracts: value.contracts.clone(),
+            interfaces: value.interfaces.clone(),
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
             errors: value.errors.clone(),
@@ -590,6 +597,8 @@ mod tests {
         let options = ValidationOptions::from(&config);
         assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.contracts, options.contracts);
+        assert_eq!(config.interfaces, options.interfaces);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);
@@ -604,6 +613,14 @@ mod tests {
                 BaseConfig::builder()
                     .inheritdoc(false)
                     .notice_or_dev(true)
+                    .build(),
+            )
+            .contracts(
+                ContractRules::builder()
+                    .title(Req::Required)
+                    .author(Req::Required)
+                    .dev(Req::Required)
+                    .notice(Req::Forbidden)
                     .build(),
             )
             .constructors(WithParamsRules::builder().dev(Req::Required).build())
@@ -626,6 +643,8 @@ mod tests {
         let options = ValidationOptions::from(&config);
         assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.contracts, options.contracts);
+        assert_eq!(config.interfaces, options.interfaces);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);

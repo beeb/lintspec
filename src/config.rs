@@ -303,6 +303,11 @@ pub struct Config {
     #[builder(default)]
     pub contracts: ContractRules,
 
+    /// Validation rules for interfaces
+    #[serde(rename = "interface")]
+    #[builder(default)]
+    pub interfaces: ContractRules,
+
     /// Validation rules for enums
     #[serde(rename = "enum")]
     #[builder(default)]
@@ -345,6 +350,7 @@ impl Default for Config {
             lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
             contracts: ContractRules::default(),
+            interfaces: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
