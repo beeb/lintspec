@@ -17,9 +17,10 @@ use slang_solidity::{
 use crate::{
     definitions::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
-        event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        constructor::ConstructorDefinition, contract::ContractDefinition,
+        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
+        function::FunctionDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -53,6 +54,7 @@ impl SlangParser {
             ModifierDefinition::query(),
             StructDefinition::query(),
             VariableDeclaration::query(),
+            ContractDefinition::query(),
         ]
     }
 
@@ -89,6 +91,9 @@ impl SlangParser {
                 ),
                 7 => Some(
                     VariableDeclaration::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                ),
+                8 => Some(
+                    ContractDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
                 ),
                 _ => unreachable!(),
             };
@@ -461,6 +466,38 @@ impl Extract for VariableDeclaration {
     }
 }
 
+impl Extract for ContractDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@contract [ContractDefinition
+            @contract_name name:[Identifier]
+            @contract_spec inheritance:[InheritanceSpecifier]?
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let contract = capture(&m, "contract")?;
+        let name = capture(&m, "contract_name")?;
+        let spec = capture_opt(&m, "contract_spec")?;
+
+        let span_start = find_definition_start(&contract);
+        let span_end = spec
+            .as_ref()
+            .map_or_else(|| name.text_range().end.into(), find_definition_end);
+        let span = span_start..span_end;
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&contract.clone(), &[])?;
+
+        Ok(ContractDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
     match m.capture(name).map(|(_, mut captures)| captures.next()) {
@@ -537,6 +574,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
                     .populate_returns(returns),
             ));
         } else if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::ContractKeyword,
             TerminalKind::ConstructorKeyword,
             TerminalKind::EnumKeyword,
             TerminalKind::ErrorKeyword,

@@ -1,6 +1,6 @@
 #![cfg(feature = "slang")]
 use lintspec::{
-    config::{NoticeDevRules, Req, VariableConfig, WithParamsRules},
+    config::{ContractRules, NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::ValidationOptions,
 };
 
@@ -58,6 +58,24 @@ fn test_enum() {
         &ValidationOptions::builder()
             .inheritdoc(false)
             .enums(WithParamsRules::required())
+            .build(),
+        true,
+    ));
+}
+
+#[test]
+fn test_contract() {
+    insta::assert_snapshot!(snapshot_content(
+        "./test-data/BasicSample.sol",
+        &ValidationOptions::builder()
+            .inheritdoc(false)
+            .contracts(
+                ContractRules::builder()
+                    .title(Req::Required)
+                    .author(Req::Required)
+                    .notice(Req::Required)
+                    .build()
+            )
             .build(),
         true,
     ));

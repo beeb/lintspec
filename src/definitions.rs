@@ -5,6 +5,7 @@
 use std::{fmt, ops::Range};
 
 use constructor::ConstructorDefinition;
+use contract::ContractDefinition;
 use derive_more::{Add, Display, From, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
@@ -21,6 +22,7 @@ use crate::{
 };
 
 pub mod constructor;
+pub mod contract;
 pub mod enumeration;
 pub mod error;
 pub mod event;
@@ -150,6 +152,7 @@ pub enum Parent {
 /// A source item's definition
 #[derive(Debug, From, TryInto, IsVariant)]
 pub enum Definition {
+    Contract(ContractDefinition),
     Constructor(ConstructorDefinition),
     Enumeration(EnumDefinition),
     Error(ErrorDefinition),
@@ -170,6 +173,7 @@ impl PartialEq for Definition {
         // TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
         // require adding a field in the definition just for that.
         match (self, other) {
+            (Self::Contract(a), Self::Contract(b)) => a.span.start == b.span.start,
             (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
             (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
             (Self::Error(a), Self::Error(b)) => a.span.start == b.span.start,
@@ -195,6 +199,7 @@ impl Definition {
     #[must_use]
     pub fn span(&self) -> Option<TextRange> {
         match self {
+            Definition::Contract(d) => Some(d.span()),
             Definition::Constructor(d) => Some(d.span()),
             Definition::Enumeration(d) => Some(d.span()),
             Definition::Error(d) => Some(d.span()),
@@ -213,6 +218,7 @@ impl Definition {
     /// Mutably borrow the span of a definition
     pub fn span_mut(&mut self) -> Option<&mut TextRange> {
         match self {
+            Definition::Contract(d) => Some(&mut d.span),
             Definition::Constructor(d) => Some(&mut d.span),
             Definition::Enumeration(d) => Some(&mut d.span),
             Definition::Error(d) => Some(&mut d.span),
@@ -223,6 +229,15 @@ impl Definition {
             Definition::Variable(d) => Some(&mut d.span),
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => Some(span),
             Definition::NatspecParsingError(_) => None,
+        }
+    }
+
+    /// Convert to the inner contract definition
+    #[must_use]
+    pub fn to_contract(self) -> Option<ContractDefinition> {
+        match self {
+            Definition::Contract(def) => Some(def),
+            _ => None,
         }
     }
 
@@ -297,6 +312,16 @@ impl Definition {
             _ => None,
         }
     }
+
+    /// Reference to the inner constructor definition
+    #[must_use]
+    pub fn as_contract(&self) -> Option<&ContractDefinition> {
+        match self {
+            Definition::Contract(def) => Some(def),
+            _ => None,
+        }
+    }
+
     /// Reference to the inner constructor definition
     #[must_use]
     pub fn as_constructor(&self) -> Option<&ConstructorDefinition> {
@@ -392,6 +417,7 @@ impl Validate for Definition {
                     diags: vec![Diagnostic { span, message }],
                 }
             }
+            Definition::Contract(def) => def.validate(options),
             Definition::Constructor(def) => def.validate(options),
             Definition::Enumeration(def) => def.validate(options),
             Definition::Error(def) => def.validate(options),
@@ -408,7 +434,18 @@ impl Validate for Definition {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
+pub enum ContractType {
+    #[display("contract")]
+    Contract,
+}
+
+/// A type of source item (function, struct, etc.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
+#[serde(rename_all = "lowercase")]
 pub enum ItemType {
+    #[display("contract")]
+    Contract,
     #[display("constructor")]
     Constructor,
     #[display("enum")]

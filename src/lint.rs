@@ -12,7 +12,7 @@ use std::{
 use serde::Serialize;
 
 use crate::{
-    config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
+    config::{Config, ContractRules, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
     natspec::{NatSpec, NatSpecKind},
@@ -162,6 +162,10 @@ pub struct ValidationOptions {
     #[builder(default)]
     pub notice_or_dev: bool,
 
+    /// Validation options for contracts
+    #[builder(default)]
+    pub contracts: ContractRules,
+
     /// Validation options for constructors
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
@@ -205,6 +209,7 @@ impl Default for ValidationOptions {
             inheritdoc: true,
             inheritdoc_override: false,
             notice_or_dev: false,
+            contracts: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -224,6 +229,7 @@ impl From<Config> for ValidationOptions {
             inheritdoc: value.lintspec.inheritdoc,
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
+            contracts: value.contracts,
             constructors: value.constructors,
             enums: value.enums,
             errors: value.errors,
@@ -243,6 +249,7 @@ impl From<&Config> for ValidationOptions {
             inheritdoc: value.lintspec.inheritdoc,
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
+            contracts: value.contracts.clone(),
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
             errors: value.errors.clone(),
@@ -470,6 +477,50 @@ pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Optio
         (Req::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
             span,
             message: "@dev is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
+/// Check if the `@title` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
+#[must_use]
+pub fn check_title(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_title() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@title is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_title() => Some(Diagnostic {
+            span,
+            message: "@title is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
+/// Check if the `@author` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
+#[must_use]
+pub fn check_author(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_author() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@author is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_author() => Some(Diagnostic {
+            span,
+            message: "@author is forbidden".to_string(),
         }),
         _ => None,
     }

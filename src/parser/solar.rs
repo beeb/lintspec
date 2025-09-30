@@ -24,9 +24,10 @@ use std::{
 use crate::{
     definitions::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
-        event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        constructor::ConstructorDefinition, contract::ContractDefinition,
+        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
+        function::FunctionDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -211,7 +212,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 register_span(&mut offsets, span);
             }
-            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+            Definition::Variable(_)
+            | Definition::Contract(_)
+            | Definition::NatspecParsingError(_) => {}
         }
     }
     if offsets.is_empty() {
@@ -293,7 +296,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 populate_span(&mapping, span);
             }
-            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+            Definition::Variable(_)
+            | Definition::Contract(_)
+            | Definition::NatspecParsingError(_) => {}
         }
     }
     definitions
@@ -347,7 +352,12 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     /// Visit an item and extract definitions from it, using the corresponding trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         match &item.kind {
-            ItemKind::Contract(item) => self.visit_item_contract(item)?,
+            ItemKind::Contract(item_contract) => {
+                if let Some(def) = item_contract.extract_definition(item, self) {
+                    self.definitions.push(def);
+                }
+                self.visit_item_contract(item_contract)?;
+            }
             ItemKind::Function(item_function) => {
                 if let Some(def) = item_function.extract_definition(item, self) {
                     self.definitions.push(def);
@@ -409,6 +419,70 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
 /// Extract each "component" (parent, params, span, etc) then build a [`Definition`] from it
 trait Extract {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition>;
+}
+
+impl Extract for &solar_parse::ast::ItemContract<'_> {
+    fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
+        let name = self.name.to_string();
+
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
+            Ok(extracted) => extracted.map_or_else(
+                || {
+                    let span = match &item.kind {
+                        ItemKind::Contract(item_contract) => {
+                            let end_bases = item_contract
+                                .bases
+                                .last()
+                                .map_or(item_contract.name.span.hi(), |b| b.span().hi());
+                            let end_specifiers = item_contract
+                                .layout
+                                .as_ref()
+                                .map_or(item_contract.name.span.hi(), |l| l.span.hi());
+                            visitor
+                                .span_to_textrange(item.span.with_hi(end_bases.max(end_specifiers)))
+                        }
+                        _ => visitor.span_to_textrange(item.span),
+                    };
+
+                    (None, span)
+                },
+                |(natspec, doc_span)| {
+                    // If there are natspec in a contract, take the whole doc and contract header as span
+                    if let ItemKind::Contract(item_contract) = &item.kind {
+                        let end_bases = item_contract
+                            .bases
+                            .last()
+                            .map_or(item_contract.name.span.hi(), |b| b.span().hi());
+                        let end_specifiers = item_contract
+                            .layout
+                            .as_ref()
+                            .map_or(item_contract.name.span.hi(), |l| l.span.hi());
+                        (
+                            Some(natspec),
+                            visitor
+                                .span_to_textrange(doc_span.with_hi(end_bases.max(end_specifiers))),
+                        )
+                    } else {
+                        // otherwise, use the doc and item span
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
+                        )
+                    }
+                },
+            ),
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
+        };
+
+        Some(
+            ContractDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
+        )
+    }
 }
 
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
