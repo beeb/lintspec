@@ -274,7 +274,7 @@ macro_rules! cli_rule_override {
         for item in $items {
             match item {
                 ItemType::Contract => $config.contracts.$tag = $req,
-                ItemType::Interface => $config.contracts.$tag = $req,
+                ItemType::Interface => $config.interfaces.$tag = $req,
                 ItemType::Constructor => $config.constructors.$tag = $req,
                 ItemType::Enum => $config.enums.$tag = $req,
                 ItemType::Error => $config.errors.$tag = $req,

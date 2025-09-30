@@ -1,5 +1,8 @@
 #![cfg(feature = "slang")]
-use lintspec::lint::ValidationOptions;
+use lintspec::{
+    config::{ContractRules, Req},
+    lint::ValidationOptions,
+};
 
 mod common;
 use common::*;
@@ -8,7 +11,16 @@ use common::*;
 fn test_interface() {
     insta::assert_snapshot!(snapshot_content(
         "./test-data/InterfaceSample.sol",
-        &ValidationOptions::builder().inheritdoc(false).build(),
+        &ValidationOptions::builder()
+            .inheritdoc(false)
+            .interfaces(
+                ContractRules::builder()
+                    .title(Req::Required)
+                    .author(Req::Required)
+                    .notice(Req::Required)
+                    .build()
+            )
+            .build(),
         true,
     ));
 }

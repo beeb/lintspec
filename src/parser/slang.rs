@@ -617,6 +617,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             ));
         } else if cursor.node().is_terminal_with_kinds(&[
             TerminalKind::ContractKeyword,
+            TerminalKind::InterfaceKeyword,
             TerminalKind::ConstructorKeyword,
             TerminalKind::EnumKeyword,
             TerminalKind::ErrorKeyword,
