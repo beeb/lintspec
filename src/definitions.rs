@@ -17,7 +17,7 @@ use structure::StructDefinition;
 use variable::VariableDeclaration;
 
 use crate::{
-    definitions::interface::InterfaceDefinition,
+    definitions::{interface::InterfaceDefinition, library::LibraryDefinition},
     error::Error,
     lint::{Diagnostic, ItemDiagnostics, Validate, ValidationOptions},
 };
@@ -29,6 +29,7 @@ pub mod error;
 pub mod event;
 pub mod function;
 pub mod interface;
+pub mod library;
 pub mod modifier;
 pub mod structure;
 pub mod variable;
@@ -156,6 +157,7 @@ pub enum Parent {
 pub enum Definition {
     Contract(ContractDefinition),
     Interface(InterfaceDefinition),
+    Library(LibraryDefinition),
     Constructor(ConstructorDefinition),
     Enumeration(EnumDefinition),
     Error(ErrorDefinition),
@@ -178,6 +180,7 @@ impl PartialEq for Definition {
         match (self, other) {
             (Self::Contract(a), Self::Contract(b)) => a.span.start == b.span.start,
             (Self::Interface(a), Self::Interface(b)) => a.span.start == b.span.start,
+            (Self::Library(a), Self::Library(b)) => a.span.start == b.span.start,
             (Self::Constructor(a), Self::Constructor(b)) => a.span.start == b.span.start,
             (Self::Enumeration(a), Self::Enumeration(b)) => a.span.start == b.span.start,
             (Self::Error(a), Self::Error(b)) => a.span.start == b.span.start,
@@ -205,6 +208,7 @@ impl Definition {
         match self {
             Definition::Contract(d) => Some(d.span()),
             Definition::Interface(d) => Some(d.span()),
+            Definition::Library(d) => Some(d.span()),
             Definition::Constructor(d) => Some(d.span()),
             Definition::Enumeration(d) => Some(d.span()),
             Definition::Error(d) => Some(d.span()),
@@ -225,6 +229,7 @@ impl Definition {
         match self {
             Definition::Contract(d) => Some(&mut d.span),
             Definition::Interface(d) => Some(&mut d.span),
+            Definition::Library(d) => Some(&mut d.span),
             Definition::Constructor(d) => Some(&mut d.span),
             Definition::Enumeration(d) => Some(&mut d.span),
             Definition::Error(d) => Some(&mut d.span),
@@ -247,11 +252,20 @@ impl Definition {
         }
     }
 
-    /// Convert to the inner contract definition
+    /// Convert to the inner interface definition
     #[must_use]
     pub fn to_interface(self) -> Option<InterfaceDefinition> {
         match self {
             Definition::Interface(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Convert to the inner library definition
+    #[must_use]
+    pub fn to_library(self) -> Option<LibraryDefinition> {
+        match self {
+            Definition::Library(def) => Some(def),
             _ => None,
         }
     }
@@ -328,7 +342,7 @@ impl Definition {
         }
     }
 
-    /// Reference to the inner constructor definition
+    /// Reference to the inner contract definition
     #[must_use]
     pub fn as_contract(&self) -> Option<&ContractDefinition> {
         match self {
@@ -337,11 +351,20 @@ impl Definition {
         }
     }
 
-    /// Reference to the inner constructor definition
+    /// Reference to the inner interface definition
     #[must_use]
     pub fn as_interface(&self) -> Option<&InterfaceDefinition> {
         match self {
             Definition::Interface(def) => Some(def),
+            _ => None,
+        }
+    }
+
+    /// Reference to the inner library definition
+    #[must_use]
+    pub fn as_library(&self) -> Option<&LibraryDefinition> {
+        match self {
+            Definition::Library(def) => Some(def),
             _ => None,
         }
     }
@@ -443,6 +466,7 @@ impl Validate for Definition {
             }
             Definition::Contract(def) => def.validate(options),
             Definition::Interface(def) => def.validate(options),
+            Definition::Library(def) => def.validate(options),
             Definition::Constructor(def) => def.validate(options),
             Definition::Enumeration(def) => def.validate(options),
             Definition::Error(def) => def.validate(options),
@@ -464,6 +488,8 @@ pub enum ContractType {
     Contract,
     #[display("interface")]
     Interface,
+    #[display("library")]
+    Library,
 }
 
 /// A type of source item (function, struct, etc.)
@@ -475,6 +501,8 @@ pub enum ItemType {
     Contract,
     #[display("interface")]
     Interface,
+    #[display("library")]
+    Library,
     #[display("constructor")]
     Constructor,
     #[display("enum")]

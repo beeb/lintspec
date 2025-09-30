@@ -26,8 +26,8 @@ use crate::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, contract::ContractDefinition,
         enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
+        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -214,6 +214,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             }
             Definition::Contract(_)
             | Definition::Interface(_)
+            | Definition::Library(_)
             | Definition::Variable(_)
             | Definition::NatspecParsingError(_) => {}
         }
@@ -299,6 +300,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             }
             Definition::Contract(_)
             | Definition::Interface(_)
+            | Definition::Library(_)
             | Definition::Variable(_)
             | Definition::NatspecParsingError(_) => {}
         }
@@ -425,9 +427,6 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemContract<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        if matches!(self.kind, ContractKind::Library) {
-            return None;
-        }
         let name = self.name.to_string();
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
@@ -492,7 +491,12 @@ impl Extract for &solar_parse::ast::ItemContract<'_> {
                 natspec,
             }
             .into(),
-            ContractKind::Library => unimplemented!(),
+            ContractKind::Library => LibraryDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
         })
     }
 }

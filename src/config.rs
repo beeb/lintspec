@@ -308,6 +308,11 @@ pub struct Config {
     #[builder(default)]
     pub interfaces: ContractRules,
 
+    /// Validation rules for libraries
+    #[serde(rename = "library")]
+    #[builder(default)]
+    pub libraries: ContractRules,
+
     /// Validation rules for enums
     #[serde(rename = "enum")]
     #[builder(default)]
@@ -351,6 +356,7 @@ impl Default for Config {
             output: OutputConfig::default(),
             contracts: ContractRules::default(),
             interfaces: ContractRules::default(),
+            libraries: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -410,6 +416,7 @@ mod tests {
             WithReturnsRules::builder().build()
         );
         assert_eq!(NoticeDevRules::default(), NoticeDevRules::builder().build());
+        assert_eq!(ContractRules::default(), ContractRules::builder().build());
         assert_eq!(VariableConfig::default(), VariableConfig::builder().build());
         assert_eq!(
             WithParamsRules::default(),

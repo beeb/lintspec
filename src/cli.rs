@@ -259,6 +259,7 @@ macro_rules! cli_rule_override {
             match item {
                 ContractType::Contract => $config.contracts.title = $req,
                 ContractType::Interface => $config.interfaces.title = $req,
+                ContractType::Library => $config.libraries.title = $req,
             }
         }
     };
@@ -267,6 +268,7 @@ macro_rules! cli_rule_override {
             match item {
                 ContractType::Contract => $config.contracts.author = $req,
                 ContractType::Interface => $config.interfaces.author = $req,
+                ContractType::Library => $config.libraries.author = $req,
             }
         }
     };
@@ -275,6 +277,7 @@ macro_rules! cli_rule_override {
             match item {
                 ItemType::Contract => $config.contracts.$tag = $req,
                 ItemType::Interface => $config.interfaces.$tag = $req,
+                ItemType::Library => $config.libraries.$tag = $req,
                 ItemType::Constructor => $config.constructors.$tag = $req,
                 ItemType::Enum => $config.enums.$tag = $req,
                 ItemType::Error => $config.errors.$tag = $req,

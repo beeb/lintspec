@@ -17,6 +17,24 @@ notice = "ignored" # since constructors rarely have another purpose than deploym
 dev = "ignored"
 param = "required"
 
+[contract]
+title = "ignored"
+author = "ignored"
+notice = "ignored"
+dev = "ignored"
+
+[interface]
+title = "ignored"
+author = "ignored"
+notice = "ignored"
+dev = "ignored"
+
+[library]
+title = "ignored"
+author = "ignored"
+notice = "ignored"
+dev = "ignored"
+
 [enum]
 notice = "required"
 dev = "ignored"

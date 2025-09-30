@@ -19,8 +19,8 @@ use crate::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
         constructor::ConstructorDefinition, contract::ContractDefinition,
         enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
+        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -56,6 +56,7 @@ impl SlangParser {
             VariableDeclaration::query(),
             ContractDefinition::query(),
             InterfaceDefinition::query(),
+            LibraryDefinition::query(),
         ]
     }
 
@@ -103,6 +104,9 @@ impl SlangParser {
                         .unwrap_or_else(Definition::NatspecParsingError);
                     if out.contains(&def) { None } else { Some(def) }
                 }
+                10 => Some(
+                    LibraryDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                ),
                 _ => unreachable!(),
             };
             if let Some(def) = def {
@@ -540,6 +544,33 @@ impl Extract for InterfaceDefinition {
     }
 }
 
+impl Extract for LibraryDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@library [LibraryDefinition
+            @library_name name:[Identifier]
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let library = capture(&m, "library")?;
+        let name = capture(&m, "library_name")?;
+
+        let span = find_definition_start(&library)..name.text_range().end.into();
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&library.clone(), &[])?;
+
+        Ok(LibraryDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
+
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
     match m.capture(name).map(|(_, mut captures)| captures.next()) {
@@ -618,6 +649,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
         } else if cursor.node().is_terminal_with_kinds(&[
             TerminalKind::ContractKeyword,
             TerminalKind::InterfaceKeyword,
+            TerminalKind::LibraryKeyword,
             TerminalKind::ConstructorKeyword,
             TerminalKind::EnumKeyword,
             TerminalKind::ErrorKeyword,

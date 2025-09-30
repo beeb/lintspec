@@ -170,6 +170,10 @@ pub struct ValidationOptions {
     #[builder(default)]
     pub interfaces: ContractRules,
 
+    /// Validation options for libraries
+    #[builder(default)]
+    pub libraries: ContractRules,
+
     /// Validation options for constructors
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
@@ -215,6 +219,7 @@ impl Default for ValidationOptions {
             notice_or_dev: false,
             contracts: ContractRules::default(),
             interfaces: ContractRules::default(),
+            libraries: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -236,6 +241,7 @@ impl From<Config> for ValidationOptions {
             notice_or_dev: value.lintspec.notice_or_dev,
             contracts: value.contracts,
             interfaces: value.interfaces,
+            libraries: value.libraries,
             constructors: value.constructors,
             enums: value.enums,
             errors: value.errors,
@@ -257,6 +263,7 @@ impl From<&Config> for ValidationOptions {
             notice_or_dev: value.lintspec.notice_or_dev,
             contracts: value.contracts.clone(),
             interfaces: value.interfaces.clone(),
+            libraries: value.libraries.clone(),
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
             errors: value.errors.clone(),
@@ -599,6 +606,7 @@ mod tests {
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
         assert_eq!(config.contracts, options.contracts);
         assert_eq!(config.interfaces, options.interfaces);
+        assert_eq!(config.libraries, options.libraries);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);
@@ -623,6 +631,22 @@ mod tests {
                     .notice(Req::Forbidden)
                     .build(),
             )
+            .interfaces(
+                ContractRules::builder()
+                    .title(Req::Ignored)
+                    .author(Req::Forbidden)
+                    .dev(Req::Forbidden)
+                    .notice(Req::Required)
+                    .build(),
+            )
+            .libraries(
+                ContractRules::builder()
+                    .title(Req::Forbidden)
+                    .author(Req::Ignored)
+                    .dev(Req::Required)
+                    .notice(Req::Ignored)
+                    .build(),
+            )
             .constructors(WithParamsRules::builder().dev(Req::Required).build())
             .enums(WithParamsRules::builder().param(Req::Required).build())
             .errors(WithParamsRules::builder().notice(Req::Forbidden).build())
@@ -645,6 +669,7 @@ mod tests {
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
         assert_eq!(config.contracts, options.contracts);
         assert_eq!(config.interfaces, options.interfaces);
+        assert_eq!(config.libraries, options.libraries);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);
