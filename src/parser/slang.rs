@@ -913,6 +913,19 @@ mod tests {
         output.create_tree_cursor()
     }
 
+    macro_rules! impl_find_contract_item {
+        ($fn_name:ident, $item_variant:path, $item_type:ty) => {
+            fn $fn_name<'a>(name: &str, items: &'a [Definition]) -> &'a $item_type {
+                items
+                    .iter()
+                    .find_map(|d| match d {
+                        $item_variant(def) if def.name == name => Some(def),
+                        _ => None,
+                    })
+                    .unwrap()
+            }
+        };
+    }
     macro_rules! impl_find_item {
         ($fn_name:ident, $item_variant:path, $item_type:ty) => {
             fn $fn_name<'a>(
@@ -931,6 +944,9 @@ mod tests {
         };
     }
 
+    impl_find_contract_item!(find_contract, Definition::Contract, ContractDefinition);
+    impl_find_contract_item!(find_interface, Definition::Interface, InterfaceDefinition);
+    impl_find_contract_item!(find_library, Definition::Library, LibraryDefinition);
     impl_find_item!(find_function, Definition::Function, FunctionDefinition);
     impl_find_item!(find_variable, Definition::Variable, VariableDeclaration);
     impl_find_item!(find_modifier, Definition::Modifier, ModifierDefinition);
@@ -960,6 +976,51 @@ mod tests {
             line: 0,
             column: range.end,
         }
+    }
+
+    #[test]
+    fn test_parse_contract() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_contract("ParserTest", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "A contract with correct natspec".to_string(),
+                span: single_line_textrange(4..43)
+            }]
+        );
+    }
+
+    #[test]
+    fn test_parse_interface() {
+        let cursor = parse_file(include_str!("../../test-data/InterfaceSample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_interface("IInterfacedSample", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Title,
+                comment: "The interface".to_string(),
+                span: single_line_textrange(4..24)
+            }]
+        );
+    }
+
+    #[test]
+    fn test_parse_library() {
+        let cursor = parse_file(include_str!("../../test-data/LibrarySample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_library("StringUtils", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Title,
+                comment: "StringUtils".to_string(),
+                span: single_line_textrange(4..22)
+            }]
+        );
     }
 
     #[test]

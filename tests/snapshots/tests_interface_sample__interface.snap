@@ -4,15 +4,14 @@ expression: "snapshot_content(\"./test-data/InterfaceSample.sol\",\n&ValidationO
 ---
 ./test-data/InterfaceSample.sol:4:1
 interface IInterfacedSample
-  @title is missing
   @author is missing
   @notice is missing
 
-./test-data/InterfaceSample.sol:5:5
+./test-data/InterfaceSample.sol:6:5
 function IInterfacedSample.greet
   @return _greeting is missing
 
-./test-data/InterfaceSample.sol:14:5
+./test-data/InterfaceSample.sol:15:5
 function InterfacedSample.greet
   @notice is missing
   @return _greeting is missing
