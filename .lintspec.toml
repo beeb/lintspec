@@ -7,10 +7,12 @@ notice_or_dev = false          # do not distinguish between `@notice` and `@dev`
 skip_version_detection = false # skip detection of the Solidity version from pragma statements and use the latest
 
 [output]
-# out = ""        # if provided, redirects output to this file
+# out = ""        # if provided, redirects output to a file
 json = false    # output diagnostics as JSON
 compact = false # compact output (minified JSON or compact text)
 sort = false    # sort results by file path
+
+# for all items below, the accepted values are `ignored`, `required` and `forbidden`.
 
 [constructor]
 notice = "ignored" # since constructors rarely have another purpose than deployment, `@notice` is optional
@@ -38,7 +40,7 @@ dev = "ignored"
 [enum]
 notice = "required"
 dev = "ignored"
-param = "ignored"   # `@param` on enums is not in the official spec
+param = "ignored"
 
 [error]
 notice = "required"

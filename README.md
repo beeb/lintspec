@@ -136,7 +136,8 @@ Create a default configuration with the following command:
 lintspec init
 ```
 
-This will create a `.lintspec.toml` file with the default configuration in the current directory.
+This will create a `.lintspec.toml` file with the default configuration in the current directory. Check out the
+[example file](https://github.com/beeb/lintspec/blob/main/.lintspec.toml) for more information.
 
 ### Environment Variables
 
