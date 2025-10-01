@@ -139,6 +139,10 @@ lintspec init
 This will create a `.lintspec.toml` file with the default configuration in the current directory. Check out the
 [example file](https://github.com/beeb/lintspec/blob/main/.lintspec.toml) for more information.
 
+All items for which the default configuration suits you can be removed from the file if desired. Note that some
+settings could change their default value in the future (in a new major release) which could alter behavior if they are
+not specified.
+
 ### Environment Variables
 
 Environment variables (in capitals, with the `LS_` prefix) can also be used and take precedence over the
