@@ -24,9 +24,6 @@ jobs:
           path: BASELINE_BRANCH
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
 
       # Install a prebuilt binary of cargo-semver-checks
       - uses: cargo-bins/cargo-binstall@main
