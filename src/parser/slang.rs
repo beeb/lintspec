@@ -17,9 +17,10 @@ use slang_solidity::{
 use crate::{
     definitions::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
-        event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        constructor::ConstructorDefinition, contract::ContractDefinition,
+        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
+        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
+        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -53,6 +54,9 @@ impl SlangParser {
             ModifierDefinition::query(),
             StructDefinition::query(),
             VariableDeclaration::query(),
+            ContractDefinition::query(),
+            InterfaceDefinition::query(),
+            LibraryDefinition::query(),
         ]
     }
 
@@ -89,6 +93,19 @@ impl SlangParser {
                 ),
                 7 => Some(
                     VariableDeclaration::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                ),
+                8 => {
+                    let def = ContractDefinition::extract(m)
+                        .unwrap_or_else(Definition::NatspecParsingError);
+                    if out.contains(&def) { None } else { Some(def) }
+                }
+                9 => {
+                    let def = InterfaceDefinition::extract(m)
+                        .unwrap_or_else(Definition::NatspecParsingError);
+                    if out.contains(&def) { None } else { Some(def) }
+                }
+                10 => Some(
+                    LibraryDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
                 ),
                 _ => unreachable!(),
             };
@@ -461,6 +478,99 @@ impl Extract for VariableDeclaration {
     }
 }
 
+impl Extract for ContractDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@contract [ContractDefinition
+            @contract_name name:[Identifier]
+            @contract_spec inheritance:[InheritanceSpecifier]?
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let contract = capture(&m, "contract")?;
+        let name = capture(&m, "contract_name")?;
+        let spec = capture_opt(&m, "contract_spec")?;
+
+        let span_start = find_definition_start(&contract);
+        let span_end = spec
+            .as_ref()
+            .map_or_else(|| name.text_range().end.into(), find_definition_end);
+        let span = span_start..span_end;
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&contract.clone(), &[])?;
+
+        Ok(ContractDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
+
+impl Extract for InterfaceDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@iface [InterfaceDefinition
+            @iface_name name:[Identifier]
+            @iface_spec inheritance:[InheritanceSpecifier]?
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let iface = capture(&m, "iface")?;
+        let name = capture(&m, "iface_name")?;
+        let spec = capture_opt(&m, "iface_spec")?;
+
+        let span_start = find_definition_start(&iface);
+        let span_end = spec
+            .as_ref()
+            .map_or_else(|| name.text_range().end.into(), find_definition_end);
+        let span = span_start..span_end;
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&iface.clone(), &[])?;
+
+        Ok(InterfaceDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
+
+impl Extract for LibraryDefinition {
+    fn query() -> Query {
+        Query::parse(
+            "@library [LibraryDefinition
+            @library_name name:[Identifier]
+        ]",
+        )
+        .expect("query should compile")
+    }
+
+    fn extract(m: QueryMatch) -> Result<Definition> {
+        let library = capture(&m, "library")?;
+        let name = capture(&m, "library_name")?;
+
+        let span = find_definition_start(&library)..name.text_range().end.into();
+        let name = name.node().unparse().trim().to_string();
+        let natspec = extract_comment(&library.clone(), &[])?;
+
+        Ok(LibraryDefinition {
+            name,
+            span,
+            natspec,
+        }
+        .into())
+    }
+}
+
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
     match m.capture(name).map(|(_, mut captures)| captures.next()) {
@@ -537,6 +647,9 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
                     .populate_returns(returns),
             ));
         } else if cursor.node().is_terminal_with_kinds(&[
+            TerminalKind::ContractKeyword,
+            TerminalKind::InterfaceKeyword,
+            TerminalKind::LibraryKeyword,
             TerminalKind::ConstructorKeyword,
             TerminalKind::EnumKeyword,
             TerminalKind::ErrorKeyword,
@@ -800,6 +913,19 @@ mod tests {
         output.create_tree_cursor()
     }
 
+    macro_rules! impl_find_contract_item {
+        ($fn_name:ident, $item_variant:path, $item_type:ty) => {
+            fn $fn_name<'a>(name: &str, items: &'a [Definition]) -> &'a $item_type {
+                items
+                    .iter()
+                    .find_map(|d| match d {
+                        $item_variant(def) if def.name == name => Some(def),
+                        _ => None,
+                    })
+                    .unwrap()
+            }
+        };
+    }
     macro_rules! impl_find_item {
         ($fn_name:ident, $item_variant:path, $item_type:ty) => {
             fn $fn_name<'a>(
@@ -818,6 +944,9 @@ mod tests {
         };
     }
 
+    impl_find_contract_item!(find_contract, Definition::Contract, ContractDefinition);
+    impl_find_contract_item!(find_interface, Definition::Interface, InterfaceDefinition);
+    impl_find_contract_item!(find_library, Definition::Library, LibraryDefinition);
     impl_find_item!(find_function, Definition::Function, FunctionDefinition);
     impl_find_item!(find_variable, Definition::Variable, VariableDeclaration);
     impl_find_item!(find_modifier, Definition::Modifier, ModifierDefinition);
@@ -847,6 +976,51 @@ mod tests {
             line: 0,
             column: range.end,
         }
+    }
+
+    #[test]
+    fn test_parse_contract() {
+        let cursor = parse_file(include_str!("../../test-data/ParserTest.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_contract("ParserTest", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "A contract with correct natspec".to_string(),
+                span: single_line_textrange(4..43)
+            }]
+        );
+    }
+
+    #[test]
+    fn test_parse_interface() {
+        let cursor = parse_file(include_str!("../../test-data/InterfaceSample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_interface("IInterfacedSample", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Title,
+                comment: "The interface".to_string(),
+                span: single_line_textrange(4..24)
+            }]
+        );
+    }
+
+    #[test]
+    fn test_parse_library() {
+        let cursor = parse_file(include_str!("../../test-data/LibrarySample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_library("StringUtils", &items);
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Title,
+                comment: "StringUtils".to_string(),
+                span: single_line_textrange(4..22)
+            }]
+        );
     }
 
     #[test]

@@ -12,7 +12,7 @@ use std::{
 use serde::Serialize;
 
 use crate::{
-    config::{Config, FunctionConfig, Req, VariableConfig, WithParamsRules},
+    config::{Config, ContractRules, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent, TextRange},
     error::{Error, Result},
     natspec::{NatSpec, NatSpecKind},
@@ -162,6 +162,18 @@ pub struct ValidationOptions {
     #[builder(default)]
     pub notice_or_dev: bool,
 
+    /// Validation options for contracts
+    #[builder(default)]
+    pub contracts: ContractRules,
+
+    /// Validation options for interfaces
+    #[builder(default)]
+    pub interfaces: ContractRules,
+
+    /// Validation options for libraries
+    #[builder(default)]
+    pub libraries: ContractRules,
+
     /// Validation options for constructors
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
@@ -205,6 +217,9 @@ impl Default for ValidationOptions {
             inheritdoc: true,
             inheritdoc_override: false,
             notice_or_dev: false,
+            contracts: ContractRules::default(),
+            interfaces: ContractRules::default(),
+            libraries: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -224,6 +239,9 @@ impl From<Config> for ValidationOptions {
             inheritdoc: value.lintspec.inheritdoc,
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
+            contracts: value.contracts,
+            interfaces: value.interfaces,
+            libraries: value.libraries,
             constructors: value.constructors,
             enums: value.enums,
             errors: value.errors,
@@ -243,6 +261,9 @@ impl From<&Config> for ValidationOptions {
             inheritdoc: value.lintspec.inheritdoc,
             inheritdoc_override: value.lintspec.inheritdoc_override,
             notice_or_dev: value.lintspec.notice_or_dev,
+            contracts: value.contracts.clone(),
+            interfaces: value.interfaces.clone(),
+            libraries: value.libraries.clone(),
             constructors: value.constructors.clone(),
             enums: value.enums.clone(),
             errors: value.errors.clone(),
@@ -475,6 +496,50 @@ pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Optio
     }
 }
 
+/// Check if the `@title` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
+#[must_use]
+pub fn check_title(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_title() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@title is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_title() => Some(Diagnostic {
+            span,
+            message: "@title is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
+/// Check if the `@author` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+/// diagnostic if it doesn't.
+#[must_use]
+pub fn check_author(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
+    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
+    match (rule, natspec, &NatSpec::default()) {
+        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
+            if !natspec.has_author() =>
+        {
+            Some(Diagnostic {
+                span,
+                message: "@author is missing".to_string(),
+            })
+        }
+        (Req::Forbidden, Some(natspec), _) if natspec.has_author() => Some(Diagnostic {
+            span,
+            message: "@author is forbidden".to_string(),
+        }),
+        _ => None,
+    }
+}
+
 /// Check if the `@notice` or `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and
 /// generate diagnostics if they don't.
 ///
@@ -539,6 +604,9 @@ mod tests {
         let options = ValidationOptions::from(&config);
         assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.contracts, options.contracts);
+        assert_eq!(config.interfaces, options.interfaces);
+        assert_eq!(config.libraries, options.libraries);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);
@@ -553,6 +621,30 @@ mod tests {
                 BaseConfig::builder()
                     .inheritdoc(false)
                     .notice_or_dev(true)
+                    .build(),
+            )
+            .contracts(
+                ContractRules::builder()
+                    .title(Req::Required)
+                    .author(Req::Required)
+                    .dev(Req::Required)
+                    .notice(Req::Forbidden)
+                    .build(),
+            )
+            .interfaces(
+                ContractRules::builder()
+                    .title(Req::Ignored)
+                    .author(Req::Forbidden)
+                    .dev(Req::Forbidden)
+                    .notice(Req::Required)
+                    .build(),
+            )
+            .libraries(
+                ContractRules::builder()
+                    .title(Req::Forbidden)
+                    .author(Req::Ignored)
+                    .dev(Req::Required)
+                    .notice(Req::Ignored)
                     .build(),
             )
             .constructors(WithParamsRules::builder().dev(Req::Required).build())
@@ -575,6 +667,9 @@ mod tests {
         let options = ValidationOptions::from(&config);
         assert_eq!(config.lintspec.inheritdoc, options.inheritdoc);
         assert_eq!(config.lintspec.notice_or_dev, options.notice_or_dev);
+        assert_eq!(config.contracts, options.contracts);
+        assert_eq!(config.interfaces, options.interfaces);
+        assert_eq!(config.libraries, options.libraries);
         assert_eq!(config.constructors, options.constructors);
         assert_eq!(config.enums, options.enums);
         assert_eq!(config.errors, options.errors);

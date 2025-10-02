@@ -12,9 +12,10 @@ rust-version = "1.88.0"
 version = "0.9.1"
 
 [lints.clippy]
-module_name_repetitions = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+mod_module_files = "warn"
+module_name_repetitions = "allow"
 pedantic = { level = "warn", priority = -1 }
 
 [package.metadata.docs.rs]

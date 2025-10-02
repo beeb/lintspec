@@ -1,0 +1,67 @@
+---
+source: tests/tests-basic-sample.rs
+expression: "snapshot_content(\"./test-data/BasicSample.sol\",\n&ValidationOptions::builder().inheritdoc(false).contracts(ContractRules::builder().title(Req::Required).author(Req::Required).notice(Req::Required).build()).build(),\ntrue,)"
+---
+./test-data/BasicSample.sol:4:1
+contract AbstractBasic
+  @title is missing
+  @author is missing
+  @notice is missing
+
+./test-data/BasicSample.sol:5:5
+function AbstractBasic.overriddenFunction
+  @notice is missing
+  @return _returned is missing
+
+./test-data/BasicSample.sol:8:1
+contract BasicSample
+  @title is missing
+  @author is missing
+  @notice is missing
+
+./test-data/BasicSample.sol:23:5
+error BasicSample.BasicSample_SomeError
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:28:5
+event BasicSample.BasicSample_BasicEvent
+  @param _param1 is missing
+
+./test-data/BasicSample.sol:39:5
+variable BasicSample.somePublicNumber
+  @return is missing
+
+./test-data/BasicSample.sol:44:5
+constructor BasicSample.constructor
+  @param _randomFlag is missing
+
+./test-data/BasicSample.sol:46:5
+function BasicSample.externalSimple
+  @param _name is present more than once
+
+./test-data/BasicSample.sol:93:5
+function BasicSample.externalSimpleMultipleUnnamedReturn
+  @return missing for unnamed return #2
+
+./test-data/BasicSample.sol:102:5
+function BasicSample.overriddenFunction
+  @return _returned is missing
+
+./test-data/BasicSample.sol:109:5
+function BasicSample.virtualFunction
+  @notice is missing
+  @return _returned is missing
+
+./test-data/BasicSample.sol:111:5
+modifier BasicSample.transferFee
+  @param _receiver is missing
+
+./test-data/BasicSample.sol:129:1
+contract ChildContract
+  @title is missing
+  @author is missing
+  @notice is missing
+
+./test-data/BasicSample.sol:132:5
+modifier ChildContract.transferFee
+  @notice is missing

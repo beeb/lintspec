@@ -12,7 +12,7 @@ use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 
 use crate::{
     config::{Config, Req},
-    definitions::ItemType,
+    definitions::{ContractType, ItemType},
     lint::{FileDiagnostics, ItemDiagnostics},
 };
 
@@ -94,6 +94,38 @@ pub struct Args {
     /// Can be set with `--skip-version-detection` (means true), `--skip-version-detection=true` or `--skip-version-detection=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub skip_version_detection: Option<bool>,
+
+    /// Ignore `@title` for these items (can be used more than once)
+    #[arg(long)]
+    pub title_ignored: Vec<ContractType>,
+
+    /// Enforce `@title` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--title-ignored`.
+    #[arg(long)]
+    pub title_required: Vec<ContractType>,
+
+    /// Forbid `@title` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--title-required`.
+    #[arg(long)]
+    pub title_forbidden: Vec<ContractType>,
+
+    /// Ignore `@author` for these items (can be used more than once)
+    #[arg(long)]
+    pub author_ignored: Vec<ContractType>,
+
+    /// Enforce `@author` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--author-ignored`.
+    #[arg(long)]
+    pub author_required: Vec<ContractType>,
+
+    /// Forbid `@author` for these items (can be used more than once)
+    ///
+    /// This takes precedence over `--author-required`.
+    #[arg(long)]
+    pub author_forbidden: Vec<ContractType>,
 
     /// Ignore `@notice` for these items (can be used more than once)
     #[arg(long)]
@@ -222,9 +254,30 @@ macro_rules! cli_rule_override {
             }
         }
     };
+    ($config:expr, $items:expr, title, $req:expr) => {
+        for item in $items {
+            match item {
+                ContractType::Contract => $config.contracts.title = $req,
+                ContractType::Interface => $config.interfaces.title = $req,
+                ContractType::Library => $config.libraries.title = $req,
+            }
+        }
+    };
+    ($config:expr, $items:expr, author, $req:expr) => {
+        for item in $items {
+            match item {
+                ContractType::Contract => $config.contracts.author = $req,
+                ContractType::Interface => $config.interfaces.author = $req,
+                ContractType::Library => $config.libraries.author = $req,
+            }
+        }
+    };
     ($config:expr, $items:expr, $tag:ident, $req:expr) => {
         for item in $items {
             match item {
+                ItemType::Contract => $config.contracts.$tag = $req,
+                ItemType::Interface => $config.interfaces.$tag = $req,
+                ItemType::Library => $config.libraries.$tag = $req,
                 ItemType::Constructor => $config.constructors.$tag = $req,
                 ItemType::Enum => $config.enums.$tag = $req,
                 ItemType::Error => $config.errors.$tag = $req,
@@ -281,6 +334,12 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
         config.lintspec.notice_or_dev = notice_or_dev;
     }
 
+    cli_rule_override!(config, args.title_ignored, title, Req::Ignored);
+    cli_rule_override!(config, args.title_required, title, Req::Required);
+    cli_rule_override!(config, args.title_forbidden, title, Req::Forbidden);
+    cli_rule_override!(config, args.author_ignored, author, Req::Ignored);
+    cli_rule_override!(config, args.author_required, author, Req::Required);
+    cli_rule_override!(config, args.author_forbidden, author, Req::Forbidden);
     cli_rule_override!(config, args.notice_ignored, notice, Req::Ignored);
     cli_rule_override!(config, args.notice_required, notice, Req::Required);
     cli_rule_override!(config, args.notice_forbidden, notice, Req::Forbidden);
