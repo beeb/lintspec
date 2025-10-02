@@ -45,7 +45,7 @@ jobs:
           # Don't fail the workflow when semver-checks returns a non-zero exit code.
           set +e
 
-          cargo semver-checks --color never --baseline-root ../BASELINE_BRANCH --release-type minor > diagnostic.txt
+          cargo semver-checks --color never --baseline-root ../BASELINE_BRANCH --release-type minor --all-features > diagnostic.txt
           if [ "$?" -ne 0 ]; then
             echo "breaking=true" >> $GITHUB_OUTPUT
           else
