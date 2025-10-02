@@ -34,7 +34,7 @@ jobs:
       - name: Check for build errors
         id: build
         working-directory: PR_BRANCH
-        run: cargo check --all-targets
+        run: cargo check --all-targets --all-features
 
       # Run cargo-semver-checks against the PR's target branch.
       - name: Check for public API changes
