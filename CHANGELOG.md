@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.9.2] - 2025-10-02
+
+### Added
+
+
+-  add check for breaking change PRs ([#151](https://github.com/beeb/lintspec/pull/151)) - ([f626b9e](https://github.com/beeb/lintspec/commit/f626b9ee751c512599ebf4eeaff90a19e2284b53))
+
+### Changed
+
+- **(deps)** update dependencies ([#150](https://github.com/beeb/lintspec/pull/150)) - ([fab9555](https://github.com/beeb/lintspec/commit/fab9555007ac0595ccc3b16f0ed0416dac17ec6b))
+
+- **(release-plz)** action can now generate token on the fly ([#148](https://github.com/beeb/lintspec/pull/148)) - ([19a890a](https://github.com/beeb/lintspec/commit/19a890a2ea236cb656aeda79dfe397fa638a2f0a))
+
+
+
+### Removed
+
+
+-  remove mac x86 target ([#145](https://github.com/beeb/lintspec/pull/145)) - ([6058c00](https://github.com/beeb/lintspec/commit/6058c00adfc16d5f5663c5f891cb46ee778b8bb0))
+-  remove dependencies ([#147](https://github.com/beeb/lintspec/pull/147)) - ([cdcdb78](https://github.com/beeb/lintspec/commit/cdcdb78430f1a231512e3f4bf2ec13ae50520ea6))
+
+
+
+
+**Full Changelog**: [0.9.1...0.9.2](https://github.com/beeb/lintspec/compare/v0.9.1...v0.9.2)
+
+
 ## [0.9.1] - 2025-09-16
 
 ### Changed
