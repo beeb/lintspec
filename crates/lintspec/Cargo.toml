@@ -1,15 +1,15 @@
 [package]
+name = "lintspec"
+version = "0.9.1"
+description = "A blazingly fast linter for NatSpec comments in Solidity code"
+keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
+readme = "../../README.md"
 authors.workspace = true
 categories.workspace = true
-description = "A blazingly fast linter for NatSpec comments in Solidity code"
 edition.workspace = true
-keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
 license.workspace = true
-name = "lintspec"
-readme = "../../README.md"
 repository.workspace = true
 rust-version.workspace = true
-version = "0.9.1"
 
 [lints]
 workspace = true
@@ -33,6 +33,7 @@ dotenvy = { version = "0.15.7", optional = true }
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 ignore = "0.4.23"
+lintspec-macros = { path = "../lintspec-macros" }
 miette = { version = "7.5.0", features = ["fancy"], optional = true }
 rayon = { version = "1.10.0", optional = true }
 regex = { version = "1.11.1", optional = true }
