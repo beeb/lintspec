@@ -176,8 +176,6 @@ impl PartialEq for Definition {
     /// If two instances of the same node generate two definitions (due to quantifiers in the query), this can be
     /// used to deduplicate the instances.
     fn eq(&self, other: &Self) -> bool {
-        // TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
-        // require adding a field in the definition just for that.
         match (self, other) {
             (Self::Contract(a), Self::Contract(b)) => a.span.start == b.span.start,
             (Self::Interface(a), Self::Interface(b)) => a.span.start == b.span.start,
