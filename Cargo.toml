@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/lintspec", "crates/lintspec-macros"]
+members = ["crates/*"]
 resolver = "3"
 
 [workspace.package]
