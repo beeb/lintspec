@@ -430,36 +430,32 @@ impl Extract for &solar_parse::ast::ItemContract<'_> {
         let name = self.name.to_string();
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
-            Ok(extracted) => extracted.map_or_else(
-                || {
-                    let end_bases = self
-                        .bases
-                        .last()
-                        .map_or(self.name.span.hi(), |b| b.span().hi());
-                    let end_specifiers = self
-                        .layout
-                        .as_ref()
-                        .map_or(self.name.span.hi(), |l| l.span.hi());
-                    let span =
-                        visitor.span_to_textrange(item.span.with_hi(end_bases.max(end_specifiers)));
-                    (None, span)
-                },
-                |(natspec, doc_span)| {
-                    // If there are natspec in a contract, take the whole doc and contract header as span
-                    let end_bases = self
-                        .bases
-                        .last()
-                        .map_or(self.name.span.hi(), |b| b.span().hi());
-                    let end_specifiers = self
-                        .layout
-                        .as_ref()
-                        .map_or(self.name.span.hi(), |l| l.span.hi());
-                    (
-                        Some(natspec),
-                        visitor.span_to_textrange(doc_span.with_hi(end_bases.max(end_specifiers))),
-                    )
-                },
-            ),
+            Ok(extracted) => {
+                let end_bases = self
+                    .bases
+                    .last()
+                    .map_or(self.name.span.hi(), |b| b.span().hi());
+                let end_specifiers = self
+                    .layout
+                    .as_ref()
+                    .map_or(self.name.span.hi(), |l| l.span.hi());
+                let contract_end = end_bases.max(end_specifiers);
+                extracted.map_or_else(
+                    || {
+                        (
+                            None,
+                            visitor.span_to_textrange(item.span.with_hi(contract_end)),
+                        )
+                    },
+                    |(natspec, doc_span)| {
+                        // If there are natspec in a contract, take the whole doc and contract header as span
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(contract_end)),
+                        )
+                    },
+                )
+            }
             Err(e) => return Some(Definition::NatspecParsingError(e)),
         };
 
