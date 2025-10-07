@@ -2,11 +2,11 @@
 changelog_config = "cliff.toml"
 dependencies_update = true
 git_release_enable = false      # will use cargo-dist for that
-git_tag_name = "v{{ version }}" # we only tag lintspec releases, so no package prefix
 
 [[package]]
 name = "lintspec"
+git_tag_name = "v{{ version }}"
 
 [[package]]
 name = "lintspec-macros"
-git_release_enable = false
+git_tag_enable = false
