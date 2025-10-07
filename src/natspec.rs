@@ -99,6 +99,16 @@ impl NatSpec {
     pub fn has_dev(&self) -> bool {
         self.items.iter().any(|n| n.kind.is_dev())
     }
+
+    #[must_use]
+    pub fn has_title(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_title())
+    }
+
+    #[must_use]
+    pub fn has_author(&self) -> bool {
+        self.items.iter().any(|n| n.kind.is_author())
+    }
 }
 
 /// A single `NatSpec` item

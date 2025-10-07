@@ -145,6 +145,20 @@ impl Default for NoticeDevRules {
     }
 }
 
+/// Validation rules for contracts, interfaces and libraries
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
+#[non_exhaustive]
+pub struct ContractRules {
+    #[builder(default)]
+    pub title: Req,
+    #[builder(default)]
+    pub author: Req,
+    #[builder(default)]
+    pub notice: Req,
+    #[builder(default)]
+    pub dev: Req,
+}
+
 /// Validation rules for each state variable visibility (private, internal, public)
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
@@ -284,6 +298,21 @@ pub struct Config {
     #[builder(default = WithParamsRules::default_constructor())]
     pub constructors: WithParamsRules,
 
+    /// Validation rules for contracts
+    #[serde(rename = "contract")]
+    #[builder(default)]
+    pub contracts: ContractRules,
+
+    /// Validation rules for interfaces
+    #[serde(rename = "interface")]
+    #[builder(default)]
+    pub interfaces: ContractRules,
+
+    /// Validation rules for libraries
+    #[serde(rename = "library")]
+    #[builder(default)]
+    pub libraries: ContractRules,
+
     /// Validation rules for enums
     #[serde(rename = "enum")]
     #[builder(default)]
@@ -325,6 +354,9 @@ impl Default for Config {
         Self {
             lintspec: BaseConfig::default(),
             output: OutputConfig::default(),
+            contracts: ContractRules::default(),
+            interfaces: ContractRules::default(),
+            libraries: ContractRules::default(),
             constructors: WithParamsRules::default_constructor(),
             enums: WithParamsRules::default(),
             errors: WithParamsRules::required(),
@@ -384,6 +416,7 @@ mod tests {
             WithReturnsRules::builder().build()
         );
         assert_eq!(NoticeDevRules::default(), NoticeDevRules::builder().build());
+        assert_eq!(ContractRules::default(), ContractRules::builder().build());
         assert_eq!(VariableConfig::default(), VariableConfig::builder().build());
         assert_eq!(
             WithParamsRules::default(),

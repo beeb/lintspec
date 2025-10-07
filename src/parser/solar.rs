@@ -24,9 +24,10 @@ use std::{
 use crate::{
     definitions::{
         Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
-        event::EventDefinition, function::FunctionDefinition, modifier::ModifierDefinition,
-        structure::StructDefinition, variable::VariableDeclaration,
+        constructor::ConstructorDefinition, contract::ContractDefinition,
+        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
+        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
+        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
@@ -211,7 +212,11 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 register_span(&mut offsets, span);
             }
-            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => {}
         }
     }
     if offsets.is_empty() {
@@ -293,7 +298,11 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 populate_span(&mapping, span);
             }
-            Definition::Variable(_) | Definition::NatspecParsingError(_) => {}
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => {}
         }
     }
     definitions
@@ -347,7 +356,12 @@ impl<'ast> Visit<'ast> for LintspecVisitor<'ast> {
     /// Visit an item and extract definitions from it, using the corresponding trait
     fn visit_item(&mut self, item: &'ast Item<'ast>) -> ControlFlow<Self::BreakValue> {
         match &item.kind {
-            ItemKind::Contract(item) => self.visit_item_contract(item)?,
+            ItemKind::Contract(item_contract) => {
+                if let Some(def) = item_contract.extract_definition(item, self) {
+                    self.definitions.push(def);
+                }
+                self.visit_item_contract(item_contract)?;
+            }
             ItemKind::Function(item_function) => {
                 if let Some(def) = item_function.extract_definition(item, self) {
                     self.definitions.push(def);
@@ -411,6 +425,63 @@ trait Extract {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition>;
 }
 
+impl Extract for &solar_parse::ast::ItemContract<'_> {
+    fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
+        let name = self.name.to_string();
+
+        let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
+            Ok(extracted) => {
+                let end_bases = self
+                    .bases
+                    .last()
+                    .map_or(self.name.span.hi(), |b| b.span().hi());
+                let end_specifiers = self
+                    .layout
+                    .as_ref()
+                    .map_or(self.name.span.hi(), |l| l.span.hi());
+                let contract_end = end_bases.max(end_specifiers);
+                extracted.map_or_else(
+                    || {
+                        (
+                            None,
+                            visitor.span_to_textrange(item.span.with_hi(contract_end)),
+                        )
+                    },
+                    |(natspec, doc_span)| {
+                        // If there are natspec in a contract, take the whole doc and contract header as span
+                        (
+                            Some(natspec),
+                            visitor.span_to_textrange(doc_span.with_hi(contract_end)),
+                        )
+                    },
+                )
+            }
+            Err(e) => return Some(Definition::NatspecParsingError(e)),
+        };
+
+        Some(match self.kind {
+            ContractKind::Contract | ContractKind::AbstractContract => ContractDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
+            ContractKind::Interface => InterfaceDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
+            ContractKind::Library => LibraryDefinition {
+                name,
+                span,
+                natspec,
+            }
+            .into(),
+        })
+    }
+}
+
 impl Extract for &solar_parse::ast::ItemFunction<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
         let params = variable_definitions_to_identifiers(Some(&self.header.parameters), visitor);
@@ -418,30 +489,13 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
         let returns = variable_definitions_to_identifiers(self.header.returns.as_ref(), visitor);
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &returns) {
             Ok(extracted) => extracted.map_or_else(
-                || {
-                    let span = match &item.kind {
-                        ItemKind::Function(item_fn) => {
-                            visitor.span_to_textrange(item_fn.header.span)
-                        }
-                        _ => visitor.span_to_textrange(item.span),
-                    };
-
-                    (None, span)
-                },
+                || (None, visitor.span_to_textrange(self.header.span)),
                 |(natspec, doc_span)| {
                     // If there are natspec in a fn, take the whole doc and fn header as span
-                    if let ItemKind::Function(item_fn) = &item.kind {
-                        (
-                            Some(natspec),
-                            visitor.span_to_textrange(doc_span.with_hi(item_fn.header.span.hi())),
-                        )
-                    } else {
-                        // otherwise, use the doc and item span
-                        (
-                            Some(natspec),
-                            visitor.span_to_textrange(doc_span.with_hi(item.span.hi())),
-                        )
-                    }
+                    (
+                        Some(natspec),
+                        visitor.span_to_textrange(doc_span.with_hi(self.header.span.hi())),
+                    )
                 },
             ),
             Err(e) => return Some(Definition::NatspecParsingError(e)),

@@ -1,11 +1,23 @@
 ---
 source: tests/tests-basic-sample.rs
-expression: "snapshot_content(\"./test-data/BasicSample.sol\",\n&ValidationOptions::builder().inheritdoc_override(true).constructors(WithParamsRules::required()).enums(WithParamsRules::required()).modifiers(WithParamsRules::required()).structs(WithParamsRules::required()).variables(VariableConfig::builder().private(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).internal(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).build(),).build(),\ntrue,)"
+expression: "snapshot_content(\"./test-data/BasicSample.sol\",\n&ValidationOptions::builder().inheritdoc_override(true).constructors(WithParamsRules::required()).enums(WithParamsRules::required()).modifiers(WithParamsRules::required()).structs(WithParamsRules::required()).variables(VariableConfig::builder().private(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).internal(NoticeDevRules::builder().notice(Req::Required).dev(Req::Required).build(),).build(),).contracts(ContractRules::builder().title(Req::Required).author(Req::Required).notice(Req::Required).build()).build(),\ntrue,)"
 ---
+./test-data/BasicSample.sol:4:1
+contract AbstractBasic
+  @title is missing
+  @author is missing
+  @notice is missing
+
 ./test-data/BasicSample.sol:5:5
 function AbstractBasic.overriddenFunction
   @notice is missing
   @return _returned is missing
+
+./test-data/BasicSample.sol:8:1
+contract BasicSample
+  @title is missing
+  @author is missing
+  @notice is missing
 
 ./test-data/BasicSample.sol:9:5
 struct BasicSample.TestStruct
@@ -65,6 +77,12 @@ function BasicSample.virtualFunction
 ./test-data/BasicSample.sol:111:5
 modifier BasicSample.transferFee
   @param _receiver is missing
+
+./test-data/BasicSample.sol:129:1
+contract ChildContract
+  @title is missing
+  @author is missing
+  @notice is missing
 
 ./test-data/BasicSample.sol:130:5
 constructor ChildContract.constructor
