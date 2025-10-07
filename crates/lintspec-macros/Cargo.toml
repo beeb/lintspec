@@ -17,4 +17,4 @@ proc-macro = true
 
 [dependencies]
 quote = "1.0.41"
-unsynn = "0.1.1"
+unsynn = { version = "0.1.1", default-features = false }
