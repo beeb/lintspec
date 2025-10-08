@@ -1,9 +1,8 @@
 use quote::{format_ident, quote};
 use unsynn::{
     BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Error, Except,
-    Gt, Ident, Invalid, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _,
-    PathSep, PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree,
-    Transaction, unsynn,
+    Gt, Ident, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _, PathSep,
+    PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree, Transaction, unsynn,
 };
 
 /// Represents a module path, consisting of an optional path separator followed by
@@ -96,32 +95,6 @@ unsynn! {
         name: Ident,
         /// The contents of the enum body
         body: BraceGroupContaining<CommaDelimitedVec<EnumVariant>>,
-    }
-}
-
-impl core::fmt::Display for AngleTokenTree {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match &self.0 {
-            Either::First(it) => {
-                write!(f, "<")?;
-                for it in it.second.to_token_iter() {
-                    write!(f, "{it}")?;
-                }
-                write!(f, ">")
-            }
-            Either::Second(it) => write!(f, "{it}"),
-            Either::Third(Invalid) | Either::Fourth(Invalid) => unreachable!(),
-        }
-    }
-}
-
-impl core::fmt::Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)?;
-        for it in self.generics.to_token_iter() {
-            write!(f, "{it}")?;
-        }
-        Ok(())
     }
 }
 
