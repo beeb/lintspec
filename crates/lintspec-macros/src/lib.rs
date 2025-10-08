@@ -1,8 +1,9 @@
 use quote::{format_ident, quote};
 use unsynn::{
-    BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Error, Ident,
-    LiteralString, Many, Optional, ParenthesisGroupContaining, Parse as _, PathSep,
-    PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree, Transaction, unsynn,
+    BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Error, Except,
+    Gt, Ident, Invalid, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _,
+    PathSep, PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree,
+    Transaction, unsynn,
 };
 
 /// Represents a module path, consisting of an optional path separator followed by
@@ -16,6 +17,7 @@ unsynn! {
     keyword ReprKeyword = "repr";
     keyword PubKeyword = "pub";
     keyword InKeyword = "in";
+    keyword ConstKeyword = "const";
 
     /// Represents documentation for an item.
     struct DocInner {
@@ -62,12 +64,24 @@ unsynn! {
         Pub(PubKeyword),
     }
 
+    /// Parses either a `TokenTree` or `<...>` grouping (which is not a [`Group`] as far as proc-macros
+    /// are concerned).
+    struct AngleTokenTree(
+        pub Either<Cons<Lt, Many<Cons<Except<Gt>, AngleTokenTree>>, Gt>, TokenTree>
+    );
+
+    /// A simple type or a generic type.
+    struct Type{
+        pub name: Ident,
+        pub generics: Optional<AngleTokenTree>,
+    }
+
     /// Represents a simple enum variant.
     struct EnumVariant {
         /// The discriminant
         name: Ident,
         /// The type contained inside of the variant
-        body: ParenthesisGroupContaining<Ident>,
+        body: ParenthesisGroupContaining<Type>,
     }
 
     /// Represents an enum with simple variants.
@@ -82,6 +96,32 @@ unsynn! {
         name: Ident,
         /// The contents of the enum body
         body: BraceGroupContaining<CommaDelimitedVec<EnumVariant>>,
+    }
+}
+
+impl core::fmt::Display for AngleTokenTree {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match &self.0 {
+            Either::First(it) => {
+                write!(f, "<")?;
+                for it in it.second.to_token_iter() {
+                    write!(f, "{it}")?;
+                }
+                write!(f, ">")
+            }
+            Either::Second(it) => write!(f, "{it}"),
+            Either::Third(Invalid) | Either::Fourth(Invalid) => unreachable!(),
+        }
+    }
+}
+
+impl core::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        for it in self.generics.to_token_iter() {
+            write!(f, "{it}")?;
+        }
+        Ok(())
     }
 }
 
@@ -108,7 +148,7 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
             let variant_name_snake = to_snake_case(&variant.value.name.to_string());
             let to_method = format_ident!("to_{variant_name_snake}");
             let as_method = format_ident!("as_{variant_name_snake}");
-            let inner_type = &variant.value.body.content;
+            let inner_type = variant.value.body.content.into_token_stream();
 
             quote! {
                 /// Convert to the inner #variant_name_lowercase definition

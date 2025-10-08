@@ -5,6 +5,7 @@ enum TestEnum {
     String(String),
     Int(i32),
     Bool(bool),
+    Vec(Vec<u8>),
 }
 
 #[derive(AsToVariant)]
@@ -26,6 +27,9 @@ fn test_as_variant_match() {
 
     let bool = TestEnum::Bool(true);
     assert!(bool.as_bool().unwrap());
+
+    let vec = TestEnum::Vec(vec![1]);
+    assert_eq!(vec.as_vec().unwrap(), &[1]);
 }
 
 #[test]
@@ -33,10 +37,22 @@ fn test_as_variant_nomatch() {
     let string = TestEnum::String("test".to_string());
     assert!(string.as_int().is_none());
     assert!(string.as_bool().is_none());
+    assert!(string.as_vec().is_none());
 
     let int = TestEnum::Int(42);
     assert!(int.as_string().is_none());
     assert!(int.as_bool().is_none());
+    assert!(int.as_vec().is_none());
+
+    let bool = TestEnum::Bool(true);
+    assert!(bool.as_string().is_none());
+    assert!(bool.as_int().is_none());
+    assert!(bool.as_vec().is_none());
+
+    let vec = TestEnum::Vec(vec![1]);
+    assert!(int.as_string().is_none());
+    assert!(vec.as_int().is_none());
+    assert!(vec.as_bool().is_none());
 }
 
 #[test]
@@ -47,15 +63,26 @@ fn test_to_variant_match() {
     );
     assert_eq!(TestEnum::Int(42).to_int().unwrap(), 42);
     assert!(TestEnum::Bool(true).to_bool().unwrap());
+    assert_eq!(TestEnum::Vec(vec![1]).to_vec().unwrap(), &[1]);
 }
 
 #[test]
 fn test_to_variant_nomatch() {
     assert!(TestEnum::String("test".to_string()).to_int().is_none());
     assert!(TestEnum::String("test".to_string()).to_bool().is_none());
+    assert!(TestEnum::String("test".to_string()).to_vec().is_none());
 
     assert!(TestEnum::Int(42).to_string().is_none());
     assert!(TestEnum::Int(42).to_bool().is_none());
+    assert!(TestEnum::Int(42).to_vec().is_none());
+
+    assert!(TestEnum::Bool(true).to_string().is_none());
+    assert!(TestEnum::Bool(true).to_int().is_none());
+    assert!(TestEnum::Bool(true).to_vec().is_none());
+
+    assert!(TestEnum::Vec(vec![1]).to_string().is_none());
+    assert!(TestEnum::Vec(vec![1]).to_int().is_none());
+    assert!(TestEnum::Vec(vec![1]).to_bool().is_none());
 }
 
 #[test]
