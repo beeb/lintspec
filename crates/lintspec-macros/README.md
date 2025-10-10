@@ -13,7 +13,7 @@
   /></a>
   <a href="https://docs.rs/lintspec-macros/latest/lintspec-macros/"><img
       alt="docs.rs"
-      src="https://img.shields.io/badge/docs.rs-lintspec-macros-3b74d1?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/docs.rs-lintspec--macros-3b74d1?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
   <a href="https://docs.rs/lintspec-macros/latest/lintspec-macros/"><img
