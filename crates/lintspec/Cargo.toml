@@ -3,11 +3,11 @@ name = "lintspec"
 version = "0.10.0"
 description = "A blazingly fast linter for NatSpec comments in Solidity code"
 keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
-readme = "../../README.md"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
 license.workspace = true
+readme.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
