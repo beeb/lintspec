@@ -83,19 +83,19 @@ pub fn detect_solidity_version(src: &str, path: impl AsRef<Path>) -> Result<Vers
 
     let mut version_reqs = Vec::new();
     for m in cursor.query(vec![query_set]) {
-        let Some((_, mut it)) = m.capture("version_set") else {
-            continue;
-        };
-        let Some(set) = it.next() else {
+        let Some(Some(set)) = m
+            .capture("version_set")
+            .map(|capture| capture.cursors().first().cloned())
+        else {
             continue;
         };
         version_reqs.push(String::new());
         let cursor = set.node().create_cursor(TextIndex::default());
         for m in cursor.query(vec![query_expr.clone()]) {
-            let Some((_, mut it)) = m.capture("version_expr") else {
-                continue;
-            };
-            let Some(expr) = it.next() else {
+            let Some(Some(expr)) = m
+                .capture("version_expr")
+                .map(|capture| capture.cursors().first().cloned())
+            else {
                 continue;
             };
             let text = expr.node().unparse();

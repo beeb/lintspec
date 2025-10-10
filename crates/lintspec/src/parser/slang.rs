@@ -64,7 +64,7 @@ impl SlangParser {
     pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         let mut out = Vec::new();
         for m in cursor.query(Self::queries()) {
-            let def = match m.query_index {
+            let def = match m.query_index() {
                 0 => Some(
                     ConstructorDefinition::extract(m)
                         .unwrap_or_else(Definition::NatspecParsingError),
@@ -480,7 +480,7 @@ impl Extract for VariableDeclaration {
 
 impl Extract for ContractDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@contract [ContractDefinition
             @contract_name name:[Identifier]
             @contract_spec inheritance:[InheritanceSpecifier]?
@@ -513,7 +513,7 @@ impl Extract for ContractDefinition {
 
 impl Extract for InterfaceDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@iface [InterfaceDefinition
             @iface_name name:[Identifier]
             @iface_spec inheritance:[InheritanceSpecifier]?
@@ -546,7 +546,7 @@ impl Extract for InterfaceDefinition {
 
 impl Extract for LibraryDefinition {
     fn query() -> Query {
-        Query::parse(
+        Query::create(
             "@library [LibraryDefinition
             @library_name name:[Identifier]
         ]",
@@ -573,7 +573,10 @@ impl Extract for LibraryDefinition {
 
 /// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
-    match m.capture(name).map(|(_, mut captures)| captures.next()) {
+    match m
+        .capture(name)
+        .map(|capture| capture.cursors().first().cloned())
+    {
         Some(Some(res)) => Ok(res),
         _ => Err(Error::UnknownError),
     }
@@ -581,7 +584,10 @@ pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
 
 /// Retrieve and unwrap the first capture of a parser match if one exists.
 pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
-    match m.capture(name).map(|(_, mut captures)| captures.next()) {
+    match m
+        .capture(name)
+        .map(|capture| capture.cursors().first().cloned())
+    {
         Some(Some(res)) => Ok(Some(res)),
         Some(None) => Ok(None),
         _ => Err(Error::UnknownError),
