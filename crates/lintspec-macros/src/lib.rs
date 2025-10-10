@@ -1,8 +1,8 @@
-use quote::{format_ident, quote};
 use unsynn::{
     BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Error, Except,
     Gt, Ident, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _, PathSep,
-    PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree, Transaction, unsynn,
+    PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree, Transaction,
+    format_ident, quote, unsynn,
 };
 
 /// Represents a module path, consisting of an optional path separator followed by
@@ -146,7 +146,7 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
 
     let expanded = quote! {
         impl #enum_name {
-            #(#variant_methods)*
+            #{variant_methods}
         }
     };
 

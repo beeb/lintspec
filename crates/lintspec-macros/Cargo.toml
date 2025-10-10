@@ -16,5 +16,4 @@ workspace = true
 proc-macro = true
 
 [dependencies]
-quote = "1.0.41"
-unsynn = { version = "0.1.1", default-features = false }
+unsynn = "0.2.0"
