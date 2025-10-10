@@ -7,6 +7,7 @@ authors = ["Valentin Bersier <hi@beeb.li>"]
 categories = ["development-tools", "command-line-utilities"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
+readme = "./README.md"
 repository = "https://github.com/beeb/lintspec"
 rust-version = "1.88.0"
 
