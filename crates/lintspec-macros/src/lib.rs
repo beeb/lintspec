@@ -98,8 +98,8 @@ unsynn! {
     }
 }
 
-/// Derive `as_variant -> Option<&InnerType>` and `to_variant -> Option<InnerType>` for an enum with simple variants
-/// in the form `Variant(InnerType)`.
+/// Derive `as_variant(&self) -> Option<&InnerType>` and `to_variant(self) -> Option<InnerType>` for an enum with simple
+/// variants in the form `Variant(InnerType)`.
 #[proc_macro_derive(AsToVariant)]
 pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
