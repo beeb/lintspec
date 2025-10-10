@@ -100,7 +100,7 @@ mod tests {
             .unwrap();
         doc.definitions
             .into_iter()
-            .find_map(Definition::to_enum)
+            .find_map(Definition::to_enumeration)
             .unwrap()
     }
 

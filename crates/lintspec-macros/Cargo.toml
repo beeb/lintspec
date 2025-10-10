@@ -1,0 +1,19 @@
+[package]
+name = "lintspec-macros"
+version = "0.1.0"
+description = "Convenience macros for lintspec"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+unsynn = "0.2.0"

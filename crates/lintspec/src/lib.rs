@@ -1,6 +1,6 @@
 #![allow(clippy::doc_markdown)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../../README.md")]
 
 pub mod config;
 pub mod definitions;

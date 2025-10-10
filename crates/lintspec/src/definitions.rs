@@ -11,6 +11,7 @@ use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
 use function::FunctionDefinition;
+use lintspec_macros::AsToVariant;
 use modifier::ModifierDefinition;
 use serde::{Deserialize, Serialize};
 use structure::StructDefinition;
@@ -38,7 +39,7 @@ pub mod variable;
 pub trait SourceItem {
     fn item_type(&self) -> ItemType;
 
-    /// Retrieve the parent contract, interface or library's name
+    /// Retrieve the parent contract, interface, or library's name
     fn parent(&self) -> Option<Parent>;
 
     /// Retrieve the name of the source item
@@ -153,7 +154,7 @@ pub enum Parent {
 }
 
 /// A source item's definition
-#[derive(Debug, From, TryInto, IsVariant)]
+#[derive(Debug, From, TryInto, IsVariant, AsToVariant)]
 pub enum Definition {
     Contract(ContractDefinition),
     Interface(InterfaceDefinition),
@@ -175,8 +176,6 @@ impl PartialEq for Definition {
     /// If two instances of the same node generate two definitions (due to quantifiers in the query), this can be
     /// used to deduplicate the instances.
     fn eq(&self, other: &Self) -> bool {
-        // TODO: is the usage of the span start fine here, or should we instead rely on the `id()` of the node? It would
-        // require adding a field in the definition just for that.
         match (self, other) {
             (Self::Contract(a), Self::Contract(b)) => a.span.start == b.span.start,
             (Self::Interface(a), Self::Interface(b)) => a.span.start == b.span.start,
@@ -240,204 +239,6 @@ impl Definition {
             Definition::Variable(d) => Some(&mut d.span),
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => Some(span),
             Definition::NatspecParsingError(_) => None,
-        }
-    }
-
-    /// Convert to the inner contract definition
-    #[must_use]
-    pub fn to_contract(self) -> Option<ContractDefinition> {
-        match self {
-            Definition::Contract(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner interface definition
-    #[must_use]
-    pub fn to_interface(self) -> Option<InterfaceDefinition> {
-        match self {
-            Definition::Interface(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner library definition
-    #[must_use]
-    pub fn to_library(self) -> Option<LibraryDefinition> {
-        match self {
-            Definition::Library(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner constructor definition
-    #[must_use]
-    pub fn to_constructor(self) -> Option<ConstructorDefinition> {
-        match self {
-            Definition::Constructor(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner enum definition
-    #[must_use]
-    pub fn to_enum(self) -> Option<EnumDefinition> {
-        match self {
-            Definition::Enumeration(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner error definition
-    #[must_use]
-    pub fn to_error(self) -> Option<ErrorDefinition> {
-        match self {
-            Definition::Error(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner event definition
-    #[must_use]
-    pub fn to_event(self) -> Option<EventDefinition> {
-        match self {
-            Definition::Event(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner function definition
-    #[must_use]
-    pub fn to_function(self) -> Option<FunctionDefinition> {
-        match self {
-            Definition::Function(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner modifier definition
-    #[must_use]
-    pub fn to_modifier(self) -> Option<ModifierDefinition> {
-        match self {
-            Definition::Modifier(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner struct definition
-    #[must_use]
-    pub fn to_struct(self) -> Option<StructDefinition> {
-        match self {
-            Definition::Struct(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Convert to the inner variable declaration
-    #[must_use]
-    pub fn to_variable(self) -> Option<VariableDeclaration> {
-        match self {
-            Definition::Variable(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner contract definition
-    #[must_use]
-    pub fn as_contract(&self) -> Option<&ContractDefinition> {
-        match self {
-            Definition::Contract(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner interface definition
-    #[must_use]
-    pub fn as_interface(&self) -> Option<&InterfaceDefinition> {
-        match self {
-            Definition::Interface(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner library definition
-    #[must_use]
-    pub fn as_library(&self) -> Option<&LibraryDefinition> {
-        match self {
-            Definition::Library(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner constructor definition
-    #[must_use]
-    pub fn as_constructor(&self) -> Option<&ConstructorDefinition> {
-        match self {
-            Definition::Constructor(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner enum definition
-    #[must_use]
-    pub fn as_enum(&self) -> Option<&EnumDefinition> {
-        match self {
-            Definition::Enumeration(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner error definition
-    #[must_use]
-    pub fn as_error(&self) -> Option<&ErrorDefinition> {
-        match self {
-            Definition::Error(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner event definition
-    #[must_use]
-    pub fn as_event(&self) -> Option<&EventDefinition> {
-        match self {
-            Definition::Event(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner function definition
-    #[must_use]
-    pub fn as_function(&self) -> Option<&FunctionDefinition> {
-        match self {
-            Definition::Function(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner modifier definition
-    #[must_use]
-    pub fn as_modifier(&self) -> Option<&ModifierDefinition> {
-        match self {
-            Definition::Modifier(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner struct definition
-    #[must_use]
-    pub fn as_struct(&self) -> Option<&StructDefinition> {
-        match self {
-            Definition::Struct(def) => Some(def),
-            _ => None,
-        }
-    }
-
-    /// Reference to the inner variable declaration
-    #[must_use]
-    pub fn as_variable(&self) -> Option<&VariableDeclaration> {
-        match self {
-            Definition::Variable(def) => Some(def),
-            _ => None,
         }
     }
 }
