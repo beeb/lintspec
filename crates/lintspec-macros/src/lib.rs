@@ -114,35 +114,32 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
     let variants = enum_def.body.content;
 
     // Generate methods for each variant
-    let variant_methods: Vec<_> = variants
-        .into_iter()
-        .map(|variant| {
-            let variant_name = &variant.value.name;
-            let variant_name_snake = to_snake_case(&variant.value.name.to_string());
-            let to_method = format_ident!("to_{variant_name_snake}");
-            let as_method = format_ident!("as_{variant_name_snake}");
-            let inner_type = variant.value.body.content.into_token_stream();
+    let variant_methods = variants.into_iter().map(|variant| {
+        let variant_name = &variant.value.name;
+        let variant_name_snake = to_snake_case(&variant.value.name.to_string());
+        let to_method = format_ident!("to_{variant_name_snake}");
+        let as_method = format_ident!("as_{variant_name_snake}");
+        let inner_type = variant.value.body.content.into_token_stream();
 
-            quote! {
-                /// Convert to the inner #variant_name_lowercase definition
-                #[must_use]
-                pub fn #to_method(self) -> Option<#inner_type> {
-                    match self {
-                        #enum_name::#variant_name(value) => Some(value),
-                        _ => None,
-                    }
-                }
-                /// Reference to the inner #variant_name_lowercase definition
-                #[must_use]
-                pub fn #as_method(&self) -> Option<&#inner_type> {
-                    match self {
-                        #enum_name::#variant_name(value) => Some(value),
-                        _ => None,
-                    }
+        quote! {
+            /// Convert to the inner #variant_name_lowercase definition
+            #[must_use]
+            pub fn #to_method(self) -> Option<#inner_type> {
+                match self {
+                    #enum_name::#variant_name(value) => Some(value),
+                    _ => None,
                 }
             }
-        })
-        .collect();
+            /// Reference to the inner #variant_name_lowercase definition
+            #[must_use]
+            pub fn #as_method(&self) -> Option<&#inner_type> {
+                match self {
+                    #enum_name::#variant_name(value) => Some(value),
+                    _ => None,
+                }
+            }
+        }
+    });
 
     let expanded = quote! {
         impl #enum_name {
