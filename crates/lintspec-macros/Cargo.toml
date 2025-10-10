@@ -2,6 +2,7 @@
 name = "lintspec-macros"
 version = "0.1.0"
 description = "Convenience macros for lintspec"
+readme = "./README.md"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
