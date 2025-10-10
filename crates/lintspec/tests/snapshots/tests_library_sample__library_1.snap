@@ -1,0 +1,14 @@
+---
+source: tests/tests-library-sample.rs
+expression: "snapshot_content(\"./test-data/LibrarySample.sol\",\n&ValidationOptions::builder().inheritdoc(false).libraries(ContractRules::builder().title(Req::Required).author(Req::Required).notice(Req::Required).build()).build(),\ntrue,)"
+---
+./test-data/LibrarySample.sol:4:1
+library StringUtils
+  @author is missing
+  @notice is missing
+
+./test-data/LibrarySample.sol:6:5
+function StringUtils.nothing
+  @notice is missing
+  @param input is missing
+  @return missing for unnamed return #1

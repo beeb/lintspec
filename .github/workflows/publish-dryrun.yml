@@ -1,0 +1,19 @@
+name: Cargo Publish Dry-run
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ startsWith(github.head_ref, 'release-plz-') }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Publish dry-run
+        run: cargo publish --dry-run --workspace

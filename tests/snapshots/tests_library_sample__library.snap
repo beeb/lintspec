@@ -1,9 +1,0 @@
----
-source: tests/tests-library-sample.rs
-expression: "snapshot_content(\"./test-data/LibrarySample.sol\",\n&ValidationOptions::builder().inheritdoc(false).build(), true,)"
----
-./test-data/LibrarySample.sol:5:5
-function StringUtils.nothing
-  @notice is missing
-  @param input is missing
-  @return missing for unnamed return #1
