@@ -177,6 +177,8 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             .skip(res + 1)
             .find_map(|(utf8, ti)| (utf8 == &span.end.utf8).then_some(*ti))
             .expect("utf8 end offset should be present in cache");
+        // for the next definition or item inside of a definition, we can start after the start of this item
+        // because start indices increase monotonically
         res + 1
     }
     let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
@@ -272,6 +274,10 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         }
     }
 
+    // definitions are sorted by start offset due to how the AST is traversed
+    // likewise, params, members, etc., are also sorted by start offset
+    // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
+    // to the start offset of the previous definition
     let mut idx = 0;
     for def in &mut definitions {
         if let Some(span) = def.span_mut() {
