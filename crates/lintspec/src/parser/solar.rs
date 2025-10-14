@@ -273,8 +273,8 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     let mut current = TextIndex::ZERO;
     text_indices.push(current); // just in case zero is needed
 
-    let mut set_iter = offsets.iter();
-    let mut current_offset = set_iter
+    let mut ofs_iter = offsets.iter();
+    let mut current_offset = ofs_iter
         .next()
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
@@ -295,7 +295,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                 // if we've reached the target position, store it
                 if current.utf8 == *current_offset {
                     text_indices.push(current);
-                    current_offset = match set_iter.find(|o| o != &current_offset) {
+                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
                         Some(o) => o,
                         None => break 'outer,
                     };
@@ -334,7 +334,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                 }
                 Ordering::Greater => {
                     // skip duplicates and advance to next offset
-                    current_offset = match set_iter.find(|o| o != &current_offset) {
+                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
                         Some(o) => o,
                         None => break 'outer,
                     };
