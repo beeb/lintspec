@@ -13,7 +13,6 @@ use solar_parse::{
     interface::{ColorChoice, source_map::SourceFile},
 };
 use std::{
-    collections::BTreeSet,
     io,
     ops::ControlFlow,
     path::{Path, PathBuf},
@@ -161,19 +160,30 @@ impl Parse for SolarParser {
 #[allow(clippy::too_many_lines)]
 /// Complete the [`TextRange`] of a list of [`Definition`]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
-    fn register_span(set: &mut BTreeSet<usize>, span: &TextRange) {
-        set.insert(span.start.utf8);
-        set.insert(span.end.utf8);
+    fn register_span(set: &mut Vec<usize>, span: &TextRange) {
+        set.push(span.start.utf8);
+        set.push(span.end.utf8);
     }
-    fn populate_span(map: &HashMap<usize, TextIndex>, span: &mut TextRange) {
-        span.start = *map
-            .get(&span.start.utf8)
-            .expect("utf8 offset should be present in cache");
-        span.end = *map
-            .get(&span.end.utf8)
-            .expect("utf8 offset should be present in cache");
+    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
+        let res;
+        (res, span.start) = indices
+            .iter()
+            .enumerate()
+            .skip(start_idx)
+            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
+            .expect("utf8 start offset should be present in cache");
+        span.end = *indices
+            .iter()
+            .skip(res + 1)
+            .find(|ti| ti.utf8 == span.end.utf8)
+            .expect("utf8 end offset should be present in cache");
+        // for the next definition or item inside of a definition, we can start after the start of this item
+        // because start indices increase monotonically
+        res + 1
     }
-    let mut offsets = BTreeSet::new();
+    let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
+    // register all start and end utf-8 offsets for the definitions and their relevant properties
+    // definitions are sorted by start offset due to how the AST is traversed
     for def in &definitions {
         def.span().inspect(|s| register_span(&mut offsets, s));
         match def {
@@ -228,10 +238,14 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     if offsets.is_empty() {
         return definitions;
     }
+    // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
+    // the span start of its first member for example)
+    // we will deduplicate on the fly as we iterate to avoid re-allocating
+    offsets.sort_unstable();
 
-    let mut mapping = HashMap::new();
+    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
-    mapping.insert(0, current); // just in case zero is needed
+    text_indices.push(current); // just in case zero is needed
 
     let mut set_iter = offsets.iter();
     let mut char_iter = source.chars().peekable();
@@ -243,66 +257,73 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         current.advance(c, char_iter.peek());
         match current.utf8.cmp(current_offset) {
             std::cmp::Ordering::Equal => {
-                mapping.insert(current.utf8, current);
+                text_indices.push(current);
             }
             std::cmp::Ordering::Greater => {
-                current_offset = match set_iter.next() {
+                // because the list of offsets can contain duplicates (but is sorted), we simply ignore elements
+                // which have the same value as the current offset
+                current_offset = match set_iter.find(|o| o != &current_offset) {
                     Some(o) => o,
                     None => break,
                 };
                 if current_offset == &current.utf8 {
-                    mapping.insert(current.utf8, current);
+                    text_indices.push(current);
                 }
             }
             std::cmp::Ordering::Less => {}
         }
     }
 
+    // definitions are sorted by start offset due to how the AST is traversed
+    // likewise, params, members, etc., are also sorted by start offset
+    // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
+    // to the start offset of the previous definition
+    let mut idx = 0;
     for def in &mut definitions {
         if let Some(span) = def.span_mut() {
-            populate_span(&mapping, span);
+            idx = populate_span(&text_indices, idx, span);
         }
         match def {
             Definition::Constructor(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Enumeration(d) => {
                 d.members
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Error(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Event(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Function(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
                 d.returns
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Modifier(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::Struct(d) => {
                 d.members
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                populate_span(&mapping, span);
+                idx = populate_span(&text_indices, idx, span);
             }
             Definition::Contract(_)
             | Definition::Interface(_)
