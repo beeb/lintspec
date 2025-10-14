@@ -69,66 +69,72 @@ impl SolarParser {
 impl Parse for SolarParser {
     fn parse_document(
         &mut self,
-        mut input: impl io::Read,
+        input: impl io::Read,
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
-        let pathbuf = path
-            .as_ref()
-            .map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
-        let mut buf = String::new();
-        input
-            .read_to_string(&mut buf)
-            .map_err(|err| Error::IOError {
-                path: pathbuf.clone(),
-                err,
-            })?;
-        let source_map = self.sess.source_map();
-        let source_file = source_map
-            .new_source_file(
-                path.as_ref().map_or(FileName::Stdin, |p| {
-                    FileName::Real(p.as_ref().to_path_buf())
-                }),
-                buf,
-            ) // should never fail since the content was read already
-            .map_err(|err| Error::IOError {
-                path: pathbuf.clone(),
-                err,
-            })?;
+        fn inner(
+            this: &mut SolarParser,
+            mut input: impl io::Read,
+            path: Option<PathBuf>,
+            keep_contents: bool,
+        ) -> Result<ParsedDocument> {
+            let pathbuf = path.clone().unwrap_or(PathBuf::from("<stdin>"));
+            let mut buf = String::new();
+            input
+                .read_to_string(&mut buf)
+                .map_err(|err| Error::IOError {
+                    path: pathbuf.clone(),
+                    err,
+                })?;
+            let source_map = this.sess.source_map();
+            let source_file = source_map
+                .new_source_file(path.map_or(FileName::Stdin, FileName::Real), buf) // should never fail since the content was read already
+                .map_err(|err| Error::IOError {
+                    path: pathbuf.clone(),
+                    err,
+                })?;
 
-        let definitions = self
-            .sess
-            .enter_sequential(|| -> solar_parse::interface::Result<_> {
-                let arena = solar_parse::ast::Arena::new();
+            let definitions = this
+                .sess
+                .enter_sequential(|| -> solar_parse::interface::Result<_> {
+                    let arena = solar_parse::ast::Arena::new();
 
-                let mut parser = Parser::from_source_file(&self.sess, &arena, &source_file);
+                    let mut parser = Parser::from_source_file(&this.sess, &arena, &source_file);
 
-                let ast = parser.parse_file().map_err(|err| err.emit())?;
-                let mut visitor = LintspecVisitor::new(source_map);
+                    let ast = parser.parse_file().map_err(|err| err.emit())?;
+                    let mut visitor = LintspecVisitor::new(source_map);
 
-                let _ = visitor.visit_source_unit(&ast);
-                Ok(visitor.definitions)
+                    let _ = visitor.visit_source_unit(&ast);
+                    Ok(visitor.definitions)
+                })
+                .map_err(|_| Error::ParsingError {
+                    path: pathbuf,
+                    loc: TextIndex::ZERO,
+                    message: this
+                        .sess
+                        .emitted_errors()
+                        .expect("should have a Result")
+                        .unwrap_err()
+                        .to_string(),
+                })?;
+
+            let document_id = DocumentId::new();
+            if keep_contents {
+                let mut documents = this.documents.lock().expect("mutex should not be poisoned");
+                documents.push((document_id, Arc::clone(&source_file)));
+            }
+            Ok(ParsedDocument {
+                definitions: complete_text_ranges(&source_file.src, definitions),
+                id: document_id,
             })
-            .map_err(|_| Error::ParsingError {
-                path: pathbuf,
-                loc: TextIndex::ZERO,
-                message: self
-                    .sess
-                    .emitted_errors()
-                    .expect("should have a Result")
-                    .unwrap_err()
-                    .to_string(),
-            })?;
-
-        let document_id = DocumentId::new();
-        if keep_contents {
-            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
-            documents.push((document_id, Arc::clone(&source_file)));
         }
-        Ok(ParsedDocument {
-            definitions: complete_text_ranges(&source_file.src, definitions),
-            id: document_id,
-        })
+        inner(
+            self,
+            input,
+            path.map(|p| p.as_ref().to_path_buf()),
+            keep_contents,
+        )
     }
 
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
