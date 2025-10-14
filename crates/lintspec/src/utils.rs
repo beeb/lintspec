@@ -64,7 +64,8 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
         let parser = Parser::create(get_latest_supported_version())
             .expect("the Parser should be initialized correctly with a supported solidity version");
 
-        let parse_result = parser.parse_nonterminal(NonterminalKind::PragmaDirective, pragma.as_str());
+        let parse_result =
+            parser.parse_nonterminal(NonterminalKind::PragmaDirective, pragma.as_str());
         if !parse_result.is_valid() {
             let Some(error) = parse_result.errors().first() else {
                 return Err(Error::UnknownError);
