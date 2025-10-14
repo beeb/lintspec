@@ -180,6 +180,8 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         res + 1
     }
     let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
+    // register all start and end utf-8 offsets for the definitions and their relevant properties
+    // definitions are sorted by start offset due to how the AST is traversed
     for def in &definitions {
         def.span().inspect(|s| register_span(&mut offsets, s));
         match def {
@@ -234,6 +236,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     if offsets.is_empty() {
         return definitions;
     }
+    // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
+    // the span start of its first member for example)
+    // we will deduplicate on the fly as we iterate to avoid re-allocating
     offsets.sort_unstable();
 
     let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
@@ -253,6 +258,8 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                 text_indices.push((current.utf8, current));
             }
             std::cmp::Ordering::Greater => {
+                // because the list of offsets can contain duplicates (but is sorted), we simply ignore elements
+                // which have the same value as the current offset
                 current_offset = match set_iter.find(|o| o != &current_offset) {
                     Some(o) => o,
                     None => break,
