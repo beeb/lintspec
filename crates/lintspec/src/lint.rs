@@ -69,21 +69,29 @@ impl ItemDiagnostics {
         path: impl AsRef<Path>,
         root_dir: impl AsRef<Path>,
     ) -> std::result::Result<(), io::Error> {
-        let source_name = match path.as_ref().strip_prefix(root_dir.as_ref()) {
-            Ok(relative_path) => relative_path.to_string_lossy(),
-            Err(_) => path.as_ref().to_string_lossy(),
-        };
-        writeln!(f, "{source_name}:{}", self.span.start)?;
-        if let Some(parent) = &self.parent {
-            writeln!(f, "{} {}.{}", self.item_type, parent, self.name)?;
-        } else {
-            writeln!(f, "{} {}", self.item_type, self.name)?;
+        fn inner(
+            this: &ItemDiagnostics,
+            f: &mut impl io::Write,
+            path: &Path,
+            root_dir: &Path,
+        ) -> std::result::Result<(), io::Error> {
+            let source_name = match path.strip_prefix(root_dir) {
+                Ok(relative_path) => relative_path.to_string_lossy(),
+                Err(_) => path.to_string_lossy(),
+            };
+            writeln!(f, "{source_name}:{}", this.span.start)?;
+            if let Some(parent) = &this.parent {
+                writeln!(f, "{} {}.{}", this.item_type, parent, this.name)?;
+            } else {
+                writeln!(f, "{} {}", this.item_type, this.name)?;
+            }
+            for diag in &this.diags {
+                writeln!(f, "  {}", diag.message)?;
+            }
+            writeln!(f)?;
+            Ok(())
         }
-        for diag in &self.diags {
-            writeln!(f, "  {}", diag.message)?;
-        }
-        writeln!(f)?;
-        Ok(())
+        inner(self, f, path.as_ref(), root_dir.as_ref())
     }
 }
 
