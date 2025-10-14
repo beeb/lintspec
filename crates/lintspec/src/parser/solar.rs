@@ -179,7 +179,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             .expect("utf8 end offset should be present in cache");
         res + 1
     }
-    let mut offsets = Vec::new();
+    let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
     for def in &definitions {
         def.span().inspect(|s| register_span(&mut offsets, s));
         match def {
@@ -236,7 +236,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     }
     offsets.sort_unstable();
 
-    let mut text_indices = Vec::new();
+    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
     text_indices.push((0, current)); // just in case zero is needed
 
