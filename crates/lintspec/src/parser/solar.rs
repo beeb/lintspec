@@ -165,13 +165,20 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         set.insert(span.start.utf8);
         set.insert(span.end.utf8);
     }
-    fn populate_span(map: &HashMap<usize, TextIndex>, span: &mut TextRange) {
-        span.start = *map
-            .get(&span.start.utf8)
-            .expect("utf8 offset should be present in cache");
-        span.end = *map
-            .get(&span.end.utf8)
-            .expect("utf8 offset should be present in cache");
+    fn populate_span(map: &[(usize, TextIndex)], start_idx: usize, span: &mut TextRange) -> usize {
+        let res;
+        (res, span.start) = map
+            .iter()
+            .enumerate()
+            .skip(start_idx)
+            .find_map(|(i, (utf8, ti))| (utf8 == &span.start.utf8).then_some((i, *ti)))
+            .expect("utf8 start offset should be present in cache");
+        span.end = map
+            .iter()
+            .skip(res + 1)
+            .find_map(|(utf8, ti)| (utf8 == &span.end.utf8).then_some(*ti))
+            .expect("utf8 end offset should be present in cache");
+        res + 1
     }
     let mut offsets = BTreeSet::new();
     for def in &definitions {
@@ -229,9 +236,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         return definitions;
     }
 
-    let mut mapping = HashMap::new();
+    let mut mapping = Vec::new();
     let mut current = TextIndex::ZERO;
-    mapping.insert(0, current); // just in case zero is needed
+    mapping.push((0, current)); // just in case zero is needed
 
     let mut set_iter = offsets.iter();
     let mut char_iter = source.chars().peekable();
@@ -243,7 +250,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         current.advance(c, char_iter.peek());
         match current.utf8.cmp(current_offset) {
             std::cmp::Ordering::Equal => {
-                mapping.insert(current.utf8, current);
+                mapping.push((current.utf8, current));
             }
             std::cmp::Ordering::Greater => {
                 current_offset = match set_iter.next() {
@@ -251,58 +258,59 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                     None => break,
                 };
                 if current_offset == &current.utf8 {
-                    mapping.insert(current.utf8, current);
+                    mapping.push((current.utf8, current));
                 }
             }
             std::cmp::Ordering::Less => {}
         }
     }
 
+    let mut idx = 0;
     for def in &mut definitions {
         if let Some(span) = def.span_mut() {
-            populate_span(&mapping, span);
+            idx = populate_span(&mapping, idx, span);
         }
         match def {
             Definition::Constructor(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Enumeration(d) => {
                 d.members
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Error(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Event(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Function(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
                 d.returns
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Modifier(d) => {
                 d.params
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::Struct(d) => {
                 d.members
                     .iter_mut()
-                    .for_each(|i| populate_span(&mapping, &mut i.span));
+                    .for_each(|i| idx = populate_span(&mapping, idx, &mut i.span));
             }
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                populate_span(&mapping, span);
+                idx = populate_span(&mapping, idx, span);
             }
             Definition::Contract(_)
             | Definition::Interface(_)
