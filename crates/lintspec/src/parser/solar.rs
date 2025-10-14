@@ -157,8 +157,8 @@ impl Parse for SolarParser {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 /// Complete the [`TextRange`] of a list of [`Definition`]
+#[allow(clippy::too_many_lines)]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     fn register_span(set: &mut Vec<usize>, span: &TextRange) {
         set.push(span.start.utf8);
