@@ -281,7 +281,9 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     let bytes_i8: &[i8] =
         unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
-        while let Some(newline_mask) = find_ascii_newlines(&bytes_i8[current.utf8..]) {
+        while current.utf8 + 16 < bytes_i8.len()
+            && let Some(newline_mask) = find_ascii_newlines(&bytes_i8[current.utf8..])
+        {
             debug_assert!(current_offset >= &current.utf8);
             // do we need a TextIndex in this range?
             if current_offset < &(current.utf8 + 16) {
