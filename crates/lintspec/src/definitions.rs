@@ -79,18 +79,34 @@ impl TextIndex {
     /// Implementation is directly taken from [`slang_solidity`].
     #[inline]
     pub fn advance(&mut self, c: char, next: Option<&char>) {
-        self.utf8 += c.len_utf8();
-        self.utf16 += c.len_utf16();
-        match (c, next) {
-            ('\r', Some('\n')) => {
-                // Ignore for now, we will increment the line number whe we process the \n
+        // fast path for ASCII characters
+        if c.is_ascii() {
+            self.utf8 += 1;
+            self.utf16 += 1;
+            match (c, next) {
+                ('\r', Some(&'\n')) => {
+                    // ignore for now, we will increment the line number when we process the \n
+                }
+                ('\n' | '\r', _) => {
+                    self.line += 1;
+                    self.column = 0;
+                }
+                _ => {
+                    self.column += 1;
+                }
             }
-            ('\n' | '\r' | '\u{2028}' | '\u{2029}', _) => {
-                self.line += 1;
-                self.column = 0;
-            }
-            _ => {
-                self.column += 1;
+        } else {
+            // slow path for Unicode
+            self.utf8 += c.len_utf8();
+            self.utf16 += c.len_utf16();
+            match c {
+                '\u{2028}' | '\u{2029}' => {
+                    self.line += 1;
+                    self.column = 0;
+                }
+                _ => {
+                    self.column += 1;
+                }
             }
         }
     }
