@@ -6,8 +6,9 @@ use lintspec::parser::{Parse, ParsedDocument};
 const FILES: &[&str] = &[
     "test-data/BasicSample.sol",
     "test-data/ParserTest.sol",
-    "test-data/InterfaceSample.sol",
-    "test-data/LibrarySample.sol",
+    // these are too quick and give a lot of noise on codspeed
+    // "test-data/InterfaceSample.sol",
+    // "test-data/LibrarySample.sol",
     "test-data/Fuzzers.sol",
 ];
 
