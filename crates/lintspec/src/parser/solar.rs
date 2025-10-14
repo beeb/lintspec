@@ -164,18 +164,18 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         set.push(span.start.utf8);
         set.push(span.end.utf8);
     }
-    fn populate_span(map: &[(usize, TextIndex)], start_idx: usize, span: &mut TextRange) -> usize {
+    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
         let res;
-        (res, span.start) = map
+        (res, span.start) = indices
             .iter()
             .enumerate()
             .skip(start_idx)
-            .find_map(|(i, (utf8, ti))| (utf8 == &span.start.utf8).then_some((i, *ti)))
+            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
             .expect("utf8 start offset should be present in cache");
-        span.end = map
+        span.end = *indices
             .iter()
             .skip(res + 1)
-            .find_map(|(utf8, ti)| (utf8 == &span.end.utf8).then_some(*ti))
+            .find(|ti| ti.utf8 == span.end.utf8)
             .expect("utf8 end offset should be present in cache");
         // for the next definition or item inside of a definition, we can start after the start of this item
         // because start indices increase monotonically
@@ -245,7 +245,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
 
     let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
-    text_indices.push((0, current)); // just in case zero is needed
+    text_indices.push(current); // just in case zero is needed
 
     let mut set_iter = offsets.iter();
     let mut char_iter = source.chars().peekable();
@@ -257,7 +257,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         current.advance(c, char_iter.peek());
         match current.utf8.cmp(current_offset) {
             std::cmp::Ordering::Equal => {
-                text_indices.push((current.utf8, current));
+                text_indices.push(current);
             }
             std::cmp::Ordering::Greater => {
                 // because the list of offsets can contain duplicates (but is sorted), we simply ignore elements
@@ -267,7 +267,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                     None => break,
                 };
                 if current_offset == &current.utf8 {
-                    text_indices.push((current.utf8, current));
+                    text_indices.push(current);
                 }
             }
             std::cmp::Ordering::Less => {}
