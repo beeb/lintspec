@@ -383,21 +383,30 @@ pub fn print_reports(
     contents: String,
     compact: bool,
 ) -> Result<(), io::Error> {
-    if compact {
-        for item_diags in file_diags.items {
-            item_diags.print_compact(f, &file_diags.path, &root_path)?;
+    fn inner(
+        f: &mut impl io::Write,
+        root_path: &Path,
+        file_diags: FileDiagnostics,
+        contents: String,
+        compact: bool,
+    ) -> Result<(), io::Error> {
+        if compact {
+            for item_diags in file_diags.items {
+                item_diags.print_compact(f, &file_diags.path, root_path)?;
+            }
+        } else {
+            let source_name = match file_diags.path.strip_prefix(root_path) {
+                Ok(relative_path) => relative_path.to_string_lossy(),
+                Err(_) => file_diags.path.to_string_lossy(),
+            };
+            let source = Arc::new(NamedSource::new(source_name, contents));
+            for item_diags in file_diags.items {
+                print_report(f, Arc::clone(&source), item_diags)?;
+            }
         }
-    } else {
-        let source_name = match file_diags.path.strip_prefix(root_path.as_ref()) {
-            Ok(relative_path) => relative_path.to_string_lossy(),
-            Err(_) => file_diags.path.to_string_lossy(),
-        };
-        let source = Arc::new(NamedSource::new(source_name, contents));
-        for item_diags in file_diags.items {
-            print_report(f, Arc::clone(&source), item_diags)?;
-        }
+        Ok(())
     }
-    Ok(())
+    inner(f, root_path.as_ref(), file_diags, contents, compact)
 }
 
 /// Print a single report related to one source item with [`miette`].

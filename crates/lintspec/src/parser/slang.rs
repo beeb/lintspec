@@ -120,48 +120,61 @@ impl SlangParser {
 impl Parse for SlangParser {
     fn parse_document(
         &mut self,
-        mut input: impl io::Read,
+        input: impl io::Read,
         path: Option<impl AsRef<Path>>,
         keep_contents: bool,
     ) -> Result<ParsedDocument> {
-        let path = path.map_or(PathBuf::from("<stdin>"), |p| p.as_ref().to_path_buf());
-        let (contents, output) = {
-            let mut contents = String::new();
-            input
-                .read_to_string(&mut contents)
-                .map_err(|err| Error::IOError {
-                    path: PathBuf::new(),
-                    err,
-                })?;
-            let solidity_version = if self.skip_version_detection {
-                get_latest_supported_version()
-            } else {
-                detect_solidity_version(&contents, &path)?
+        fn inner(
+            this: &mut SlangParser,
+            mut input: impl io::Read,
+            path: Option<PathBuf>,
+            keep_contents: bool,
+        ) -> Result<ParsedDocument> {
+            let path = path.unwrap_or(PathBuf::from("<stdin>"));
+            let (contents, output) = {
+                let mut contents = String::new();
+                input
+                    .read_to_string(&mut contents)
+                    .map_err(|err| Error::IOError {
+                        path: PathBuf::new(),
+                        err,
+                    })?;
+                let solidity_version = if this.skip_version_detection {
+                    get_latest_supported_version()
+                } else {
+                    detect_solidity_version(&contents, &path)?
+                };
+                let parser = Parser::create(solidity_version).expect("parser should initialize");
+                let output = parser.parse_file_contents(&contents);
+                (keep_contents.then_some(contents), output)
             };
-            let parser = Parser::create(solidity_version).expect("parser should initialize");
-            let output = parser.parse_file_contents(&contents);
-            (keep_contents.then_some(contents), output)
-        };
-        if !output.is_valid() {
-            let Some(error) = output.errors().first() else {
-                return Err(Error::UnknownError);
-            };
-            return Err(Error::ParsingError {
-                path,
-                loc: error.text_range().start.into(),
-                message: error.message(),
-            });
+            if !output.is_valid() {
+                let Some(error) = output.errors().first() else {
+                    return Err(Error::UnknownError);
+                };
+                return Err(Error::ParsingError {
+                    path,
+                    loc: error.text_range().start.into(),
+                    message: error.message(),
+                });
+            }
+            let document_id = DocumentId::new();
+            if let Some(contents) = contents {
+                let mut documents = this.documents.lock().expect("mutex should not be poisoned");
+                documents.insert(document_id, contents);
+            }
+            let cursor = output.create_tree_cursor();
+            Ok(ParsedDocument {
+                definitions: SlangParser::find_items(cursor),
+                id: document_id,
+            })
         }
-        let document_id = DocumentId::new();
-        if let Some(contents) = contents {
-            let mut documents = self.documents.lock().expect("mutex should not be poisoned");
-            documents.insert(document_id, contents);
-        }
-        let cursor = output.create_tree_cursor();
-        Ok(ParsedDocument {
-            definitions: Self::find_items(cursor),
-            id: document_id,
-        })
+        inner(
+            self,
+            input,
+            path.map(|p| p.as_ref().to_path_buf()),
+            keep_contents,
+        )
     }
 
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
