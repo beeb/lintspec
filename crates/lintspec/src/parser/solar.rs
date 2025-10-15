@@ -158,33 +158,46 @@ impl Parse for SolarParser {
     }
 }
 
-/// Complete the [`TextRange`] of a list of [`Definition`]
-fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
-    fn register_span(set: &mut Vec<usize>, span: &TextRange) {
-        set.push(span.start.utf8);
-        set.push(span.end.utf8);
+/// Count the total number of offsets related to the definitions.
+///
+/// This is used to pre-allocate a vector with the correct size.
+fn count_offsets(definitions: &[Definition]) -> usize {
+    definitions
+        .iter()
+        .map(|d| match d {
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => (params.len() + 1) * 2,
+            Definition::Function(d) => (d.params.len() + d.returns.len() + 1) * 2,
+            Definition::NatspecParsingError(Error::NatspecParsingError { .. }) => 4,
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => 2,
+        })
+        .sum()
+}
+
+/// Gather all the start and end byte offsets for the definitions, including their members/params/returns.
+///
+/// The result is sorted.
+fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
+    fn register_span(offsets: &mut Vec<usize>, span: &TextRange) {
+        offsets.push(span.start.utf8);
+        offsets.push(span.end.utf8);
     }
-    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
-        let res;
-        (res, span.start) = indices
-            .iter()
-            .enumerate()
-            .skip(start_idx)
-            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
-            .expect("utf8 start offset should be present in cache");
-        span.end = *indices
-            .iter()
-            .skip(res + 1)
-            .find(|ti| ti.utf8 == span.end.utf8)
-            .expect("utf8 end offset should be present in cache");
-        // for the next definition or item inside of a definition, we can start after the start of this item
-        // because start indices increase monotonically
-        res + 1
-    }
-    let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
+    let mut offsets = Vec::with_capacity(count_offsets(definitions));
     // register all start and end utf-8 offsets for the definitions and their relevant properties
     // definitions are sorted by start offset due to how the AST is traversed
-    for def in &definitions {
+    for def in definitions {
         def.span().inspect(|s| register_span(&mut offsets, s));
         match def {
             Definition::Constructor(ConstructorDefinition { params, .. })
@@ -219,13 +232,36 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             | Definition::NatspecParsingError(_) => {}
         }
     }
-    if offsets.is_empty() {
-        return definitions;
-    }
     // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
     // the span start of its first member for example)
     // we will deduplicate on the fly as we iterate to avoid re-allocating
     offsets.sort_unstable();
+    offsets
+}
+
+/// Complete the [`TextRange`] of a list of [`Definition`]
+fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
+        let res;
+        (res, span.start) = indices
+            .iter()
+            .enumerate()
+            .skip(start_idx)
+            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
+            .expect("utf8 start offset should be present in cache");
+        span.end = *indices
+            .iter()
+            .skip(res + 1)
+            .find(|ti| ti.utf8 == span.end.utf8)
+            .expect("utf8 end offset should be present in cache");
+        // for the next definition or item inside of a definition, we can start after the start of this item
+        // because start indices increase monotonically
+        res + 1
+    }
+    let offsets = gather_offsets(&definitions);
+    if offsets.is_empty() {
+        return definitions;
+    }
 
     let text_indices = compute_indices(source, &offsets);
 
