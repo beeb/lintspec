@@ -142,7 +142,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 // get the next offset of interest, ignoring any duplicates
                 current_offset = match ofs_iter.find(|o| o != &current_offset) {
                     Some(o) => o,
-                    None => break 'outer,
+                    None => break 'outer, // all interesting offsets have been found
                 };
                 continue;
             }
@@ -174,7 +174,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                     // skip duplicates and advance to next offset
                     current_offset = match ofs_iter.find(|o| o != &current_offset) {
                         Some(o) => o,
-                        None => break 'outer,
+                        None => break 'outer, // all interesting offsets have been found
                     };
                     if current_offset == &current.utf8 {
                         text_indices.push(current);
@@ -183,7 +183,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 Ordering::Less => {}
             }
             if found_non_ascii_or_nl && char_iter.peek().is_some_and(char::is_ascii) {
-                // we're done processing the non-ascii characters, let's go back to SIMD-optimized processing
+                // we're done processing the non-ASCII / newline characters, let's go back to SIMD-optimized processing
                 break;
             }
         }
