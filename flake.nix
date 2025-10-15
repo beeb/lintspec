@@ -42,9 +42,10 @@
         {
           default = pkgs.rustPlatform.buildRustPackage {
             pname = "lintspec";
-            inherit ((lib.importTOML ./Cargo.toml).package) version;
+            inherit ((lib.importTOML ./crates/lintspec/Cargo.toml).package) version;
 
             src = lib.cleanSource ./.;
+            cargoBuildFlags = [ "--package" "lintspec" ];
 
             cargoLock = {
               lockFile = ./Cargo.lock;
