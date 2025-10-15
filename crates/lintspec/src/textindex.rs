@@ -123,20 +123,24 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     // original slice.
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
-        while current.utf8 <= bytes.len() - 16
-            && let Some(newline_mask) = find_ascii_newlines(&bytes[current.utf8..])
-        {
+        // check whether we can try to process a 16-bytes chunk with SIMD
+        while current.utf8 <= bytes.len() - 16 {
             debug_assert!(current_offset >= &current.utf8);
-            let bytes_until_newline = newline_mask.trailing_zeros() as usize;
+            let newline_non_ascii_mask = find_non_ascii_and_newlines(&bytes[current.utf8..]);
+            let bytes_until_nl_na = newline_non_ascii_mask.trailing_zeros() as usize;
+            if bytes_until_nl_na == 0 {
+                // we hit a newline or non-ASCII char, need to go into per-char processing routine
+                break;
+            }
             if current_offset < &(current.utf8 + 16) {
                 // a desired offset is present in this chunk
                 let bytes_until_target = (*current_offset).saturating_sub(current.utf8);
-                if bytes_until_newline < bytes_until_target {
-                    // we hit a newline, need to go into per-char processing routine
-                    current.advance_by_ascii(bytes_until_newline);
+                if bytes_until_nl_na < bytes_until_target {
+                    // we hit a newline or non-ASCII char, need to go into per-char processing routine
+                    current.advance_by_ascii(bytes_until_nl_na); // advance because there are ASCII bytes we can process
                     break;
                 }
-                // else, we reached the target position, store it
+                // else, we reached the target position and it's an ASCII char, store it
                 current.advance_by_ascii(bytes_until_target);
                 text_indices.push(current);
                 // get the next offset of interest, ignoring any duplicates
@@ -147,24 +151,23 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 continue;
             }
             // else, no offset of interest in this chunk
-            // fast forward current to before any newline
-            current.advance_by_ascii(bytes_until_newline);
-            if bytes_until_newline < 16 {
-                // we hit a newline, need to go into per-char processing routine
+            // fast forward current to before any newline/non-ASCII
+            current.advance_by_ascii(bytes_until_nl_na);
+            if bytes_until_nl_na < 16 {
+                // we hit a newline or non-ASCII char, need to go into per-char processing routine
                 break;
             }
         }
-        // we might have non-ASCII chars in the next 16 chars at `current_byte`
-        // we might also have a line ending
+        // normally, the next byte is either part of a Unicode char or line ending
         // fall back to character-by-character processing
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
-        let mut found_non_ascii_or_nl = false;
+        let mut found_na_nl = false;
         while let Some(c) = char_iter.next() {
             debug_assert!(current_offset >= &current.utf8);
             current.advance(c, char_iter.peek());
             if !c.is_ascii() || c == '\n' {
-                found_non_ascii_or_nl = true;
+                found_na_nl = true;
             }
             if &current.utf8 == current_offset {
                 // we reached a target position, store it
@@ -175,7 +178,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                     None => break 'outer, // all interesting offsets have been found
                 };
             }
-            if found_non_ascii_or_nl && char_iter.peek().is_some_and(char::is_ascii) {
+            if found_na_nl && char_iter.peek().is_some_and(char::is_ascii) {
                 // we're done processing the non-ASCII / newline characters, let's go back to SIMD-optimized processing
                 break;
             }
@@ -187,21 +190,17 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     text_indices
 }
 
-/// Check the first 16 bytes of the input slice for non-ASCII characters and find newline characters.
+/// Check the first 16 bytes of the input slice for non-ASCII characters and newline characters.
 ///
-/// If there are non-ASCII characters, the function returns `None`. Otherwise, it returns a mask with bits flipped
-/// to 1 for items which correspond to `\n` or `\r`. The least significant bit in the mask corresponds to the first
-/// byte in the input.
+/// The function returns a mask with bits flipped to 1 for items which correspond to `\n` or `\r` or non-ASCII
+/// characters. The least significant bit in the mask corresponds to the first byte in the input.
 ///
 /// This function uses SIMD to accelerate the checks.
-fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
+fn find_non_ascii_and_newlines(chunk: &[i8]) -> u16 {
     let bytes = i8x16::from_slice_unaligned(chunk);
 
-    // check for non-ASCII: values 128-255 become i8 values < 0
-    if bytes.simd_lt(i8x16::ZERO).any() {
-        return None;
-    }
-
+    // find non-ASCII
+    let nonascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
     // find newlines
     #[allow(clippy::cast_possible_wrap)]
     let lf_bytes = i8x16::splat(b'\n' as i8);
@@ -209,8 +208,11 @@ fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
     let cr_bytes = i8x16::splat(b'\r' as i8);
     let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
     let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
-    let newline_mask = lf_mask | cr_mask;
+    // combine masks
+    let newline_mask = nonascii_mask | lf_mask | cr_mask;
 
     #[allow(clippy::cast_possible_truncation)]
-    Some(newline_mask as u16)
+    {
+        newline_mask as u16
+    }
 }
