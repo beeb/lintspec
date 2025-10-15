@@ -165,6 +165,7 @@ fn count_offsets(definitions: &[Definition]) -> usize {
     definitions
         .iter()
         .map(|d| match d {
+            // 2 for definition + 2 for each param
             Definition::Constructor(ConstructorDefinition { params, .. })
             | Definition::Error(ErrorDefinition { params, .. })
             | Definition::Event(EventDefinition { params, .. })
@@ -175,8 +176,11 @@ fn count_offsets(definitions: &[Definition]) -> usize {
             | Definition::Struct(StructDefinition {
                 members: params, ..
             }) => (params.len() + 1) * 2,
+            // 2 for definition + 2 for each param/return
             Definition::Function(d) => (d.params.len() + d.returns.len() + 1) * 2,
+            // 2 for container + 2 for err (they normally are the same/duplicates)
             Definition::NatspecParsingError(Error::NatspecParsingError { .. }) => 4,
+            // 2 for the definition
             Definition::Contract(_)
             | Definition::Interface(_)
             | Definition::Library(_)
