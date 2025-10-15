@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.1] - 2025-10-15
+
+### Tests
+
+
+-  remove miette decorations and color during test ([#170](https://github.com/beeb/lintspec/pull/170)) - ([e1ffe21](https://github.com/beeb/lintspec/commit/e1ffe21798c71573af74f495fe49fbd1b338d37b))
+
+
+
+
+**Full Changelog**: [0.11.0...0.11.1](https://github.com/beeb/lintspec/compare/v0.11.0...v0.11.1)
+
+
 ## [0.11.0] - 2025-10-15
 
 ### Added
