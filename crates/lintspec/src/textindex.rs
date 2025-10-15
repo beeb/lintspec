@@ -127,36 +127,34 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
             && let Some(newline_mask) = find_ascii_newlines(&bytes[current.utf8..])
         {
             debug_assert!(current_offset >= &current.utf8);
-            // is a desired offset in this chunk?
+            let bytes_until_newline = newline_mask.trailing_zeros() as usize;
             if current_offset < &(current.utf8 + 16) {
-                let bytes_until_newline = newline_mask.trailing_zeros() as usize;
+                // a desired offset is present in this chunk
                 let bytes_until_target = (*current_offset).saturating_sub(current.utf8);
-                let advance_by = bytes_until_target.min(bytes_until_newline);
-                current.advance_by_ascii(advance_by);
-
-                // if we've reached the target position, store it
-                if current.utf8 == *current_offset {
-                    text_indices.push(current);
-                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
-                        Some(o) => o,
-                        None => break 'outer,
-                    };
-                } else if newline_mask != 0 && advance_by == bytes_until_newline {
+                if bytes_until_newline < bytes_until_target {
                     // we hit a newline, need to go into per-char processing routine
+                    current.advance_by_ascii(bytes_until_newline);
                     break;
                 }
+                // else, we reached the target position, store it
+                current.advance_by_ascii(bytes_until_target);
+                text_indices.push(current);
+                // get the next offset of interest, ignoring any duplicates
+                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                    Some(o) => o,
+                    None => break 'outer,
+                };
                 continue;
             }
-            // no offset of interest in this chunk
-            // process bytes up to but excluding the newline
-            let advance_by = newline_mask.trailing_zeros() as usize;
-            current.advance_by_ascii(advance_by);
-            if advance_by < 16 {
+            // else, no offset of interest in this chunk
+            // fast forward current to before any newline
+            current.advance_by_ascii(bytes_until_newline);
+            if bytes_until_newline < 16 {
                 // we hit a newline, need to go into per-char processing routine
                 break;
             }
         }
-        // we might have non-ascii chars in the next 16 chars at `current_byte`
+        // we might have non-ASCII chars in the next 16 chars at `current_byte`
         // we might also have a line ending
         // fall back to character-by-character processing
         let remaining_source = &source[current.utf8..];
