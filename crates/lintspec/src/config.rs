@@ -243,6 +243,7 @@ pub struct BaseConfig {
     pub notice_or_dev: bool,
 
     /// Skip the detection of the Solidity version and use the latest version supported by [`slang_solidity`]
+    #[cfg_attr(not(feature = "slang"), serde(skip))]
     #[builder(default)]
     pub skip_version_detection: bool,
 }

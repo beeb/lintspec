@@ -21,6 +21,13 @@ fn parse_file(mut parser: impl Parse, path: &str) -> ParsedDocument {
     parser.parse_document(file, Some(path), false).unwrap()
 }
 
+#[cfg(feature = "solar")]
+#[divan::bench(args = FILES)]
+fn parse_solar(bencher: Bencher, path: &str) {
+    let parser = lintspec::parser::solar::SolarParser::default();
+    bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
+}
+
 #[cfg(feature = "slang")]
 #[divan::bench(args = FILES)]
 fn parse_slang(bencher: Bencher, path: &str) {
@@ -30,11 +37,4 @@ fn parse_slang(bencher: Bencher, path: &str) {
     bencher.bench_local(move || {
         black_box(parse_file(parser.clone(), path));
     });
-}
-
-#[cfg(feature = "solar")]
-#[divan::bench(args = FILES)]
-fn parse_solar(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::solar::SolarParser::default();
-    bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
 }

@@ -1,4 +1,4 @@
-#![cfg(feature = "slang")]
+#![cfg(feature = "solar")]
 use lintspec::{
     config::{ContractRules, NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::ValidationOptions,

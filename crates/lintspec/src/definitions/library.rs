@@ -64,7 +64,7 @@ impl Validate for LibraryDefinition {
     }
 }
 
-#[cfg(all(test, feature = "slang"))]
+#[cfg(all(test, feature = "solar"))]
 mod tests {
     use std::sync::LazyLock;
 
@@ -73,7 +73,7 @@ mod tests {
     use crate::{
         config::{ContractRules, Req},
         definitions::Definition,
-        parser::{Parse as _, slang::SlangParser},
+        parser::{Parse as _, solar::SolarParser},
     };
 
     use super::*;
@@ -92,7 +92,7 @@ mod tests {
     });
 
     fn parse_file(contents: &str) -> LibraryDefinition {
-        let mut parser = SlangParser::builder().skip_version_detection(true).build();
+        let mut parser = SolarParser::default();
         let doc = parser
             .parse_document(contents.as_bytes(), None::<std::path::PathBuf>, false)
             .unwrap();

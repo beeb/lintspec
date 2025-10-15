@@ -16,11 +16,11 @@ use crate::{
     lint::{FileDiagnostics, ItemDiagnostics},
 };
 
-#[cfg(not(feature = "solar"))]
+#[cfg(not(feature = "slang"))]
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg(feature = "solar")]
-const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-solar");
+#[cfg(feature = "slang")]
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-slang");
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
@@ -92,6 +92,7 @@ pub struct Args {
     /// supported by the parser.
     ///
     /// Can be set with `--skip-version-detection` (means true), `--skip-version-detection=true` or `--skip-version-detection=false`.
+    #[cfg(feature = "slang")]
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub skip_version_detection: Option<bool>,
 
@@ -320,6 +321,7 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
         config.output.sort = sort;
     }
     // parser
+    #[cfg(feature = "slang")]
     if let Some(skip_version_detection) = args.skip_version_detection {
         config.lintspec.skip_version_detection = skip_version_detection;
     }

@@ -19,20 +19,18 @@ fn main() {
     divan::main();
 }
 
-#[cfg(feature = "slang")]
-fn parse_file(path: &str) -> ParsedDocument {
+#[cfg(feature = "solar")]
+fn parse_file_solar(path: &str) -> ParsedDocument {
     let file = File::open(path).unwrap();
-    lintspec::parser::slang::SlangParser::builder()
-        .skip_version_detection(true)
-        .build()
+    lintspec::parser::solar::SolarParser::default()
         .parse_document(file, Some(path), false)
         .unwrap()
 }
 
-#[cfg(feature = "slang")]
+#[cfg(feature = "solar")]
 #[divan::bench(args = FILES)]
 fn lint_only(bencher: Bencher, path: &str) {
-    let doc = parse_file(path);
+    let doc = parse_file_solar(path);
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
         black_box(
@@ -44,22 +42,22 @@ fn lint_only(bencher: Bencher, path: &str) {
     });
 }
 
-#[cfg(feature = "slang")]
+#[cfg(feature = "solar")]
 #[divan::bench(args = FILES)]
-fn lint_e2e(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::slang::SlangParser::builder()
-        .skip_version_detection(true)
-        .build();
+fn lint_e2e_solar(bencher: Bencher, path: &str) {
+    let parser = lintspec::parser::solar::SolarParser::default();
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
         black_box(lint(parser.clone(), path, &options, false).ok());
     });
 }
 
-#[cfg(feature = "solar")]
+#[cfg(feature = "slang")]
 #[divan::bench(args = FILES)]
-fn lint_e2e_solar(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::solar::SolarParser::default();
+fn lint_e2e_slang(bencher: Bencher, path: &str) {
+    let parser = lintspec::parser::slang::SlangParser::builder()
+        .skip_version_detection(true)
+        .build();
     let options = ValidationOptions::default();
     bencher.bench_local(move || {
         black_box(lint(parser.clone(), path, &options, false).ok());
