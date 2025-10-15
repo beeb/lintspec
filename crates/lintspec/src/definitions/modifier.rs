@@ -102,7 +102,7 @@ impl Validate for ModifierDefinition {
     }
 }
 
-#[cfg(all(test, feature = "slang"))]
+#[cfg(all(test, feature = "solar"))]
 mod tests {
     use std::sync::LazyLock;
 
@@ -110,7 +110,7 @@ mod tests {
 
     use crate::{
         definitions::Definition,
-        parser::{Parse as _, slang::SlangParser},
+        parser::{Parse as _, solar::SolarParser},
     };
 
     use super::*;
@@ -119,7 +119,7 @@ mod tests {
         LazyLock::new(|| ValidationOptions::builder().inheritdoc(false).build());
 
     fn parse_file(contents: &str) -> ModifierDefinition {
-        let mut parser = SlangParser::builder().skip_version_detection(true).build();
+        let mut parser = SolarParser::default();
         let doc = parser
             .parse_document(contents.as_bytes(), None::<std::path::PathBuf>, false)
             .unwrap();

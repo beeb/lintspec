@@ -62,7 +62,7 @@ name = "lint"
 harness = false
 
 [features]
-default = ["cli", "slang"]
+default = ["cli", "solar"]
 cli = [
     "dep:clap",
     "dep:clap_complete",
@@ -70,5 +70,5 @@ cli = [
     "dep:miette",
     "dep:rayon",
 ]
-slang = ["dep:regex", "dep:slang_solidity"]
 solar = ["dep:solar-parse"]
+slang = ["dep:regex", "dep:slang_solidity"]

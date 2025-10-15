@@ -1,4 +1,4 @@
-#![cfg(all(feature = "slang", feature = "solar"))]
+#![cfg(all(feature = "solar", feature = "slang"))]
 use lintspec::{
     lint::{ValidationOptions, lint},
     parser::{slang::SlangParser, solar::SolarParser},
@@ -102,6 +102,27 @@ fn test_parsertest() {
     let diags_solar = lint(
         SolarParser::default(),
         "./test-data/ParserTest.sol",
+        &ValidationOptions::default(),
+        false,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(slang: serde_json::to_string_pretty(&diags_slang).unwrap(), solar: serde_json::to_string_pretty(&diags_solar).unwrap());
+}
+
+#[test]
+fn test_unicode() {
+    let diags_slang = lint(
+        SlangParser::builder().build(),
+        "./test-data/UnicodeSample.sol",
+        &ValidationOptions::default(),
+        false,
+    )
+    .unwrap()
+    .unwrap();
+    let diags_solar = lint(
+        SolarParser::default(),
+        "./test-data/UnicodeSample.sol",
         &ValidationOptions::default(),
         false,
     )
