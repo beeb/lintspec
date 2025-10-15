@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.0] - 2025-10-15
+
+### Changed
+
+- **(solar)** [**breaking**] use SIMD to accelerate offset calculations ([#164](https://github.com/beeb/lintspec/pull/164)) - ([1352848](https://github.com/beeb/lintspec/commit/135284863585d35cd8bc4dfbffad393172ed789e))
+
+
+
+
+
+
+**Full Changelog**: [0.1.1...0.2.0](https://github.com/beeb/lintspec/compare/v0.1.1...v0.2.0)
+
+
 ## [0.1.1] - 2025-10-10
 
 ### Documentation

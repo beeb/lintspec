@@ -3,6 +3,51 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.0] - 2025-10-15
+
+### Added
+
+
+-  [**breaking**] make solar the default parser ([#168](https://github.com/beeb/lintspec/pull/168)) - ([4b1ed48](https://github.com/beeb/lintspec/commit/4b1ed48daa9d6fc8cb3d54658e3c560e7cc60fb6))
+
+### Changed
+
+- **(definitions)** improve TextIndex advance ([#163](https://github.com/beeb/lintspec/pull/163)) - ([f7c10dc](https://github.com/beeb/lintspec/commit/f7c10dcc361b548c953022771075ed03cafed09e))
+
+- **(solar)** improve span calculations ([#161](https://github.com/beeb/lintspec/pull/161)) - ([589aeaf](https://github.com/beeb/lintspec/commit/589aeafcf7c42a660e53f1339f415a280c662488))
+
+- **(solar)** [**breaking**] use SIMD to accelerate offset calculations ([#164](https://github.com/beeb/lintspec/pull/164)) - ([1352848](https://github.com/beeb/lintspec/commit/135284863585d35cd8bc4dfbffad393172ed789e))
+
+
+-  generic functions with inner non-generic params ([#159](https://github.com/beeb/lintspec/pull/159)) - ([ee7ea9c](https://github.com/beeb/lintspec/commit/ee7ea9cf2a07798aa9ff4b7520c42163ff0b104e))
+
+### Documentation
+
+
+-  update versions and library usage ([#166](https://github.com/beeb/lintspec/pull/166)) - ([b091959](https://github.com/beeb/lintspec/commit/b09195973b1b1abd13b5c90cea493f91d5c59613))
+
+### Fixed
+
+- **(textindex)** populating offset zero ([#167](https://github.com/beeb/lintspec/pull/167)) - ([a571ce7](https://github.com/beeb/lintspec/commit/a571ce78ddd7780b2682b8528ad2a37556c7c746))
+
+
+
+### Removed
+
+
+-  remove two benches that are noisy ([#162](https://github.com/beeb/lintspec/pull/162)) - ([f3a3ce2](https://github.com/beeb/lintspec/commit/f3a3ce27ceba097a5d73e888463d2524e1dafe10))
+
+### Tests
+
+
+-  add unicode sample ([#165](https://github.com/beeb/lintspec/pull/165)) - ([554ca96](https://github.com/beeb/lintspec/commit/554ca969ba4788a1b9c4dc35b28107756bfc7a2b))
+
+
+
+
+**Full Changelog**: [0.10.0...0.11.0](https://github.com/beeb/lintspec/compare/v0.10.0...v0.11.0)
+
+
 ## [0.10.0] - 2025-10-10
 
 ### Added
