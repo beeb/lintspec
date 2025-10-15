@@ -114,7 +114,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut current = TextIndex::ZERO;
 
     let mut ofs_iter = offsets.iter();
-    let mut current_offset = ofs_iter
+    let mut next_offset = ofs_iter
         .next()
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
@@ -124,17 +124,21 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
         // check whether we can try to process a 16-bytes chunk with SIMD
-        while current.utf8 <= bytes.len() - 16 {
-            debug_assert!(current_offset >= &current.utf8);
+        while current.utf8 + 16 < bytes.len() {
+            debug_assert!(
+                next_offset >= &current.utf8,
+                "next offset {next_offset} is smaller than current {}",
+                current.utf8
+            );
             let newline_non_ascii_mask = find_non_ascii_and_newlines(&bytes[current.utf8..]);
             let bytes_until_nl_na = newline_non_ascii_mask.trailing_zeros() as usize;
             if bytes_until_nl_na == 0 {
                 // we hit a newline or non-ASCII char, need to go into per-char processing routine
                 break;
             }
-            if current_offset < &(current.utf8 + 16) {
+            if next_offset < &(current.utf8 + 16) {
                 // a desired offset is present in this chunk
-                let bytes_until_target = (*current_offset).saturating_sub(current.utf8);
+                let bytes_until_target = (*next_offset).saturating_sub(current.utf8);
                 if bytes_until_nl_na < bytes_until_target {
                     // we hit a newline or non-ASCII char, need to go into per-char processing routine
                     current.advance_by_ascii(bytes_until_nl_na); // advance because there are ASCII bytes we can process
@@ -144,7 +148,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 current.advance_by_ascii(bytes_until_target);
                 text_indices.push(current);
                 // get the next offset of interest, ignoring any duplicates
-                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                next_offset = match ofs_iter.find(|o| o != &next_offset) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
@@ -158,22 +162,35 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 break;
             }
         }
+        if &current.utf8 == next_offset {
+            // we reached a target position, store it
+            text_indices.push(current);
+            // skip duplicates and advance to next offset
+            next_offset = match ofs_iter.find(|o| o != &next_offset) {
+                Some(o) => o,
+                None => break 'outer, // all interesting offsets have been found
+            };
+        }
         // normally, the next byte is either part of a Unicode char or line ending
         // fall back to character-by-character processing
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
         let mut found_na_nl = false;
         while let Some(c) = char_iter.next() {
-            debug_assert!(current_offset >= &current.utf8);
+            debug_assert!(
+                next_offset >= &current.utf8,
+                "next offset {next_offset} is smaller than current {}",
+                current.utf8
+            );
             current.advance(c, char_iter.peek());
             if !c.is_ascii() || c == '\n' {
                 found_na_nl = true;
             }
-            if &current.utf8 == current_offset {
+            if &current.utf8 == next_offset {
                 // we reached a target position, store it
                 text_indices.push(current);
                 // skip duplicates and advance to next offset
-                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                next_offset = match ofs_iter.find(|o| o != &next_offset) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
@@ -214,5 +231,308 @@ fn find_non_ascii_and_newlines(chunk: &[i8]) -> u16 {
     #[allow(clippy::cast_possible_truncation)]
     {
         newline_mask as u16
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::cast_possible_wrap)]
+mod tests {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_find_non_ascii_and_newlines_ascii_only() {
+        let chunk: Vec<_> = b"abcdefghijklmnop".iter().map(|b| *b as i8).collect();
+        let result = find_non_ascii_and_newlines(&chunk);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_find_non_ascii_and_newlines_with_newline() {
+        let chunk: Vec<_> = b"abc\ndef\rghijklmn".iter().map(|b| *b as i8).collect();
+        let result = find_non_ascii_and_newlines(&chunk);
+        // \n is at position 3, \r is at position 7
+        assert_eq!(result, 1 << 3 | 1 << 7);
+    }
+
+    #[test]
+    fn test_find_non_ascii_and_newlines_with_non_ascii() {
+        let input = "abcd🦀fghijklmno";
+        let chunk: Vec<_> = input.bytes().map(|b| b as i8).collect();
+        let result = find_non_ascii_and_newlines(&chunk);
+        // the emoji takes 4 bytes starting at position 4
+        assert_eq!(result, 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7);
+    }
+
+    #[test]
+    fn test_find_non_ascii_and_newlines_mixed() {
+        let input = "ab\nc🦀\rfghijklmnop";
+        let chunk: Vec<_> = input.bytes().map(|b| b as i8).collect();
+        let result = find_non_ascii_and_newlines(&chunk);
+        // line endings at 2 and 8
+        // emoji at 4-7
+        assert_eq!(result, 1 << 2 | 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7 | 1 << 8);
+    }
+
+    #[test]
+    fn test_compute_indices_simple() {
+        let source = "hello world";
+        let offsets = vec![0, 5, 6, 10]; // h, space, w, d
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], TextIndex::ZERO);
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 5,
+                utf16: 5,
+                line: 0,
+                column: 5
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 6,
+                utf16: 6,
+                line: 0,
+                column: 6
+            }
+        );
+        assert_eq!(
+            result[3],
+            TextIndex {
+                utf8: 10,
+                utf16: 10,
+                line: 0,
+                column: 10
+            }
+        );
+    }
+
+    #[test]
+    fn test_compute_indices_with_newlines() {
+        let source = "hello\nworld\ntest";
+        let offsets = vec![0, 5, 6, 12, 15]; // h, nl, w, t, t
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(result.len(), 5);
+        assert_eq!(
+            result[0],
+            TextIndex {
+                utf8: 0,
+                utf16: 0,
+                line: 0,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 5,
+                utf16: 5,
+                line: 0,
+                column: 5
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 6,
+                utf16: 6,
+                line: 1,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[3],
+            TextIndex {
+                utf8: 12,
+                utf16: 12,
+                line: 2,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[4],
+            TextIndex {
+                utf8: 15,
+                utf16: 15,
+                line: 2,
+                column: 3
+            }
+        );
+    }
+
+    #[test]
+    fn test_compute_indices_with_unicode() {
+        let source = "hel🦀lo";
+        let offsets = vec![0, 3, 7]; // h, crab, l
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(
+            result[0],
+            TextIndex {
+                utf8: 0,
+                utf16: 0,
+                line: 0,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 3,
+                utf16: 3,
+                line: 0,
+                column: 3
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 7,
+                utf16: 5,
+                line: 0,
+                column: 4
+            }
+        );
+    }
+
+    #[test]
+    fn test_compute_indices_with_carriage_return() {
+        let source = "padding_hello\r\nworld";
+        let offsets = vec![8, 13, 14, 16, 19]; // h, \r, \n, o, d
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(
+            result[0],
+            TextIndex {
+                utf8: 8,
+                utf16: 8,
+                line: 0,
+                column: 8
+            }
+        );
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 13,
+                utf16: 13,
+                line: 0,
+                column: 13
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 14,
+                utf16: 14,
+                line: 0,
+                column: 13 // \r doesn't advance
+            }
+        );
+        assert_eq!(
+            result[3],
+            TextIndex {
+                utf8: 16,
+                utf16: 16,
+                line: 1,
+                column: 1
+            }
+        );
+        assert_eq!(
+            result[4],
+            TextIndex {
+                utf8: 19,
+                utf16: 19,
+                line: 1,
+                column: 4
+            }
+        );
+    }
+
+    #[test]
+    fn test_compute_indices_duplicate_offsets() {
+        let source = "hello";
+        let offsets = vec![0, 0, 2, 2, 4];
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(result.len(), 3); // duplicates should be handled
+        assert_eq!(
+            result[0],
+            TextIndex {
+                utf8: 0,
+                utf16: 0,
+                line: 0,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 2,
+                utf16: 2,
+                line: 0,
+                column: 2
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 4,
+                utf16: 4,
+                line: 0,
+                column: 4
+            }
+        );
+    }
+
+    #[test]
+    fn test_compute_indices_unicode_line_separators() {
+        let source = "hello\u{2028}world\u{2029}test";
+        // Unicode line separator (\u{2028}) and paragraph separator (\u{2029}) are 3 bytes in UTF-8
+        // and 1 code unit in UTF-16
+        let offsets = vec![0, 5, 8, 16]; // h, ls, w, t
+        let result = compute_indices(source, &offsets);
+
+        assert_eq!(result[0], TextIndex::ZERO);
+        assert_eq!(
+            result[1],
+            TextIndex {
+                utf8: 5,
+                utf16: 5,
+                line: 0,
+                column: 5
+            }
+        );
+        assert_eq!(
+            result[2],
+            TextIndex {
+                utf8: 8,
+                utf16: 6,
+                line: 1,
+                column: 0
+            }
+        );
+        assert_eq!(
+            result[3],
+            TextIndex {
+                utf8: 16,
+                utf16: 12,
+                line: 2,
+                column: 0
+            }
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "source cannot be empty")]
+    fn test_compute_indices_empty_source() {
+        let source = "";
+        let offsets = vec![0];
+        compute_indices(source, &offsets);
     }
 }
