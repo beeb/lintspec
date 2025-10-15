@@ -102,13 +102,14 @@ impl Ord for TextIndex {
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
 ///
 /// The list of offsets _MUST_ be sorted, but it can contain duplicates. The list of offsets _MUST_ have at least 1
-/// element.
+/// element. The source string slice _MUST NOT_ be empty.
 ///
 /// This routine iterates through the characters and advances a running [`TextIndex`], storing a copy in the output
 /// if it matches a desired offset. Offset zero is always included in the result.
 ///
 /// SIMD is used to accelerate processing of ASCII-only sections in the source.
 pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
+    debug_assert!(!source.is_empty());
     let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
     text_indices.push(current); // just in case zero is needed
@@ -118,7 +119,8 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
         .next()
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
-    // SAFETY: re-interpreting the u8 slice as i8 slice is memory-safe.
+    // SAFETY: re-interpreting the u8 slice as i8 slice is memory-safe. All slice invariants are already upheld by
+    // the original slice and we use the same pointer and length as the original slice.
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
         while current.utf8 <= bytes.len() - 16
