@@ -68,13 +68,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let options: ValidationOptions = (&config).into();
 
     #[allow(unused_variables)]
+    #[cfg(feature = "solar")]
+    let parser = SolarParser::default();
+
     #[cfg(feature = "slang")]
     let parser = SlangParser::builder()
         .skip_version_detection(config.lintspec.skip_version_detection)
         .build();
-
-    #[cfg(feature = "solar")]
-    let parser = SolarParser::default();
 
     let diagnostics = paths
         .par_iter()

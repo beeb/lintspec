@@ -1,10 +1,10 @@
-#![cfg(feature = "slang")]
+#![cfg(feature = "solar")]
 use std::path::PathBuf;
 
 use lintspec::{
     cli::print_reports,
     lint::{ValidationOptions, lint},
-    parser::{Parse as _, slang::SlangParser},
+    parser::{Parse as _, solar::SolarParser},
 };
 
 #[allow(unused_variables)]
@@ -15,22 +15,22 @@ pub fn snapshot_content(
     keep_contents: bool,
     compact: bool,
 ) -> String {
-    let parser = SlangParser::default();
-    let diags_slang = lint(parser.clone(), path, options, keep_contents).unwrap();
+    let parser = SolarParser::default();
+    let diags_solar = lint(parser.clone(), path, options, keep_contents).unwrap();
     let mut sources = parser.get_sources().unwrap();
-    let contents = diags_slang
+    let contents = diags_solar
         .as_ref()
         .and_then(|f| sources.remove(&f.document_id));
-    let output = generate_output(diags_slang, contents, compact);
-    #[cfg(feature = "solar")]
+    let output = generate_output(diags_solar, contents, compact);
+    #[cfg(feature = "slang")]
     {
-        let parser = lintspec::parser::solar::SolarParser::default();
-        let diags_solar = lint(parser.clone(), path, options, keep_contents).unwrap();
+        let parser = lintspec::parser::slang::SlangParser::default();
+        let diags_slang = lint(parser.clone(), path, options, keep_contents).unwrap();
         let mut sources = parser.get_sources().unwrap();
-        let contents = diags_solar
+        let contents = diags_slang
             .as_ref()
             .and_then(|f| sources.remove(&f.document_id));
-        similar_asserts::assert_eq!(output, generate_output(diags_solar, contents, compact));
+        similar_asserts::assert_eq!(output, generate_output(diags_slang, contents, compact));
     }
     output
 }
