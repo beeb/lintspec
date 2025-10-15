@@ -22,5 +22,6 @@ fn test_library() {
             )
             .build(),
         true,
+        true
     ));
 }
