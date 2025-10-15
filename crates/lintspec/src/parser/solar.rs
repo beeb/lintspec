@@ -239,7 +239,9 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
     offsets
 }
 
-/// Complete the [`TextRange`] of a list of [`Definition`]
+/// Complete the [`TextRange`] of a list of [`Definition`].
+///
+/// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
         let res;
@@ -285,17 +287,17 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             | Definition::Struct(StructDefinition {
                 members: params, ..
             }) => {
-                for p in params.iter_mut() {
+                for p in params {
                     idx = populate_span(&text_indices, idx, &mut p.span);
                 }
             }
             Definition::Function(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-                d.returns
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
+                for p in &mut d.params {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
+                for p in &mut d.returns {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
             }
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
                 idx = populate_span(&text_indices, idx, span);
