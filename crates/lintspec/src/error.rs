@@ -1,7 +1,10 @@
 //! The error and result types for lintspec
 use std::path::PathBuf;
 
-use crate::definitions::{Parent, TextIndex, TextRange};
+use crate::{
+    definitions::Parent,
+    textindex::{TextIndex, TextRange},
+};
 
 /// The result of a lintspec operation
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,4 +1,13 @@
 //! A parser with [`solar_parse`] backend
+use std::{
+    collections::HashMap,
+    io,
+    ops::ControlFlow,
+    path::{Path, PathBuf},
+    str::FromStr as _,
+    sync::{Arc, Mutex},
+};
+
 use solar_parse::{
     Parser,
     ast::{
@@ -12,28 +21,20 @@ use solar_parse::{
     },
     interface::{ColorChoice, source_map::SourceFile},
 };
-use std::{
-    io,
-    ops::ControlFlow,
-    path::{Path, PathBuf},
-    str::FromStr as _,
-    sync::{Arc, Mutex},
-};
 
 use crate::{
     definitions::{
-        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, contract::ContractDefinition,
-        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
-        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
+        Attributes, Definition, Identifier, Parent, Visibility, constructor::ConstructorDefinition,
+        contract::ContractDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
+        event::EventDefinition, function::FunctionDefinition, interface::InterfaceDefinition,
+        library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
+    textindex::{TextIndex, TextRange, compute_indices},
 };
-
-use std::collections::HashMap;
 
 type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
 
@@ -155,184 +156,6 @@ impl Parse for SolarParser {
             })
             .collect())
     }
-}
-
-/// Complete the [`TextRange`] of a list of [`Definition`]
-#[allow(clippy::too_many_lines)]
-fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
-    fn register_span(set: &mut Vec<usize>, span: &TextRange) {
-        set.push(span.start.utf8);
-        set.push(span.end.utf8);
-    }
-    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
-        let res;
-        (res, span.start) = indices
-            .iter()
-            .enumerate()
-            .skip(start_idx)
-            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
-            .expect("utf8 start offset should be present in cache");
-        span.end = *indices
-            .iter()
-            .skip(res + 1)
-            .find(|ti| ti.utf8 == span.end.utf8)
-            .expect("utf8 end offset should be present in cache");
-        // for the next definition or item inside of a definition, we can start after the start of this item
-        // because start indices increase monotonically
-        res + 1
-    }
-    let mut offsets = Vec::with_capacity(definitions.len() * 2); // lower bound for the size
-    // register all start and end utf-8 offsets for the definitions and their relevant properties
-    // definitions are sorted by start offset due to how the AST is traversed
-    for def in &definitions {
-        def.span().inspect(|s| register_span(&mut offsets, s));
-        match def {
-            Definition::Constructor(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Enumeration(d) => {
-                d.members
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Error(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Event(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Function(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-                d.returns
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Modifier(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Struct(d) => {
-                d.members
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                register_span(&mut offsets, span);
-            }
-            Definition::Contract(_)
-            | Definition::Interface(_)
-            | Definition::Library(_)
-            | Definition::Variable(_)
-            | Definition::NatspecParsingError(_) => {}
-        }
-    }
-    if offsets.is_empty() {
-        return definitions;
-    }
-    // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
-    // the span start of its first member for example)
-    // we will deduplicate on the fly as we iterate to avoid re-allocating
-    offsets.sort_unstable();
-
-    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
-    let mut current = TextIndex::ZERO;
-    text_indices.push(current); // just in case zero is needed
-
-    let mut set_iter = offsets.iter();
-    let mut char_iter = source.chars().peekable();
-    let mut current_offset = set_iter
-        .next()
-        .expect("there should be one element at least");
-    while let Some(c) = char_iter.next() {
-        debug_assert!(current_offset >= &current.utf8);
-        current.advance(c, char_iter.peek());
-        match current.utf8.cmp(current_offset) {
-            std::cmp::Ordering::Equal => {
-                text_indices.push(current);
-            }
-            std::cmp::Ordering::Greater => {
-                // because the list of offsets can contain duplicates (but is sorted), we simply ignore elements
-                // which have the same value as the current offset
-                current_offset = match set_iter.find(|o| o != &current_offset) {
-                    Some(o) => o,
-                    None => break,
-                };
-                if current_offset == &current.utf8 {
-                    text_indices.push(current);
-                }
-            }
-            std::cmp::Ordering::Less => {}
-        }
-    }
-
-    // definitions are sorted by start offset due to how the AST is traversed
-    // likewise, params, members, etc., are also sorted by start offset
-    // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
-    // to the start offset of the previous definition
-    let mut idx = 0;
-    for def in &mut definitions {
-        if let Some(span) = def.span_mut() {
-            idx = populate_span(&text_indices, idx, span);
-        }
-        match def {
-            Definition::Constructor(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Enumeration(d) => {
-                d.members
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Error(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Event(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Function(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-                d.returns
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Modifier(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Struct(d) => {
-                d.members
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                idx = populate_span(&text_indices, idx, span);
-            }
-            Definition::Contract(_)
-            | Definition::Interface(_)
-            | Definition::Library(_)
-            | Definition::Variable(_)
-            | Definition::NatspecParsingError(_) => {}
-        }
-    }
-    definitions
 }
 
 /// A custom visitor to extract definitions from the [`solar_parse`] AST
@@ -754,6 +577,32 @@ impl From<&ItemContract<'_>> for Parent {
     }
 }
 
+/// Convert a spanned [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
+impl From<Option<Spanned<solar_parse::ast::Visibility>>> for Visibility {
+    fn from(visibility: Option<Spanned<solar_parse::ast::Visibility>>) -> Self {
+        visibility.as_deref().into()
+    }
+}
+
+/// Convert solar's [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
+impl From<Option<solar_parse::ast::Visibility>> for Visibility {
+    fn from(visibility: Option<solar_parse::ast::Visibility>) -> Self {
+        visibility.as_ref().into()
+    }
+}
+
+/// Convert a reference to [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
+impl From<Option<&solar_parse::ast::Visibility>> for Visibility {
+    fn from(visibility: Option<&solar_parse::ast::Visibility>) -> Self {
+        match visibility {
+            Some(solar_parse::ast::Visibility::Public) => Visibility::Public,
+            Some(solar_parse::ast::Visibility::Private) => Visibility::Private,
+            Some(solar_parse::ast::Visibility::External) => Visibility::External,
+            Some(solar_parse::ast::Visibility::Internal) | None => Visibility::Internal,
+        }
+    }
+}
+
 /// Convert a list of [`VariableDefinition`] (used for fn params or returns) into an [`Identifier`]
 fn variable_definitions_to_identifiers(
     variable_definitions: Option<&ParameterList>,
@@ -824,28 +673,160 @@ fn extract_natspec(
     Ok(Some((combined, docs.span())))
 }
 
-/// Convert a spanned [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
-impl From<Option<Spanned<solar_parse::ast::Visibility>>> for Visibility {
-    fn from(visibility: Option<Spanned<solar_parse::ast::Visibility>>) -> Self {
-        visibility.as_deref().into()
-    }
+/// Count the total number of offsets related to the definitions.
+///
+/// This is used to pre-allocate a vector with the correct size.
+fn count_offsets(definitions: &[Definition]) -> usize {
+    definitions
+        .iter()
+        .map(|d| match d {
+            // 2 for definition + 2 for each param
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => (params.len() + 1) * 2,
+            // 2 for definition + 2 for each param/return
+            Definition::Function(d) => (d.params.len() + d.returns.len() + 1) * 2,
+            // 2 for container + 2 for err (they normally are the same/duplicates)
+            Definition::NatspecParsingError(Error::NatspecParsingError { .. }) => 4,
+            // 2 for the definition
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => 2,
+        })
+        .sum()
 }
 
-/// Convert solar's [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
-impl From<Option<solar_parse::ast::Visibility>> for Visibility {
-    fn from(visibility: Option<solar_parse::ast::Visibility>) -> Self {
-        visibility.as_ref().into()
+/// Gather all the start and end byte offsets for the definitions, including their members/params/returns.
+///
+/// The result is sorted.
+fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
+    fn register_span(offsets: &mut Vec<usize>, span: &TextRange) {
+        offsets.push(span.start.utf8);
+        offsets.push(span.end.utf8);
     }
-}
-
-/// Convert a reference to [`ast::Visibility`][solar_parse::ast::Visibility] into to the corresponding [`Visibility`] type
-impl From<Option<&solar_parse::ast::Visibility>> for Visibility {
-    fn from(visibility: Option<&solar_parse::ast::Visibility>) -> Self {
-        match visibility {
-            Some(solar_parse::ast::Visibility::Public) => Visibility::Public,
-            Some(solar_parse::ast::Visibility::Private) => Visibility::Private,
-            Some(solar_parse::ast::Visibility::External) => Visibility::External,
-            Some(solar_parse::ast::Visibility::Internal) | None => Visibility::Internal,
+    let mut offsets = Vec::with_capacity(count_offsets(definitions));
+    // register all start and end utf-8 offsets for the definitions and their relevant properties
+    // definitions are sorted by start offset due to how the AST is traversed
+    for def in definitions {
+        def.span().inspect(|s| register_span(&mut offsets, s));
+        match def {
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => {
+                for p in params {
+                    register_span(&mut offsets, &p.span);
+                }
+            }
+            Definition::Function(d) => {
+                d.params
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+                d.returns
+                    .iter()
+                    .for_each(|i| register_span(&mut offsets, &i.span));
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                register_span(&mut offsets, span);
+            }
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => {}
         }
     }
+    // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
+    // the span start of its first member for example)
+    // we will deduplicate on the fly as we iterate to avoid re-allocating
+    offsets.sort_unstable();
+    offsets
+}
+
+/// Complete the [`TextRange`] of a list of [`Definition`].
+///
+/// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
+fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
+        let res;
+        (res, span.start) = indices
+            .iter()
+            .enumerate()
+            .skip(start_idx)
+            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
+            .expect("utf8 start offset should be present in cache");
+        span.end = *indices
+            .iter()
+            .skip(res + 1)
+            .find(|ti| ti.utf8 == span.end.utf8)
+            .expect("utf8 end offset should be present in cache");
+        // for the next definition or item inside of a definition, we can start after the start of this item
+        // because start indices increase monotonically
+        res + 1
+    }
+    let offsets = gather_offsets(&definitions);
+    if offsets.is_empty() {
+        return definitions;
+    }
+
+    let text_indices = compute_indices(source, &offsets);
+
+    // definitions are sorted by start offset due to how the AST is traversed
+    // likewise, params, members, etc., are also sorted by start offset
+    // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
+    // to the start offset of the previous definition
+    let mut idx = 0;
+    for def in &mut definitions {
+        if let Some(span) = def.span_mut() {
+            idx = populate_span(&text_indices, idx, span);
+        }
+        match def {
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => {
+                for p in params {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
+            }
+            Definition::Function(d) => {
+                for p in &mut d.params {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
+                for p in &mut d.returns {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
+            }
+            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+                idx = populate_span(&text_indices, idx, span);
+            }
+            Definition::Contract(_)
+            | Definition::Interface(_)
+            | Definition::Library(_)
+            | Definition::Variable(_)
+            | Definition::NatspecParsingError(_) => {}
+        }
+    }
+    definitions
 }

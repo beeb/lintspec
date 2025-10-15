@@ -18,7 +18,7 @@
   /></a>
   <a href="https://docs.rs/lintspec-macros/latest/lintspec_macros/"><img
       alt="MSRV"
-      src="https://img.shields.io/badge/MSRV-1.88.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.89.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
   <a href="https://codspeed.io/beeb/lintspec"><img
