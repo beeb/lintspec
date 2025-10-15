@@ -1423,7 +1423,7 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "lintspec"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bon",
  "clap",
@@ -1454,7 +1454,7 @@ dependencies = [
 
 [[package]]
 name = "lintspec-macros"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "unsynn",
 ]
