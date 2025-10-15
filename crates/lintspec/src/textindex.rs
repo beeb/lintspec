@@ -35,7 +35,7 @@ impl TextIndex {
     /// This is *not* derived from the definition of 'newline' in the language definition,
     /// nor is it a complete implementation of the Unicode line breaking algorithm.
     ///
-    /// Implementation is directly taken from [`slang_solidity`].
+    /// Implementation is inspired from [`slang_solidity`].
     #[inline]
     pub fn advance(&mut self, c: char, next: Option<&char>) {
         // fast path for ASCII characters
