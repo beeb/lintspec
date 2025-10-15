@@ -110,7 +110,7 @@ impl Ord for TextIndex {
 /// SIMD is used to accelerate processing of ASCII-only sections in the source.
 pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     debug_assert!(!source.is_empty());
-    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
+    let mut text_indices = Vec::with_capacity(offsets.len() + 1); // upper bound for the size
     let mut current = TextIndex::ZERO;
     text_indices.push(current); // just in case zero is needed
 
