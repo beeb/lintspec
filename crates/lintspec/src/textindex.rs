@@ -118,8 +118,9 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
         .next()
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
-    // SAFETY: re-interpreting the u8 slice as i8 slice is memory-safe. All slice invariants are already upheld by
-    // the original slice and we use the same pointer and length as the original slice.
+    // SAFETY: this is safe as we're re-interpreting a valid slice of u8 as i8.
+    // All slice invariants are already upheld by the original slice and we use the same pointer and length as the
+    // original slice.
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
         while current.utf8 <= bytes.len() - 16
