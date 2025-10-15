@@ -99,30 +99,6 @@ impl Ord for TextIndex {
     }
 }
 
-// #[inline(always)]
-fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
-    let bytes = i8x16::from_slice_unaligned(chunk);
-
-    // check for non-ascii: values 128-255 become i8 values < 0
-    let non_ascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
-
-    if non_ascii_mask != 0 {
-        return None;
-    }
-
-    // find newlines
-    #[allow(clippy::cast_possible_wrap)]
-    let lf_bytes = i8x16::splat(b'\n' as i8);
-    #[allow(clippy::cast_possible_wrap)]
-    let cr_bytes = i8x16::splat(b'\r' as i8);
-    let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
-    let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
-    let newline_mask = lf_mask | cr_mask;
-
-    #[allow(clippy::cast_possible_truncation)]
-    Some(newline_mask as u16)
-}
-
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
 ///
 /// The list of offsets _MUST_ be sorted, but it can contain duplicates. The list of offsets _MUST_ have at least 1
@@ -217,4 +193,34 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
         }
     }
     text_indices
+}
+
+/// Check the first 16 bytes of the input slice for non-ASCII characters and find newline characters.
+///
+/// If there are non-ASCII characters, the function returns `None`. Otherwise, it returns a mask with bits flipped
+/// to 1 for items which correspond to `\n` or `\r`. The least significant bit in the mask corresponds to the first
+/// byte in the input.
+///
+/// This function uses SIMD to accelerate the checks.
+fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
+    let bytes = i8x16::from_slice_unaligned(chunk);
+
+    // check for non-ascii: values 128-255 become i8 values < 0
+    let non_ascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
+
+    if non_ascii_mask != 0 {
+        return None;
+    }
+
+    // find newlines
+    #[allow(clippy::cast_possible_wrap)]
+    let lf_bytes = i8x16::splat(b'\n' as i8);
+    #[allow(clippy::cast_possible_wrap)]
+    let cr_bytes = i8x16::splat(b'\r' as i8);
+    let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
+    let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
+    let newline_mask = lf_mask | cr_mask;
+
+    #[allow(clippy::cast_possible_truncation)]
+    Some(newline_mask as u16)
 }
