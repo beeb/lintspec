@@ -1,4 +1,13 @@
 //! A parser with [`solar_parse`] backend
+use std::{
+    collections::HashMap,
+    io,
+    ops::ControlFlow,
+    path::{Path, PathBuf},
+    str::FromStr as _,
+    sync::{Arc, Mutex},
+};
+
 use solar_parse::{
     Parser,
     ast::{
@@ -12,32 +21,20 @@ use solar_parse::{
     },
     interface::{ColorChoice, source_map::SourceFile},
 };
-use wide::{CmpEq as _, CmpLt as _, i8x16};
-
-use std::{
-    cmp::Ordering,
-    io,
-    ops::ControlFlow,
-    path::{Path, PathBuf},
-    slice,
-    str::FromStr as _,
-    sync::{Arc, Mutex},
-};
 
 use crate::{
     definitions::{
-        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, contract::ContractDefinition,
-        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
-        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
+        Attributes, Definition, Identifier, Parent, Visibility, constructor::ConstructorDefinition,
+        contract::ContractDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
+        event::EventDefinition, function::FunctionDefinition, interface::InterfaceDefinition,
+        library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
+    textindex::{TextIndex, TextRange, compute_indices},
 };
-
-use std::collections::HashMap;
 
 type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
 
@@ -161,30 +158,7 @@ impl Parse for SolarParser {
     }
 }
 
-#[allow(clippy::cast_possible_wrap)]
-fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
-    let bytes = i8x16::from_slice_unaligned(chunk);
-
-    // check for non-ascii: values 128-255 become i8 values < 0
-    let non_ascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
-
-    if non_ascii_mask != 0 {
-        return None;
-    }
-
-    // find newlines
-    let lf_bytes = i8x16::splat(b'\n' as i8);
-    let cr_bytes = i8x16::splat(b'\r' as i8);
-    let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
-    let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
-    let newline_mask = lf_mask | cr_mask;
-
-    #[allow(clippy::cast_possible_truncation)]
-    Some(newline_mask as u16)
-}
-
 /// Complete the [`TextRange`] of a list of [`Definition`]
-#[allow(clippy::too_many_lines)]
 fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     fn register_span(set: &mut Vec<usize>, span: &TextRange) {
         set.push(span.start.utf8);
@@ -213,41 +187,25 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     for def in &definitions {
         def.span().inspect(|s| register_span(&mut offsets, s));
         match def {
-            Definition::Constructor(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Enumeration(d) => {
-                d.members
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Error(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Event(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => {
+                for p in params {
+                    register_span(&mut offsets, &p.span);
+                }
             }
             Definition::Function(d) => {
                 d.params
                     .iter()
                     .for_each(|i| register_span(&mut offsets, &i.span));
                 d.returns
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Modifier(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::Struct(d) => {
-                d.members
                     .iter()
                     .for_each(|i| register_span(&mut offsets, &i.span));
             }
@@ -269,92 +227,7 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
     // we will deduplicate on the fly as we iterate to avoid re-allocating
     offsets.sort_unstable();
 
-    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
-    let mut current = TextIndex::ZERO;
-    text_indices.push(current); // just in case zero is needed
-
-    let mut ofs_iter = offsets.iter();
-    let mut current_offset = ofs_iter
-        .next()
-        .expect("there should be one element at least");
-    let bytes = source.as_bytes();
-    let bytes_i8: &[i8] =
-        unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
-    'outer: loop {
-        while current.utf8 + 16 < bytes_i8.len()
-            && let Some(newline_mask) = find_ascii_newlines(&bytes_i8[current.utf8..])
-        {
-            debug_assert!(current_offset >= &current.utf8);
-            // do we need a TextIndex in this range?
-            if current_offset < &(current.utf8 + 16) {
-                let bytes_until_newline = newline_mask.trailing_zeros() as usize;
-                let bytes_until_target = (*current_offset).saturating_sub(current.utf8);
-                let advance_by = bytes_until_target.min(bytes_until_newline);
-                current.utf8 += advance_by;
-                current.utf16 += advance_by;
-                current.column += advance_by;
-
-                // if we've reached the target position, store it
-                if current.utf8 == *current_offset {
-                    text_indices.push(current);
-                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
-                        Some(o) => o,
-                        None => break 'outer,
-                    };
-                } else if newline_mask != 0 && advance_by == bytes_until_newline {
-                    // we hit a newline, need to go into per-char processing routine
-                    break;
-                }
-                continue;
-            }
-            // no offset of interest in this chunk
-            // process bytes up to but excluding the newline
-            let advance_by = newline_mask.trailing_zeros() as usize;
-            current.utf8 += advance_by;
-            current.utf16 += advance_by;
-            current.column += advance_by;
-            if advance_by < 16 {
-                // we hit a newline, need to go into per-char processing routine
-                break;
-            }
-        }
-        // we might have non-ascii chars in the next 16 chars at `current_byte`
-        // we might also have a line ending
-        // fall back to character-by-character processing
-        let remaining_source = &source[current.utf8..];
-        let mut char_iter = remaining_source.chars().peekable();
-        let mut found_non_ascii_or_nl = false;
-        while let Some(c) = char_iter.next() {
-            debug_assert!(current_offset >= &current.utf8);
-            current.advance(c, char_iter.peek());
-            if !c.is_ascii() || c == '\n' {
-                found_non_ascii_or_nl = true;
-            }
-            match current.utf8.cmp(current_offset) {
-                Ordering::Equal => {
-                    text_indices.push(current);
-                }
-                Ordering::Greater => {
-                    // skip duplicates and advance to next offset
-                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
-                        Some(o) => o,
-                        None => break 'outer,
-                    };
-                    if current_offset == &current.utf8 {
-                        text_indices.push(current);
-                    }
-                }
-                Ordering::Less => {}
-            }
-            if found_non_ascii_or_nl && char_iter.peek().is_some_and(char::is_ascii) {
-                // we're done processing the non-ascii characters, let's go back to SIMD-optimized processing
-                break;
-            }
-        }
-        if current.utf8 >= bytes_i8.len() - 1 {
-            break; // done with the input
-        }
-    }
+    let text_indices = compute_indices(source, &offsets);
 
     // definitions are sorted by start offset due to how the AST is traversed
     // likewise, params, members, etc., are also sorted by start offset
@@ -366,41 +239,25 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             idx = populate_span(&text_indices, idx, span);
         }
         match def {
-            Definition::Constructor(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Enumeration(d) => {
-                d.members
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Error(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Event(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
+            Definition::Constructor(ConstructorDefinition { params, .. })
+            | Definition::Error(ErrorDefinition { params, .. })
+            | Definition::Event(EventDefinition { params, .. })
+            | Definition::Modifier(ModifierDefinition { params, .. })
+            | Definition::Enumeration(EnumDefinition {
+                members: params, ..
+            })
+            | Definition::Struct(StructDefinition {
+                members: params, ..
+            }) => {
+                for p in params.iter_mut() {
+                    idx = populate_span(&text_indices, idx, &mut p.span);
+                }
             }
             Definition::Function(d) => {
                 d.params
                     .iter_mut()
                     .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
                 d.returns
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Modifier(d) => {
-                d.params
-                    .iter_mut()
-                    .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
-            }
-            Definition::Struct(d) => {
-                d.members
                     .iter_mut()
                     .for_each(|i| idx = populate_span(&text_indices, idx, &mut i.span));
             }

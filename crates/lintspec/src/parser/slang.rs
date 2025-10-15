@@ -16,15 +16,16 @@ use slang_solidity::{
 
 use crate::{
     definitions::{
-        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, contract::ContractDefinition,
-        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
-        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
+        Attributes, Definition, Identifier, Parent, Visibility, constructor::ConstructorDefinition,
+        contract::ContractDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
+        event::EventDefinition, function::FunctionDefinition, interface::InterfaceDefinition,
+        library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::DocumentId,
+    textindex::{TextIndex, TextRange},
     utils::{detect_solidity_version, get_latest_supported_version},
 };
 

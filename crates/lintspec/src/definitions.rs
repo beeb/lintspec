@@ -2,11 +2,9 @@
 //!
 //! This module contains structs for each of the source item types that can be documented with `NatSpec`.
 //! The [`Definition`] type provides a unified interface to interact with the various types.
-use std::{fmt, ops::Range};
-
 use constructor::ConstructorDefinition;
 use contract::ContractDefinition;
-use derive_more::{Add, Display, From, IsVariant, TryInto};
+use derive_more::{Display, From, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -21,6 +19,7 @@ use crate::{
     definitions::{interface::InterfaceDefinition, library::LibraryDefinition},
     error::Error,
     lint::{Diagnostic, ItemDiagnostics, Validate, ValidationOptions},
+    textindex::TextRange,
 };
 
 pub mod constructor;
@@ -47,87 +46,6 @@ pub trait SourceItem {
 
     /// Retrieve the span of the source item
     fn span(&self) -> TextRange;
-}
-
-/// A span of source code
-pub type TextRange = Range<TextIndex>;
-
-/// A position inside of the source code
-///
-/// Lines and columns start at 0.
-#[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize, Add)]
-pub struct TextIndex {
-    pub utf8: usize,
-    pub utf16: usize,
-    pub line: usize,
-    pub column: usize,
-}
-
-impl TextIndex {
-    /// Shorthand for `TextIndex { utf8: 0, utf16: 0, line: 0, char: 0 }`.
-    pub const ZERO: TextIndex = TextIndex {
-        utf8: 0,
-        utf16: 0,
-        line: 0,
-        column: 0,
-    };
-
-    /// Advances the index, accounting for lf/nl/ls/ps characters and combinations.
-    /// This is *not* derived from the definition of 'newline' in the language definition,
-    /// nor is it a complete implementation of the Unicode line breaking algorithm.
-    ///
-    /// Implementation is directly taken from [`slang_solidity`].
-    #[inline]
-    pub fn advance(&mut self, c: char, next: Option<&char>) {
-        // fast path for ASCII characters
-        if c.is_ascii() {
-            self.utf8 += 1;
-            self.utf16 += 1;
-            match (c, next) {
-                ('\r', Some(&'\n')) => {
-                    // ignore for now, we will increment the line number when we process the \n
-                }
-                ('\n' | '\r', _) => {
-                    self.line += 1;
-                    self.column = 0;
-                }
-                _ => {
-                    self.column += 1;
-                }
-            }
-        } else {
-            // slow path for Unicode
-            self.utf8 += c.len_utf8();
-            self.utf16 += c.len_utf16();
-            match c {
-                '\u{2028}' | '\u{2029}' => {
-                    self.line += 1;
-                    self.column = 0;
-                }
-                _ => {
-                    self.column += 1;
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Display for TextIndex {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.line + 1, self.column + 1)
-    }
-}
-
-impl PartialOrd for TextIndex {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for TextIndex {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.utf8.cmp(&other.utf8)
-    }
 }
 
 /// An identifier (named or unnamed) and its span

@@ -12,7 +12,10 @@ use winnow::{
 };
 pub use winnow::{ModalResult, Parser};
 
-use crate::definitions::{Identifier, TextIndex, TextRange};
+use crate::{
+    definitions::Identifier,
+    textindex::{TextIndex, TextRange},
+};
 
 /// A collection of `NatSpec` items corresponding to a source item (function, struct, etc.)
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
