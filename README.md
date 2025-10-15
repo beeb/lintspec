@@ -66,19 +66,17 @@ nix run nixpkgs#lintspec
 
 Head over to the [releases page](https://github.com/beeb/lintspec/releases)!
 
-### Experimental `solar` backend
+### Legacy `slang` Backend
 
-An experimental (and very fast) parsing backend using [Solar](https://github.com/paradigmxyz/solar) can be tested
-by installing with the `solar` feature flag enabled. This is only possible via `cargo install` at the moment.
+Although the default parser backend is now the very fast [`solar`](https://github.com/paradigmxyz/solar), the legacy
+[`slang`](https://github.com/NomicFoundation/slang) parser is still available when installing with `cargo install`.
 
 ```bash
-cargo install lintspec --no-default-features -F cli,solar
+cargo install lintspec --no-default-features -F cli,slang
 ```
 
-With this backend, the parsing step is roughly 30x faster than with the default
-[`slang`](https://github.com/NomicFoundation/slang) backend. In practice, overall gains of 4-5x can be expected on the
-total execution time.
-**Note that Solar only supports Solidity >=0.8.0.**
+This feature exposes an additional CLI flag `--skip-version-detection` which can help if `slang` doesn't support
+the version of Solidity you target. Note that enabling `slang` makes the program 4-5x slower than with the default features.
 
 ## Usage
 
@@ -100,7 +98,6 @@ Options:
       --inheritdoc               Enforce that all public and external items have `@inheritdoc`
       --inheritdoc-override      Enforce that `override` internal functions and modifiers have `@inheritdoc`
       --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
-      --skip-version-detection   Skip the detection of the Solidity version from pragma statements
       --title-ignored <TYPE>     Ignore `@title` for these items (can be used more than once)
       --title-required <TYPE>    Enforce `@title` for these items (can be used more than once)
       --title-forbidden <TYPE>   Forbid `@title` for these items (can be used more than once)
@@ -203,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.10.0
+      - uses: beeb/lintspec@v0.11.0
         # all the lines below are optional
         with:
           working-directory: "./"
@@ -226,7 +223,7 @@ Alternatively, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-lintspec = { version = "0.10.0", default-features = false }
+lintspec = { version = "0.11.0", default-features = false }
 ```
 
 ### Feature flags
@@ -234,9 +231,9 @@ lintspec = { version = "0.10.0", default-features = false }
 All feature flags are optional when used as a library. To compile the binary, at least the `cli` flag and one of the
 parser flags must be enabled.
 
-- `cli`: enables compilation as a binary and provides the required dependencies
+- `cli`: enables compilation as a binary and provides the required dependencies (default)
+- `solar`: enables the `solar` parser backend (default)
 - `slang`: enables the `slang_solidity` parser backend
-- `solar`: enables the `solar` parser backend
 
 ## Credits
 
@@ -248,37 +245,21 @@ them for inspiring this project!
 ### Benchmark
 
 On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
-[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.6 is about 300x
-faster, or 0.33% of the execution time:
+[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.11 is about 750x
+faster, or 0.13% of the execution time:
 
 ```text
 Benchmark 1: npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
-  Time (mean ± σ):     14.493 s ±  0.492 s    [User: 13.851 s, System: 1.046 s]
-  Range (min … max):   14.129 s … 15.826 s    10 runs
+  Time (mean ± σ):     14.356 s ±  0.283 s    [User: 13.824 s, System: 1.098 s]
+  Range (min … max):   14.058 s … 15.073 s    10 runs
 
 Benchmark 2: lintspec src --compact --param-required struct
-  Time (mean ± σ):      44.9 ms ±   1.6 ms    [User: 312.8 ms, System: 51.2 ms]
-  Range (min … max):    41.9 ms …  48.9 ms    67 runs
+  Time (mean ± σ):      19.3 ms ±   0.8 ms    [User: 12.5 ms, System: 29.9 ms]
+  Range (min … max):    17.8 ms …  22.3 ms    153 runs
 
 Summary
   lintspec src --compact --param-required struct ran
-  322.47 ± 16.01 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
-```
-
-Using the experimental [Solar](https://github.com/paradigmxyz/solar) backend improves that by a further factor of 4-5x:
-
-```text
-Benchmark 1: lintspec src --compact --skip-version-detection
-  Time (mean ± σ):      58.4 ms ±   4.3 ms    [User: 484.7 ms, System: 16.6 ms]
-  Range (min … max):    50.1 ms …  66.9 ms    52 runs
-
-Benchmark 2: lintspec-solar src --compact
-  Time (mean ± σ):      12.2 ms ±   1.3 ms    [User: 21.5 ms, System: 8.5 ms]
-  Range (min … max):     9.9 ms …  16.5 ms    183 runs
-
-Summary
-  lintspec-solar src --compact ran
-    4.77 ± 0.62 times faster than lintspec src --compact --skip-version-detection
+  743.05 ± 32.47 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
 ```
 
 ### Features
