@@ -217,6 +217,7 @@ fn find_non_ascii_and_newlines(chunk: &[i8]) -> u16 {
     let bytes = i8x16::from_slice_unaligned(chunk);
 
     // find non-ASCII
+    // u8 values from 128 to 255 correspond to i8 values -128 to -1
     let nonascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
     // find newlines
     #[allow(clippy::cast_possible_wrap)]
