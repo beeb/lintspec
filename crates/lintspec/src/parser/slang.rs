@@ -967,6 +967,7 @@ mod tests {
     impl_find_item!(find_error, Definition::Error, ErrorDefinition);
     impl_find_item!(find_event, Definition::Event, EventDefinition);
     impl_find_item!(find_struct, Definition::Struct, StructDefinition);
+    impl_find_item!(find_enum, Definition::Enumeration, EnumDefinition);
 
     macro_rules! adjust_offset_windows {
         ($byte_index:literal, $lines:literal) => {
@@ -1694,8 +1695,8 @@ mod tests {
     fn test_parse_unicode() {
         let cursor = parse_file(include_str!("../../test-data/UnicodeSample.sol"));
         let items = SlangParser::find_items(cursor);
-        let item = find_modifier(
-            "transferFee",
+        let item = find_enum(
+            "TestEnum",
             Some(Parent::Contract("UnicodeSample".to_string())),
             &items,
         );
@@ -1703,17 +1704,17 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Notice,
-                comment: "Modifier 🦀 notice".to_string(),
+                comment: "An enum 👨🏾‍👩🏾‍👧🏾".to_string(),
                 span: TextIndex {
-                    utf8: 11,
-                    utf16: 11,
-                    line: 1,
-                    column: 7,
+                    utf8: 4,
+                    utf16: 4,
+                    line: 0,
+                    column: 4,
                 }..TextIndex {
-                    utf8: 39,
-                    utf16: 37,
-                    line: 1,
-                    column: 32,
+                    utf8: 50,
+                    utf16: 34,
+                    line: 0,
+                    column: 28,
                 },
             }]
         );
