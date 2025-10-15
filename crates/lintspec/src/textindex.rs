@@ -2,7 +2,7 @@
 //!
 //! The [`TextIndex`] type holds the line, column (both zero-indexed) and utf-8/utf-16 offsets for a given position
 //! in the text.
-use std::{cmp::Ordering, fmt, ops::Range, slice};
+use std::{fmt, ops::Range, slice};
 
 use derive_more::Add;
 use serde::Serialize;
@@ -105,14 +105,13 @@ impl Ord for TextIndex {
 /// element. The source string slice _MUST NOT_ be empty.
 ///
 /// This routine iterates through the characters and advances a running [`TextIndex`], storing a copy in the output
-/// if it matches a desired offset. Offset zero is always included in the result.
+/// if it matches a desired offset.
 ///
 /// SIMD is used to accelerate processing of ASCII-only sections in the source.
 pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     assert!(!source.is_empty(), "source cannot be empty");
-    let mut text_indices = Vec::with_capacity(offsets.len() + 1); // upper bound for the size
+    let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
-    text_indices.push(current); // just in case zero is needed
 
     let mut ofs_iter = offsets.iter();
     let mut current_offset = ofs_iter
@@ -166,21 +165,14 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
             if !c.is_ascii() || c == '\n' {
                 found_non_ascii_or_nl = true;
             }
-            match current.utf8.cmp(current_offset) {
-                Ordering::Equal => {
-                    text_indices.push(current);
-                }
-                Ordering::Greater => {
-                    // skip duplicates and advance to next offset
-                    current_offset = match ofs_iter.find(|o| o != &current_offset) {
-                        Some(o) => o,
-                        None => break 'outer, // all interesting offsets have been found
-                    };
-                    if current_offset == &current.utf8 {
-                        text_indices.push(current);
-                    }
-                }
-                Ordering::Less => {}
+            if &current.utf8 == current_offset {
+                // we reached a target position, store it
+                text_indices.push(current);
+                // skip duplicates and advance to next offset
+                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                    Some(o) => o,
+                    None => break 'outer, // all interesting offsets have been found
+                };
             }
             if found_non_ascii_or_nl && char_iter.peek().is_some_and(char::is_ascii) {
                 // we're done processing the non-ASCII / newline characters, let's go back to SIMD-optimized processing
@@ -204,7 +196,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
 fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
     let bytes = i8x16::from_slice_unaligned(chunk);
 
-    // check for non-ascii: values 128-255 become i8 values < 0
+    // check for non-ASCII: values 128-255 become i8 values < 0
     let non_ascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
 
     if non_ascii_mask != 0 {
