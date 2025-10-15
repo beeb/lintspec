@@ -232,7 +232,7 @@ All feature flags are optional when used as a library. To compile the binary, at
 parser flags must be enabled.
 
 - `cli`: enables compilation as a binary and provides the required dependencies (default)
-- `solar`: enables the `solar` parser backend (default)
+- `solar`: enables the `solar_parse` parser backend (default)
 - `slang`: enables the `slang_solidity` parser backend
 
 ## Credits
