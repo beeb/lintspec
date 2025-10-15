@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.9.0
+      - uses: beeb/lintspec@v0.10.0
         # all the lines below are optional
         with:
           working-directory: "./"
@@ -217,11 +217,16 @@ jobs:
 ## Usage as a Library
 
 `lintspec` can be used as a library, in which case the Solidity parser and CLI-specific dependencies are optional.
-For example, consumers could declare the following in their `Cargo.toml`:
+
+```bash
+cargo add --no-default-features lintspec
+```
+
+Alternatively, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-lintspec = { version = "0.9.0", default-features = false }
+lintspec = { version = "0.10.0", default-features = false }
 ```
 
 ### Feature flags
