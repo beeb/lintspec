@@ -198,9 +198,7 @@ fn find_ascii_newlines(chunk: &[i8]) -> Option<u16> {
     let bytes = i8x16::from_slice_unaligned(chunk);
 
     // check for non-ASCII: values 128-255 become i8 values < 0
-    let non_ascii_mask = bytes.simd_lt(i8x16::ZERO).to_bitmask();
-
-    if non_ascii_mask != 0 {
+    if bytes.simd_lt(i8x16::ZERO).any() {
         return None;
     }
 
