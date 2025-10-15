@@ -13,10 +13,11 @@ use serde::Serialize;
 
 use crate::{
     config::{Config, ContractRules, FunctionConfig, Req, VariableConfig, WithParamsRules},
-    definitions::{Identifier, ItemType, Parent, TextRange},
+    definitions::{Identifier, ItemType, Parent},
     error::{Error, Result},
     natspec::{NatSpec, NatSpecKind},
     parser::{DocumentId, Parse, ParsedDocument},
+    textindex::TextRange,
 };
 
 /// Diagnostics for a single Solidity file

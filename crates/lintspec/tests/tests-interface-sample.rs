@@ -22,5 +22,6 @@ fn test_interface() {
             )
             .build(),
         true,
+        true
     ));
 }

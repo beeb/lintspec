@@ -13,6 +13,7 @@ fn test_basic() {
         "./test-data/ParserTest.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
+        true
     ));
 }
 
@@ -22,6 +23,7 @@ fn test_inheritdoc() {
         "./test-data/ParserTest.sol",
         &ValidationOptions::default(),
         true,
+        true
     ));
 }
 
@@ -34,6 +36,7 @@ fn test_constructor() {
             .constructors(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -46,6 +49,7 @@ fn test_struct() {
             .structs(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -58,6 +62,7 @@ fn test_enum() {
             .enums(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -76,5 +81,6 @@ fn test_contract() {
             )
             .build(),
         true,
+        true
     ));
 }

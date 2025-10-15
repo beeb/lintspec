@@ -16,15 +16,16 @@ use slang_solidity::{
 
 use crate::{
     definitions::{
-        Attributes, Definition, Identifier, Parent, TextIndex, TextRange, Visibility,
-        constructor::ConstructorDefinition, contract::ContractDefinition,
-        enumeration::EnumDefinition, error::ErrorDefinition, event::EventDefinition,
-        function::FunctionDefinition, interface::InterfaceDefinition, library::LibraryDefinition,
-        modifier::ModifierDefinition, structure::StructDefinition, variable::VariableDeclaration,
+        Attributes, Definition, Identifier, Parent, Visibility, constructor::ConstructorDefinition,
+        contract::ContractDefinition, enumeration::EnumDefinition, error::ErrorDefinition,
+        event::EventDefinition, function::FunctionDefinition, interface::InterfaceDefinition,
+        library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
+        variable::VariableDeclaration,
     },
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::DocumentId,
+    textindex::{TextIndex, TextRange},
     utils::{detect_solidity_version, get_latest_supported_version},
 };
 
@@ -965,6 +966,7 @@ mod tests {
     impl_find_item!(find_error, Definition::Error, ErrorDefinition);
     impl_find_item!(find_event, Definition::Event, EventDefinition);
     impl_find_item!(find_struct, Definition::Struct, StructDefinition);
+    impl_find_item!(find_enum, Definition::Enumeration, EnumDefinition);
 
     macro_rules! adjust_offset_windows {
         ($byte_index:literal, $lines:literal) => {
@@ -1686,5 +1688,34 @@ mod tests {
         let file = File::open("test-data/UnsupportedVersion.sol").unwrap();
         let output = parser.parse_document(file, None::<PathBuf>, false);
         assert!(output.is_ok(), "{output:?}");
+    }
+
+    #[test]
+    fn test_parse_unicode() {
+        let cursor = parse_file(include_str!("../../test-data/UnicodeSample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_enum(
+            "TestEnum",
+            Some(Parent::Contract("UnicodeSample".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "An enum 👨🏾‍👩🏾‍👧🏾".to_string(),
+                span: TextIndex {
+                    utf8: 4,
+                    utf16: 4,
+                    line: 0,
+                    column: 4,
+                }..TextIndex {
+                    utf8: 50,
+                    utf16: 34,
+                    line: 0,
+                    column: 28,
+                },
+            }]
+        );
     }
 }
