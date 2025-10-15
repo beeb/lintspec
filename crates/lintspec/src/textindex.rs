@@ -114,7 +114,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut current = TextIndex::ZERO;
 
     let mut ofs_iter = offsets.iter();
-    let mut current_offset = ofs_iter
+    let mut next_offset = ofs_iter
         .next()
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
@@ -124,17 +124,21 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
         // check whether we can try to process a 16-bytes chunk with SIMD
-        while current.utf8 <= bytes.len() - 16 {
-            debug_assert!(current_offset >= &current.utf8);
+        while current.utf8 + 16 < bytes.len() {
+            debug_assert!(
+                next_offset >= &current.utf8,
+                "next offset {next_offset} is smaller than current {}",
+                current.utf8
+            );
             let newline_non_ascii_mask = find_non_ascii_and_newlines(&bytes[current.utf8..]);
             let bytes_until_nl_na = newline_non_ascii_mask.trailing_zeros() as usize;
             if bytes_until_nl_na == 0 {
                 // we hit a newline or non-ASCII char, need to go into per-char processing routine
                 break;
             }
-            if current_offset < &(current.utf8 + 16) {
+            if next_offset < &(current.utf8 + 16) {
                 // a desired offset is present in this chunk
-                let bytes_until_target = (*current_offset).saturating_sub(current.utf8);
+                let bytes_until_target = (*next_offset).saturating_sub(current.utf8);
                 if bytes_until_nl_na < bytes_until_target {
                     // we hit a newline or non-ASCII char, need to go into per-char processing routine
                     current.advance_by_ascii(bytes_until_nl_na); // advance because there are ASCII bytes we can process
@@ -144,7 +148,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 current.advance_by_ascii(bytes_until_target);
                 text_indices.push(current);
                 // get the next offset of interest, ignoring any duplicates
-                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                next_offset = match ofs_iter.find(|o| o != &next_offset) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
@@ -158,22 +162,35 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 break;
             }
         }
+        if &current.utf8 == next_offset {
+            // we reached a target position, store it
+            text_indices.push(current);
+            // skip duplicates and advance to next offset
+            next_offset = match ofs_iter.find(|o| o != &next_offset) {
+                Some(o) => o,
+                None => break 'outer, // all interesting offsets have been found
+            };
+        }
         // normally, the next byte is either part of a Unicode char or line ending
         // fall back to character-by-character processing
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
         let mut found_na_nl = false;
         while let Some(c) = char_iter.next() {
-            debug_assert!(current_offset >= &current.utf8);
+            debug_assert!(
+                next_offset >= &current.utf8,
+                "next offset {next_offset} is smaller than current {}",
+                current.utf8
+            );
             current.advance(c, char_iter.peek());
             if !c.is_ascii() || c == '\n' {
                 found_na_nl = true;
             }
-            if &current.utf8 == current_offset {
+            if &current.utf8 == next_offset {
                 // we reached a target position, store it
                 text_indices.push(current);
                 // skip duplicates and advance to next offset
-                current_offset = match ofs_iter.find(|o| o != &current_offset) {
+                next_offset = match ofs_iter.find(|o| o != &next_offset) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
