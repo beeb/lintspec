@@ -1,4 +1,6 @@
-//! A parser with [`solar_parse`] backend
+//! A parser with [`solar_parse`] as the backend
+//!
+//! This is the default parser for the CLI.
 use std::{
     collections::HashMap,
     io,
