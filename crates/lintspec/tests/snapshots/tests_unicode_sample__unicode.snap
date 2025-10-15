@@ -2,93 +2,93 @@
 source: crates/lintspec/tests/tests-unicode-sample.rs
 expression: "snapshot_content(\"./test-data/UnicodeSample.sol\",\n&ValidationOptions::default(), true, false)"
 ---
-  × error UnicodeSample.BasicSample_SomeError
-    ╭─[./test-data/UnicodeSample.sol:22:41]
- 21 │      */
- 22 │     error BasicSample_SomeError(uint256 _param1);
-    ·                                         ───┬───
-    ·                                            ╰── @param _param1 is missing
- 23 │ 
-    ╰────
-  × event UnicodeSample.BasicSample_BasicEvent
-    ╭─[./test-data/UnicodeSample.sol:27:42]
- 26 │      */
- 27 │     event BasicSample_BasicEvent(uint256 _param1);
-    ·                                          ───┬───
-    ·                                             ╰── @param _param1 is missing
- 28 │ 
-    ╰────
-  × variable UnicodeSample.somePublicNumber
-    ╭─[./test-data/UnicodeSample.sol:35:5]
- 34 │     
- 35 │ ╭─▶     /**
- 36 │ │        * @notice A public state variable
- 37 │ │        */
- 38 │ ├─▶     uint256 public somePublicNumber;
-    · ╰──── @inheritdoc is missing
- 39 │     
-    ╰────
-  × constructor UnicodeSample.constructor
-    ╭─[./test-data/UnicodeSample.sol:40:22]
- 39 │ 
- 40 │     constructor(bool _randomFlag) {}
-    ·                      ─────┬─────
-    ·                           ╰── @param _randomFlag is missing
- 41 │ 
-    ╰────
-  × function UnicodeSample.externalSimple
-    ╭─[./test-data/UnicodeSample.sol:42:5]
- 41 │     
- 42 │ ╭─▶     /**
- 43 │ │        * @notice External function that returns a bool
- 44 │ │        * @dev A dev comment
- 45 │ │        * @param  _magicNumber A parameter description
- 46 │ │        * @param _name Another parameter description
- 47 │ │        * @param _name Another parameter description
- 48 │ │        * @return _isMagic Some return data
- 49 │ │        */
- 50 │ │       function externalSimple(uint256 _magicNumber, /* 🦀 */ string memory _name)
- 51 │ │           external
- 52 │ │           pure
- 53 │ ├─▶         returns (bool _isMagic)
-    · ╰──── @inheritdoc is missing
- 54 │         {
-    ╰────
-  × function UnicodeSample.externalSimpleMultipleReturn
-    ╭─[./test-data/UnicodeSample.sol:64:5]
- 63 │     
- 64 │ ╭─▶     /**
- 65 │ │        * @notice External function that returns a bool
- 66 │ │        * @dev A dev comment
- 67 │ │        * @param _magicNumber A parameter description
- 68 │ │        * @param    _name Another parameter description
- 69 │ │        * @return _isMagic 🔥 Some return data
- 70 │ │        * @return Test test
- 71 │ │        */
- 72 │ │       function externalSimpleMultipleReturn(uint256 _magicNumber, string memory _name)
- 73 │ │           external
- 74 │ │           pure
- 75 │ ├─▶         returns (bool _isMagic, uint256)
-    · ╰──── @inheritdoc is missing
- 76 │         {
-    ╰────
-  × function UnicodeSample.externalSimpleMultipleUnnamedReturn
-    ╭─[./test-data/UnicodeSample.sol:80:5]
- 79 │     
- 80 │ ╭─▶     /**
- 81 │ │        * @notice External function that returns a bool
- 82 │ │        * @dev A dev comment
- 83 │ │        * @return Some return data
- 84 │ │        */
- 85 │ ├─▶     function externalSimpleMultipleUnnamedReturn() external pure returns (bool, uint256) {
-    · ╰──── @inheritdoc is missing
- 86 │             return (true, 111);
-    ╰────
-  × modifier UnicodeSample.transferFee
-    ╭─[./test-data/UnicodeSample.sol:92:34]
- 91 │      */
- 92 │     modifier transferFee(uint256 _receiver) virtual {
-    ·                                  ────┬────
-    ·                                      ╰── @param _receiver is missing
- 93 │         _;
-    ╰────
+  x error UnicodeSample.BasicSample_SomeError
+    ,-[./test-data/UnicodeSample.sol:22:41]
+ 21 |      */
+ 22 |     error BasicSample_SomeError(uint256 _param1);
+    :                                         ^^^|^^^
+    :                                            `-- @param _param1 is missing
+ 23 | 
+    `----
+  x event UnicodeSample.BasicSample_BasicEvent
+    ,-[./test-data/UnicodeSample.sol:27:42]
+ 26 |      */
+ 27 |     event BasicSample_BasicEvent(uint256 _param1);
+    :                                          ^^^|^^^
+    :                                             `-- @param _param1 is missing
+ 28 | 
+    `----
+  x variable UnicodeSample.somePublicNumber
+    ,-[./test-data/UnicodeSample.sol:35:5]
+ 34 |     
+ 35 | ,->     /**
+ 36 | |        * @notice A public state variable
+ 37 | |        */
+ 38 | |->     uint256 public somePublicNumber;
+    : `---- @inheritdoc is missing
+ 39 |     
+    `----
+  x constructor UnicodeSample.constructor
+    ,-[./test-data/UnicodeSample.sol:40:22]
+ 39 | 
+ 40 |     constructor(bool _randomFlag) {}
+    :                      ^^^^^|^^^^^
+    :                           `-- @param _randomFlag is missing
+ 41 | 
+    `----
+  x function UnicodeSample.externalSimple
+    ,-[./test-data/UnicodeSample.sol:42:5]
+ 41 |     
+ 42 | ,->     /**
+ 43 | |        * @notice External function that returns a bool
+ 44 | |        * @dev A dev comment
+ 45 | |        * @param  _magicNumber A parameter description
+ 46 | |        * @param _name Another parameter description
+ 47 | |        * @param _name Another parameter description
+ 48 | |        * @return _isMagic Some return data
+ 49 | |        */
+ 50 | |       function externalSimple(uint256 _magicNumber, /* 🦀 */ string memory _name)
+ 51 | |           external
+ 52 | |           pure
+ 53 | |->         returns (bool _isMagic)
+    : `---- @inheritdoc is missing
+ 54 |         {
+    `----
+  x function UnicodeSample.externalSimpleMultipleReturn
+    ,-[./test-data/UnicodeSample.sol:64:5]
+ 63 |     
+ 64 | ,->     /**
+ 65 | |        * @notice External function that returns a bool
+ 66 | |        * @dev A dev comment
+ 67 | |        * @param _magicNumber A parameter description
+ 68 | |        * @param    _name Another parameter description
+ 69 | |        * @return _isMagic 🔥 Some return data
+ 70 | |        * @return Test test
+ 71 | |        */
+ 72 | |       function externalSimpleMultipleReturn(uint256 _magicNumber, string memory _name)
+ 73 | |           external
+ 74 | |           pure
+ 75 | |->         returns (bool _isMagic, uint256)
+    : `---- @inheritdoc is missing
+ 76 |         {
+    `----
+  x function UnicodeSample.externalSimpleMultipleUnnamedReturn
+    ,-[./test-data/UnicodeSample.sol:80:5]
+ 79 |     
+ 80 | ,->     /**
+ 81 | |        * @notice External function that returns a bool
+ 82 | |        * @dev A dev comment
+ 83 | |        * @return Some return data
+ 84 | |        */
+ 85 | |->     function externalSimpleMultipleUnnamedReturn() external pure returns (bool, uint256) {
+    : `---- @inheritdoc is missing
+ 86 |             return (true, 111);
+    `----
+  x modifier UnicodeSample.transferFee
+    ,-[./test-data/UnicodeSample.sol:92:34]
+ 91 |      */
+ 92 |     modifier transferFee(uint256 _receiver) virtual {
+    :                                  ^^^^|^^^^
+    :                                      `-- @param _receiver is missing
+ 93 |         _;
+    `----
