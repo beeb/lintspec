@@ -1689,4 +1689,33 @@ mod tests {
         let output = parser.parse_document(file, None::<PathBuf>, false);
         assert!(output.is_ok(), "{output:?}");
     }
+
+    #[test]
+    fn test_parse_unicode() {
+        let cursor = parse_file(include_str!("../../test-data/UnicodeSample.sol"));
+        let items = SlangParser::find_items(cursor);
+        let item = find_modifier(
+            "transferFee",
+            Some(Parent::Contract("UnicodeSample".to_string())),
+            &items,
+        );
+        assert_eq!(
+            item.natspec.as_ref().unwrap().items,
+            vec![NatSpecItem {
+                kind: NatSpecKind::Notice,
+                comment: "Modifier 🦀 notice".to_string(),
+                span: TextIndex {
+                    utf8: 11,
+                    utf16: 11,
+                    line: 1,
+                    column: 7,
+                }..TextIndex {
+                    utf8: 39,
+                    utf16: 37,
+                    line: 1,
+                    column: 32,
+                },
+            }]
+        );
+    }
 }

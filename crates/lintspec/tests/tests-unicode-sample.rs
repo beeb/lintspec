@@ -5,11 +5,11 @@ mod common;
 use common::*;
 
 #[test]
-fn test_fuzzers() {
+fn test_unicode() {
     insta::assert_snapshot!(snapshot_content(
-        "./test-data/Fuzzers.sol",
-        &ValidationOptions::builder().inheritdoc(false).build(),
+        "./test-data/UnicodeSample.sol",
+        &ValidationOptions::default(),
         true,
-        true
+        false // pretty output
     ));
 }

@@ -13,6 +13,7 @@ fn test_basic() {
         "./test-data/BasicSample.sol",
         &ValidationOptions::builder().inheritdoc(false).build(),
         true,
+        true
     ));
 }
 
@@ -24,6 +25,7 @@ fn test_inheritdoc() {
             .inheritdoc_override(true)
             .build(),
         true,
+        true
     ));
 }
 
@@ -36,6 +38,7 @@ fn test_constructor() {
             .constructors(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -48,6 +51,7 @@ fn test_struct() {
             .structs(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -60,6 +64,7 @@ fn test_enum() {
             .enums(WithParamsRules::required())
             .build(),
         true,
+        true
     ));
 }
 
@@ -78,6 +83,7 @@ fn test_contract() {
             )
             .build(),
         true,
+        true
     ));
 }
 
@@ -116,6 +122,7 @@ fn test_all() {
             )
             .build(),
         true,
+        true
     ));
 }
 
@@ -148,5 +155,6 @@ fn test_all_no_inheritdoc() {
             )
             .build(),
         true,
+        true
     ));
 }
