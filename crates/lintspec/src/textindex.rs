@@ -119,11 +119,10 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
         .expect("there should be one element at least");
     let bytes = source.as_bytes();
     // SAFETY: re-interpreting the u8 slice as i8 slice is memory-safe.
-    let bytes_i8: &[i8] =
-        unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
+    let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
-        while current.utf8 <= bytes_i8.len() - 16
-            && let Some(newline_mask) = find_ascii_newlines(&bytes_i8[current.utf8..])
+        while current.utf8 <= bytes.len() - 16
+            && let Some(newline_mask) = find_ascii_newlines(&bytes[current.utf8..])
         {
             debug_assert!(current_offset >= &current.utf8);
             // is a desired offset in this chunk?
@@ -188,7 +187,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 break;
             }
         }
-        if current.utf8 >= bytes_i8.len() - 1 {
+        if current.utf8 >= bytes.len() - 1 {
             break; // done with the input
         }
     }
