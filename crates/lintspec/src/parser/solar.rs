@@ -97,7 +97,7 @@ impl Parse for SolarParser {
                     err,
                 })?;
 
-            let definitions = this
+            let mut definitions = this
                 .sess
                 .enter_sequential(|| -> solar_parse::interface::Result<_> {
                     let arena = solar_parse::ast::Arena::new();
@@ -126,8 +126,9 @@ impl Parse for SolarParser {
                 let mut documents = this.documents.lock().expect("mutex should not be poisoned");
                 documents.push((document_id, Arc::clone(&source_file)));
             }
+            complete_text_ranges(&source_file.src, &mut definitions);
             Ok(ParsedDocument {
-                definitions: complete_text_ranges(&source_file.src, definitions),
+                definitions,
                 id: document_id,
             })
         }
@@ -775,8 +776,7 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
 /// Complete the [`TextRange`] of a list of [`Definition`].
 ///
 /// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
-#[must_use]
-pub fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+pub fn complete_text_ranges(source: &str, definitions: &mut Vec<Definition>) {
     fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
         let res;
         (res, span.start) = indices
@@ -794,9 +794,9 @@ pub fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> V
         // because start indices increase monotonically
         res + 1
     }
-    let offsets = gather_offsets(&definitions);
+    let offsets = gather_offsets(definitions);
     if offsets.is_empty() {
-        return definitions;
+        return;
     }
 
     let text_indices = compute_indices(source, &offsets);
@@ -806,7 +806,7 @@ pub fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> V
     // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
     // to the start offset of the previous definition
     let mut idx = 0;
-    for def in &mut definitions {
+    for def in definitions {
         if let Some(span) = def.span_mut() {
             idx = populate_span(&text_indices, idx, span);
         }
@@ -843,5 +843,4 @@ pub fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> V
             | Definition::NatspecParsingError(_) => {}
         }
     }
-    definitions
 }
