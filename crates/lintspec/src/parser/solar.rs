@@ -170,12 +170,24 @@ pub struct LintspecVisitor<'ast> {
 }
 
 impl<'ast> LintspecVisitor<'ast> {
+    /// Construct a new visitor
     pub fn new(source_map: &'ast SourceMap) -> Self {
         Self {
             current_parent: None,
             definitions: Vec::default(),
             source_map,
         }
+    }
+
+    /// Retrieve the found definitions
+    ///
+    /// This is empty until the AST has been visited with [`LintspecVisitor::visit_source_unit`].
+    ///
+    /// Note that the spans for each definition and their corresponding members/params/returns only contain the `utf8`
+    /// byte offset but no line/column/utf16 information. These can be populated with `complete_text_ranges`.
+    #[must_use]
+    pub fn definitions(&self) -> &Vec<Definition> {
+        &self.definitions
     }
 
     /// Convert a [`Span`] to a pair of utf8 offsets as a [`TextRange`]
@@ -763,7 +775,8 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
 /// Complete the [`TextRange`] of a list of [`Definition`].
 ///
 /// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
-fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+#[must_use]
+pub fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
     fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
         let res;
         (res, span.start) = indices
