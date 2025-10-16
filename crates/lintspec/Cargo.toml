@@ -52,6 +52,7 @@ winnow = "0.7.2"
 divan = { version = "3.0.2", package = "codspeed-divan-compat" }
 insta = "1.42.1"
 similar-asserts = "1.6.1"
+temp-dir = "0.1.16"
 
 [[bench]]
 name = "parser"
@@ -59,6 +60,10 @@ harness = false
 
 [[bench]]
 name = "lint"
+harness = false
+
+[[bench]]
+name = "e2e"
 harness = false
 
 [features]
