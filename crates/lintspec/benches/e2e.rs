@@ -26,7 +26,11 @@ fn e2e_uniswap(bencher: Bencher) {
     ])
     .current_dir(d.path())
     .env("GIT_TERMINAL_PROMPT", "0");
-    git.output().unwrap();
+    let res = git.output();
+    if let Err(err) = res {
+        drop(d);
+        panic!("{err:#?}")
+    }
 
     let config = Config::builder()
         .lintspec(
