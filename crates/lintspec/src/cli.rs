@@ -1,7 +1,9 @@
 use std::{
+    collections::HashMap,
     env,
     error::Error,
-    fs, io,
+    fs::{self, File},
+    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -9,12 +11,21 @@ use std::{
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
+use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 use crate::{
     config::{Config, Req},
     definitions::{ContractType, ItemType},
-    lint::{FileDiagnostics, ItemDiagnostics},
+    files::find_sol_files,
+    lint::{FileDiagnostics, ItemDiagnostics, ValidationOptions, lint},
+    parser::Parse as _,
 };
+
+#[cfg(feature = "slang")]
+use crate::parser::slang::SlangParser;
+
+#[cfg(feature = "solar")]
+use crate::parser::solar::SolarParser;
 
 #[cfg(not(feature = "slang"))]
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -356,6 +367,125 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     cli_rule_override!(config, args.return_forbidden, return, Req::Forbidden);
 
     Ok(config)
+}
+
+/// The result of running the tool
+pub enum RunResult {
+    NoDiagnostics,
+    SomeDiagnostics,
+}
+
+/// Run lintspec
+pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
+    // identify Solidity files to parse
+    let paths = find_sol_files(
+        &config.lintspec.paths,
+        &config.lintspec.exclude,
+        config.output.sort,
+    )?;
+    if paths.is_empty() {
+        return Err(String::from("no Solidity file found, nothing to analyze").into());
+    }
+
+    // lint all the requested Solidity files
+    let options: ValidationOptions = config.into();
+
+    #[allow(unused_variables)]
+    #[cfg(feature = "solar")]
+    let parser = SolarParser::default();
+
+    #[cfg(feature = "slang")]
+    let parser = SlangParser::builder()
+        .skip_version_detection(config.lintspec.skip_version_detection)
+        .build();
+
+    let diagnostics = paths
+        .par_iter()
+        .filter_map(|p| {
+            lint(
+                parser.clone(),
+                p,
+                &options,
+                !config.output.compact && !config.output.json,
+            )
+            .transpose()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // check if we should output to file or to stderr/stdout
+    let mut output_file: Box<dyn std::io::Write> = match &config.output.out {
+        Some(path) => {
+            let _ = miette::set_hook(Box::new(|_| {
+                Box::new(
+                    miette::MietteHandlerOpts::new()
+                        .terminal_links(false)
+                        .unicode(false)
+                        .color(false)
+                        .build(),
+                )
+            }));
+            Box::new(
+                File::options()
+                    .truncate(true)
+                    .create(true)
+                    .write(true)
+                    .open(path)
+                    .map_err(|err| crate::error::Error::IOError {
+                        path: path.clone(),
+                        err,
+                    })?,
+            )
+        }
+        None => {
+            if diagnostics.is_empty() {
+                Box::new(std::io::stdout())
+            } else {
+                Box::new(std::io::stderr())
+            }
+        }
+    };
+
+    // no issue was found
+    if diagnostics.is_empty() {
+        if config.output.json {
+            writeln!(&mut output_file, "[]")?;
+        } else {
+            writeln!(&mut output_file, "No issue found")?;
+        }
+        return Ok(RunResult::NoDiagnostics);
+    }
+
+    // some issues were found, output according to the desired format (json/text, pretty/compact)
+    if config.output.json {
+        if config.output.compact {
+            writeln!(&mut output_file, "{}", serde_json::to_string(&diagnostics)?)?;
+        } else {
+            writeln!(
+                &mut output_file,
+                "{}",
+                serde_json::to_string_pretty(&diagnostics)?
+            )?;
+        }
+    } else {
+        let cwd = dunce::canonicalize(env::current_dir()?)?;
+        let mut contents = if cfg!(any(feature = "slang", feature = "solar")) {
+            // all other clones have been dropped
+            parser.get_sources()?
+        } else {
+            HashMap::default()
+        };
+        for file_diags in diagnostics {
+            let source = contents.remove(&file_diags.document_id).unwrap_or_default();
+            print_reports(
+                &mut output_file,
+                &cwd,
+                file_diags,
+                source,
+                config.output.compact,
+            )?;
+        }
+    }
+    Ok(RunResult::SomeDiagnostics)
 }
 
 /// Write the default configuration to a `.lintspec.toml` file in the current directory.
