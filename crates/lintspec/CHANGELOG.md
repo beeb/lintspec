@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.2] - 2025-10-16
+
+### Added
+
+
+-  add run function ([#175](https://github.com/beeb/lintspec/pull/175)) - ([961e21c](https://github.com/beeb/lintspec/commit/961e21c63241c6e18ed9feae3216d383de2e2e76))
+
+### Changed
+
+
+-  don't negate all file types in ignore's TypesBuilder ([#176](https://github.com/beeb/lintspec/pull/176)) - ([7d4bef0](https://github.com/beeb/lintspec/commit/7d4bef0a2640647c467c3c36efade65b95af2368))
+
+### Documentation
+
+
+-  comments ([#172](https://github.com/beeb/lintspec/pull/172)) - ([dd0bf7e](https://github.com/beeb/lintspec/commit/dd0bf7e1304dafecc6af3db5ea93697215960cbf))
+
+### Fixed
+
+
+-  update ignore crate ([#174](https://github.com/beeb/lintspec/pull/174)) - ([9e415c2](https://github.com/beeb/lintspec/commit/9e415c2688ba636c6c8eeab1bf17894cb0ba0bbe))
+
+
+
+
+**Full Changelog**: [0.11.1...0.11.2](https://github.com/beeb/lintspec/compare/v0.11.1...v0.11.2)
+
+
 ## [0.11.1] - 2025-10-15
 
 ### Tests
