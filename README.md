@@ -76,7 +76,7 @@ cargo install lintspec --no-default-features -F cli,slang
 ```
 
 This feature exposes an additional CLI flag `--skip-version-detection` which can help if `slang` doesn't support
-the version of Solidity you target. Note that enabling `slang` makes the program 4-5x slower than with the default features.
+the version of Solidity you target. Note that enabling `slang` makes the program ~7x slower than with the default features.
 
 ## Usage
 
@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.11.0
+      - uses: beeb/lintspec@v0.11.1
         # all the lines below are optional
         with:
           working-directory: "./"
@@ -223,7 +223,7 @@ Alternatively, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-lintspec = { version = "0.11.0", default-features = false }
+lintspec = { version = "0.11.1", default-features = false }
 ```
 
 ### Feature flags
@@ -244,22 +244,21 @@ them for inspiring this project!
 
 ### Benchmark
 
-On an AMD Ryzen 9 7950X processor with 64GB of RAM, linting the
-[Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on WSL2 (Ubuntu), lintspec v0.11 is about 750x
-faster, or 0.13% of the execution time:
+On a regular laptop with 16 cores, linting the [Uniswap/v4-core](https://github.com/Uniswap/v4-core) `src` folder on
+linux, lintspec v0.11.2 is about 1600x faster, or 0.06% of the execution time:
 
 ```text
 Benchmark 1: npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
-  Time (mean ± σ):     14.356 s ±  0.283 s    [User: 13.824 s, System: 1.098 s]
-  Range (min … max):   14.058 s … 15.073 s    10 runs
+  Time (mean ± σ):     13.192 s ±  0.674 s    [User: 15.365 s, System: 0.507 s]
+  Range (min … max):   12.405 s … 14.110 s    10 runs
 
 Benchmark 2: lintspec src --compact --param-required struct
-  Time (mean ± σ):      19.3 ms ±   0.8 ms    [User: 12.5 ms, System: 29.9 ms]
-  Range (min … max):    17.8 ms …  22.3 ms    153 runs
+  Time (mean ± σ):       8.0 ms ±   1.0 ms    [User: 16.8 ms, System: 8.8 ms]
+  Range (min … max):     5.9 ms …  11.3 ms    281 runs
 
 Summary
   lintspec src --compact --param-required struct ran
-  743.05 ± 32.47 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
+  1658.70 ± 222.21 times faster than npx @defi-wonderland/natspec-smells --include 'src/**/*.sol' --enforceInheritdoc --constructorNatspec
 ```
 
 ### Features
