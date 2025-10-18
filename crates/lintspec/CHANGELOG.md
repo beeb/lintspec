@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.3] - 2025-10-18
+
+### Added
+
+- **(solar)** expose LintspecVisitor definitions and complete_text_ranges ([#179](https://github.com/beeb/lintspec/pull/179)) - ([eebb060](https://github.com/beeb/lintspec/commit/eebb0604f44d8603953d9edeaa3153b9f6d3e90d))
+
+
+
+### Changed
+
+- **(solar)** take definitions by mutable reference ([#180](https://github.com/beeb/lintspec/pull/180)) - ([fc1249c](https://github.com/beeb/lintspec/commit/fc1249c5be59d0b6fd5497b3c1cd9405fef1f108))
+
+- **(solar)** use 256-bit register (avx2) ([#181](https://github.com/beeb/lintspec/pull/181)) - ([72b86bc](https://github.com/beeb/lintspec/commit/72b86bcc1c8f21a5a90b381122c2cb712cddf594))
+
+
+
+### Documentation
+
+
+-  update readme ([#177](https://github.com/beeb/lintspec/pull/177)) - ([1ce735b](https://github.com/beeb/lintspec/commit/1ce735be8123d5f6d01024c1f4180bcbbdda8e02))
+
+
+
+
+**Full Changelog**: [0.11.2...0.11.3](https://github.com/beeb/lintspec/compare/v0.11.2...v0.11.3)
+
+
 ## [0.11.2] - 2025-10-16
 
 ### Added
