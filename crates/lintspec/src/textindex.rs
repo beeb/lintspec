@@ -34,10 +34,11 @@ impl TextIndex {
     };
 
     /// Advance the index, accounting for lf/nl/ls/ps characters and combinations.
+    ///
     /// This is *not* derived from the definition of 'newline' in the language definition,
     /// nor is it a complete implementation of the Unicode line breaking algorithm.
     ///
-    /// Implementation is inspired from [`slang_solidity`].
+    /// Implementation inspired by [`slang_solidity`](https://crates.io/crates/slang_solidity).
     #[inline]
     pub fn advance(&mut self, c: char, next: Option<&char>) {
         // fast path for ASCII characters
@@ -127,11 +128,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     'outer: loop {
         // check whether we can try to process a 16-bytes chunk with SIMD
         while current.utf8 + SIMD_LANES < bytes.len() {
-            debug_assert!(
-                next_offset >= &current.utf8,
-                "next offset {next_offset} is smaller than current {}",
-                current.utf8
-            );
+            debug_assert!(next_offset >= &current.utf8);
             let newline_non_ascii_mask = find_non_ascii_and_newlines(&bytes[current.utf8..]);
             let bytes_until_nl_na = newline_non_ascii_mask.trailing_zeros() as usize;
             if bytes_until_nl_na == 0 {
