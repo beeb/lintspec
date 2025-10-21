@@ -3,6 +3,119 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.3] - 2025-10-18
+
+### Added
+
+- **(solar)** expose LintspecVisitor definitions and complete_text_ranges ([#179](https://github.com/beeb/lintspec/pull/179)) - ([eebb060](https://github.com/beeb/lintspec/commit/eebb0604f44d8603953d9edeaa3153b9f6d3e90d))
+
+
+
+### Changed
+
+- **(solar)** take definitions by mutable reference ([#180](https://github.com/beeb/lintspec/pull/180)) - ([fc1249c](https://github.com/beeb/lintspec/commit/fc1249c5be59d0b6fd5497b3c1cd9405fef1f108))
+
+- **(solar)** use 256-bit register (avx2) ([#181](https://github.com/beeb/lintspec/pull/181)) - ([72b86bc](https://github.com/beeb/lintspec/commit/72b86bcc1c8f21a5a90b381122c2cb712cddf594))
+
+
+
+### Documentation
+
+
+-  update readme ([#177](https://github.com/beeb/lintspec/pull/177)) - ([1ce735b](https://github.com/beeb/lintspec/commit/1ce735be8123d5f6d01024c1f4180bcbbdda8e02))
+
+
+
+
+**Full Changelog**: [0.11.2...0.11.3](https://github.com/beeb/lintspec/compare/v0.11.2...v0.11.3)
+
+
+## [0.11.2] - 2025-10-16
+
+### Added
+
+
+-  add run function ([#175](https://github.com/beeb/lintspec/pull/175)) - ([961e21c](https://github.com/beeb/lintspec/commit/961e21c63241c6e18ed9feae3216d383de2e2e76))
+
+### Changed
+
+
+-  don't negate all file types in ignore's TypesBuilder ([#176](https://github.com/beeb/lintspec/pull/176)) - ([7d4bef0](https://github.com/beeb/lintspec/commit/7d4bef0a2640647c467c3c36efade65b95af2368))
+
+### Documentation
+
+
+-  comments ([#172](https://github.com/beeb/lintspec/pull/172)) - ([dd0bf7e](https://github.com/beeb/lintspec/commit/dd0bf7e1304dafecc6af3db5ea93697215960cbf))
+
+### Fixed
+
+
+-  update ignore crate ([#174](https://github.com/beeb/lintspec/pull/174)) - ([9e415c2](https://github.com/beeb/lintspec/commit/9e415c2688ba636c6c8eeab1bf17894cb0ba0bbe))
+
+
+
+
+**Full Changelog**: [0.11.1...0.11.2](https://github.com/beeb/lintspec/compare/v0.11.1...v0.11.2)
+
+
+## [0.11.1] - 2025-10-15
+
+### Tests
+
+
+-  remove miette decorations and color during test ([#170](https://github.com/beeb/lintspec/pull/170)) - ([e1ffe21](https://github.com/beeb/lintspec/commit/e1ffe21798c71573af74f495fe49fbd1b338d37b))
+
+
+
+
+**Full Changelog**: [0.11.0...0.11.1](https://github.com/beeb/lintspec/compare/v0.11.0...v0.11.1)
+
+
+## [0.11.0] - 2025-10-15
+
+### Added
+
+
+-  [**breaking**] make solar the default parser ([#168](https://github.com/beeb/lintspec/pull/168)) - ([4b1ed48](https://github.com/beeb/lintspec/commit/4b1ed48daa9d6fc8cb3d54658e3c560e7cc60fb6))
+
+### Changed
+
+- **(definitions)** improve TextIndex advance ([#163](https://github.com/beeb/lintspec/pull/163)) - ([f7c10dc](https://github.com/beeb/lintspec/commit/f7c10dcc361b548c953022771075ed03cafed09e))
+
+- **(solar)** improve span calculations ([#161](https://github.com/beeb/lintspec/pull/161)) - ([589aeaf](https://github.com/beeb/lintspec/commit/589aeafcf7c42a660e53f1339f415a280c662488))
+
+- **(solar)** [**breaking**] use SIMD to accelerate offset calculations ([#164](https://github.com/beeb/lintspec/pull/164)) - ([1352848](https://github.com/beeb/lintspec/commit/135284863585d35cd8bc4dfbffad393172ed789e))
+
+
+-  generic functions with inner non-generic params ([#159](https://github.com/beeb/lintspec/pull/159)) - ([ee7ea9c](https://github.com/beeb/lintspec/commit/ee7ea9cf2a07798aa9ff4b7520c42163ff0b104e))
+
+### Documentation
+
+
+-  update versions and library usage ([#166](https://github.com/beeb/lintspec/pull/166)) - ([b091959](https://github.com/beeb/lintspec/commit/b09195973b1b1abd13b5c90cea493f91d5c59613))
+
+### Fixed
+
+- **(textindex)** populating offset zero ([#167](https://github.com/beeb/lintspec/pull/167)) - ([a571ce7](https://github.com/beeb/lintspec/commit/a571ce78ddd7780b2682b8528ad2a37556c7c746))
+
+
+
+### Removed
+
+
+-  remove two benches that are noisy ([#162](https://github.com/beeb/lintspec/pull/162)) - ([f3a3ce2](https://github.com/beeb/lintspec/commit/f3a3ce27ceba097a5d73e888463d2524e1dafe10))
+
+### Tests
+
+
+-  add unicode sample ([#165](https://github.com/beeb/lintspec/pull/165)) - ([554ca96](https://github.com/beeb/lintspec/commit/554ca969ba4788a1b9c4dc35b28107756bfc7a2b))
+
+
+
+
+**Full Changelog**: [0.10.0...0.11.0](https://github.com/beeb/lintspec/compare/v0.10.0...v0.11.0)
+
+
 ## [0.10.0] - 2025-10-10
 
 ### Added

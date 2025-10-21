@@ -35,7 +35,6 @@ pub fn find_sol_files<T: AsRef<Path>>(
     // types filter to only consider Solidity files
     let types = TypesBuilder::new()
         .add_defaults()
-        .negate("all")
         .select("solidity")
         .build()
         .expect("types builder should build");

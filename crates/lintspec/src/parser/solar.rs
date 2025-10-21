@@ -1,4 +1,6 @@
-//! A parser with [`solar_parse`] backend
+//! A parser with [`solar_parse`] as the backend
+//!
+//! This is the default parser for the CLI.
 use std::{
     collections::HashMap,
     io,
@@ -95,7 +97,7 @@ impl Parse for SolarParser {
                     err,
                 })?;
 
-            let definitions = this
+            let mut definitions = this
                 .sess
                 .enter_sequential(|| -> solar_parse::interface::Result<_> {
                     let arena = solar_parse::ast::Arena::new();
@@ -124,8 +126,9 @@ impl Parse for SolarParser {
                 let mut documents = this.documents.lock().expect("mutex should not be poisoned");
                 documents.push((document_id, Arc::clone(&source_file)));
             }
+            complete_text_ranges(&source_file.src, &mut definitions);
             Ok(ParsedDocument {
-                definitions: complete_text_ranges(&source_file.src, definitions),
+                definitions,
                 id: document_id,
             })
         }
@@ -168,12 +171,24 @@ pub struct LintspecVisitor<'ast> {
 }
 
 impl<'ast> LintspecVisitor<'ast> {
+    /// Construct a new visitor
     pub fn new(source_map: &'ast SourceMap) -> Self {
         Self {
             current_parent: None,
             definitions: Vec::default(),
             source_map,
         }
+    }
+
+    /// Retrieve the found definitions
+    ///
+    /// This is empty until the AST has been visited with [`LintspecVisitor::visit_source_unit`].
+    ///
+    /// Note that the spans for each definition and their corresponding members/params/returns only contain the `utf8`
+    /// byte offset but no line/column/utf16 information. These can be populated with `complete_text_ranges`.
+    #[must_use]
+    pub fn definitions(&self) -> &Vec<Definition> {
+        &self.definitions
     }
 
     /// Convert a [`Span`] to a pair of utf8 offsets as a [`TextRange`]
@@ -673,38 +688,6 @@ fn extract_natspec(
     Ok(Some((combined, docs.span())))
 }
 
-/// Count the total number of offsets related to the definitions.
-///
-/// This is used to pre-allocate a vector with the correct size.
-fn count_offsets(definitions: &[Definition]) -> usize {
-    definitions
-        .iter()
-        .map(|d| match d {
-            // 2 for definition + 2 for each param
-            Definition::Constructor(ConstructorDefinition { params, .. })
-            | Definition::Error(ErrorDefinition { params, .. })
-            | Definition::Event(EventDefinition { params, .. })
-            | Definition::Modifier(ModifierDefinition { params, .. })
-            | Definition::Enumeration(EnumDefinition {
-                members: params, ..
-            })
-            | Definition::Struct(StructDefinition {
-                members: params, ..
-            }) => (params.len() + 1) * 2,
-            // 2 for definition + 2 for each param/return
-            Definition::Function(d) => (d.params.len() + d.returns.len() + 1) * 2,
-            // 2 for container + 2 for err (they normally are the same/duplicates)
-            Definition::NatspecParsingError(Error::NatspecParsingError { .. }) => 4,
-            // 2 for the definition
-            Definition::Contract(_)
-            | Definition::Interface(_)
-            | Definition::Library(_)
-            | Definition::Variable(_)
-            | Definition::NatspecParsingError(_) => 2,
-        })
-        .sum()
-}
-
 /// Gather all the start and end byte offsets for the definitions, including their members/params/returns.
 ///
 /// The result is sorted.
@@ -713,7 +696,7 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
         offsets.push(span.start.utf8);
         offsets.push(span.end.utf8);
     }
-    let mut offsets = Vec::with_capacity(count_offsets(definitions));
+    let mut offsets = Vec::with_capacity(definitions.len() * 16); // seems about right from code in the wild
     // register all start and end utf-8 offsets for the definitions and their relevant properties
     // definitions are sorted by start offset due to how the AST is traversed
     for def in definitions {
@@ -758,10 +741,8 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
     offsets
 }
 
-/// Complete the [`TextRange`] of a list of [`Definition`].
-///
-/// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
-fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<Definition> {
+/// Fill in the missing values in the spans of definitions.
+fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
     fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
         let res;
         (res, span.start) = indices
@@ -779,21 +760,14 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
         // because start indices increase monotonically
         res + 1
     }
-    let offsets = gather_offsets(&definitions);
-    if offsets.is_empty() {
-        return definitions;
-    }
-
-    let text_indices = compute_indices(source, &offsets);
-
     // definitions are sorted by start offset due to how the AST is traversed
     // likewise, params, members, etc., are also sorted by start offset
     // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
     // to the start offset of the previous definition
     let mut idx = 0;
-    for def in &mut definitions {
+    for def in definitions {
         if let Some(span) = def.span_mut() {
-            idx = populate_span(&text_indices, idx, span);
+            idx = populate_span(text_indices, idx, span);
         }
         match def {
             Definition::Constructor(ConstructorDefinition { params, .. })
@@ -807,19 +781,19 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
                 members: params, ..
             }) => {
                 for p in params {
-                    idx = populate_span(&text_indices, idx, &mut p.span);
+                    idx = populate_span(text_indices, idx, &mut p.span);
                 }
             }
             Definition::Function(d) => {
                 for p in &mut d.params {
-                    idx = populate_span(&text_indices, idx, &mut p.span);
+                    idx = populate_span(text_indices, idx, &mut p.span);
                 }
                 for p in &mut d.returns {
-                    idx = populate_span(&text_indices, idx, &mut p.span);
+                    idx = populate_span(text_indices, idx, &mut p.span);
                 }
             }
             Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
-                idx = populate_span(&text_indices, idx, span);
+                idx = populate_span(text_indices, idx, span);
             }
             Definition::Contract(_)
             | Definition::Interface(_)
@@ -828,5 +802,18 @@ fn complete_text_ranges(source: &str, mut definitions: Vec<Definition>) -> Vec<D
             | Definition::NatspecParsingError(_) => {}
         }
     }
-    definitions
+}
+
+/// Complete the [`TextRange`] of a list of [`Definition`].
+///
+/// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
+pub fn complete_text_ranges(source: &str, definitions: &mut Vec<Definition>) {
+    let offsets = gather_offsets(definitions);
+    if offsets.is_empty() {
+        return;
+    }
+
+    let text_indices = compute_indices(source, &offsets);
+
+    populate(&text_indices, definitions);
 }

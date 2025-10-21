@@ -1,4 +1,6 @@
-//! A parser with `[slang_solidity]` backend
+//! A parser with [`slang_solidity`] as the backend
+//!
+//! This parser is now "legacy" as [`solar_parse`] is much faster.
 use std::{
     collections::HashMap,
     io,
