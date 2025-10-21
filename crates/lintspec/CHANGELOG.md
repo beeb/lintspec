@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.11.4] - 2025-10-21
+
+### Changed
+
+- **(slang)** update slang legacy parser ([#98](https://github.com/beeb/lintspec/pull/98)) - ([c0a884a](https://github.com/beeb/lintspec/commit/c0a884a8dcc455a1fdd5c75aab09a7924c07b111))
+
+
+
+### Documentation
+
+
+-  update benchmark in readme ([#183](https://github.com/beeb/lintspec/pull/183)) - ([5329ae4](https://github.com/beeb/lintspec/commit/5329ae4d94d64f5e6486092ef687c16c1630bce6))
+
+
+
+
+**Full Changelog**: [0.11.3...0.11.4](https://github.com/beeb/lintspec/compare/v0.11.3...v0.11.4)
+
+
 ## [0.11.3] - 2025-10-18
 
 ### Added
