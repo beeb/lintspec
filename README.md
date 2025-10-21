@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: beeb/lintspec@v0.11.1
+      - uses: beeb/lintspec@v0.11.3
         # all the lines below are optional
         with:
           working-directory: "./"
@@ -223,7 +223,7 @@ Alternatively, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-lintspec = { version = "0.11.1", default-features = false }
+lintspec = { version = "0.11.3", default-features = false }
 ```
 
 ### Feature flags

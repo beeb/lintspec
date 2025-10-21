@@ -7,6 +7,7 @@ use semver::{Version, VersionReq};
 use slang_solidity::{
     cst::{NonterminalKind, Query, TextIndex},
     parser::Parser,
+    utils::LanguageFacts,
 };
 
 use crate::error::{Error, Result};
@@ -32,7 +33,7 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// supported by [`slang_solidity`].
 ///
 /// # Panics
-/// This function panics if the [`Parser::SUPPORTED_VERSIONS`] list is empty.
+/// This function panics if the [`LanguageFacts::ALL_VERSIONS`] list is empty.
 ///
 /// # Examples
 ///
@@ -63,7 +64,8 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
         let parser = Parser::create(get_latest_supported_version())
             .expect("the Parser should be initialized correctly with a supported solidity version");
 
-        let parse_result = parser.parse(NonterminalKind::PragmaDirective, pragma.as_str());
+        let parse_result =
+            parser.parse_nonterminal(NonterminalKind::PragmaDirective, pragma.as_str());
         if !parse_result.is_valid() {
             let Some(error) = parse_result.errors().first() else {
                 return Err(Error::UnknownError);
@@ -76,35 +78,32 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
         }
 
         let cursor = parse_result.create_tree_cursor();
-        let query_set = Query::parse("@version_set [VersionExpressionSet]")
+        let query_set = Query::create("@version_set [VersionExpressionSet]")
             .expect("version set query should compile");
-        let query_expr = Query::parse("@version_expr [VersionExpression]")
+        let query_expr = Query::create("@version_expr [VersionExpression]")
             .expect("version expr query should compile");
 
         let mut version_reqs = Vec::new();
         for m in cursor.query(vec![query_set]) {
-            let Some((_, mut it)) = m.capture("version_set") else {
-                continue;
-            };
-            let Some(set) = it.next() else {
+            let Some(Some(set)) = m
+                .capture("version_set")
+                .map(|capture| capture.cursors().first().cloned())
+            else {
                 continue;
             };
             version_reqs.push(String::new());
-            let cursor = set.node().cursor_with_offset(TextIndex::default());
+            let cursor = set.node().create_cursor(TextIndex::default());
             for m in cursor.query(vec![query_expr.clone()]) {
-                let Some((_, mut it)) = m.capture("version_expr") else {
-                    continue;
-                };
-                let Some(expr) = it.next() else {
+                let Some(Some(expr)) = m
+                    .capture("version_expr")
+                    .map(|capture| capture.cursors().first().cloned())
+                else {
                     continue;
                 };
                 let text = expr.node().unparse();
                 let text = text.trim();
                 // check if we are dealing with a version range with hyphen format
-                if text.contains('-') {
-                    let (start, end) = text
-                        .split_once('-')
-                        .expect("version range should have a minus character");
+                if let Some((start, end)) = text.split_once('-') {
                     let v = version_reqs
                         .last_mut()
                         .expect("version expression should be inside an expression set");
@@ -115,7 +114,7 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
                         .expect("version expression should be inside an expression set");
                     // for `semver`, the different specifiers should be combined with a comma if they must all match
                     if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
-                        // for `semver`, no comparator is the same as the caret comparator, but for solidity is means `=`
+                        // for `semver`, no comparator is the same as the caret comparator, but for solidity it means `=`
                         let _ = write!(v, ",={text}");
                     } else {
                         let _ = write!(v, ",{text}");
@@ -129,7 +128,7 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
             .collect::<Result<Vec<_>>>()?;
         reqs.iter()
             .filter_map(|r| {
-                Parser::SUPPORTED_VERSIONS
+                LanguageFacts::ALL_VERSIONS
                     .iter()
                     .rev()
                     .find(|v| r.matches(v))
@@ -144,8 +143,5 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
 /// Get the latest Solidity version supported by the [`slang_solidity`] parser
 #[must_use]
 pub fn get_latest_supported_version() -> Version {
-    Parser::SUPPORTED_VERSIONS
-        .last()
-        .expect("the SUPPORTED_VERSIONS list should not be empty")
-        .to_owned()
+    LanguageFacts::LATEST_VERSION
 }
