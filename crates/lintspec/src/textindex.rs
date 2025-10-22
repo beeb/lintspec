@@ -166,13 +166,15 @@ impl TextChunk {
         let ascii_bytes = self.mask.consecutive_ascii();
         let bytes_until_target = next_offset - self.start_offset;
         let advance = ascii_bytes.min(bytes_until_target);
-        match advance {
-            // we reached a target offset
-            x if x == bytes_until_target => ChunkOutcome::new(advance, true, true),
-            // we reached a newline or non-ASCII char
-            ..SIMD_LANES => ChunkOutcome::new(advance, true, false),
-            // only ASCII
-            _ => ChunkOutcome::new(advance, false, false),
+        let (brk, found) = if advance == bytes_until_target {
+            (false, true)
+        } else {
+            (advance < SIMD_LANES, false)
+        };
+        ChunkOutcome {
+            advance,
+            brk,
+            found,
         }
     }
 }
@@ -185,16 +187,6 @@ struct ChunkOutcome {
     brk: bool,
     /// Whether a text offset of interest has been found
     found: bool,
-}
-
-impl ChunkOutcome {
-    fn new(advance: usize, brk: bool, found: bool) -> Self {
-        Self {
-            advance,
-            brk,
-            found,
-        }
-    }
 }
 
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
