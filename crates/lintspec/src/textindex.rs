@@ -79,9 +79,6 @@ impl TextIndex {
     /// characters. The line number is _not_ incremented.
     #[inline]
     pub fn advance_by_ascii(&mut self, bytes: usize) {
-        if bytes == 0 {
-            return;
-        }
         self.utf8 += bytes;
         self.utf16 += bytes;
         self.column += bytes;
@@ -135,9 +132,9 @@ impl From<[i8; SIMD_LANES]> for AsciiMask {
         // find newlines
         #[allow(clippy::cast_possible_wrap)]
         let lf_bytes = i8x32::splat(b'\n' as i8);
+        let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
         #[allow(clippy::cast_possible_wrap)]
         let cr_bytes = i8x32::splat(b'\r' as i8);
-        let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
         let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
         // combine masks
         Self(nonascii_mask | lf_mask | cr_mask)
@@ -165,14 +162,18 @@ impl TextChunk {
     fn check(&self, next_offset: usize) -> ChunkOutcome {
         let ascii_bytes = self.mask.consecutive_ascii();
         let bytes_until_target = next_offset - self.start_offset;
-        let advance = ascii_bytes.min(bytes_until_target);
-        match advance {
-            // we reached a target offset
-            x if x == bytes_until_target => ChunkOutcome::new(advance, true, true),
-            // we reached a newline or non-ASCII char
-            ..SIMD_LANES => ChunkOutcome::new(advance, true, false),
-            // only ASCII
-            _ => ChunkOutcome::new(advance, false, false),
+        if bytes_until_target <= ascii_bytes {
+            ChunkOutcome {
+                advance: bytes_until_target,
+                brk: false,
+                found: true,
+            }
+        } else {
+            ChunkOutcome {
+                advance: ascii_bytes,
+                brk: ascii_bytes < SIMD_LANES,
+                found: false,
+            }
         }
     }
 }
@@ -185,16 +186,6 @@ struct ChunkOutcome {
     brk: bool,
     /// Whether a text offset of interest has been found
     found: bool,
-}
-
-impl ChunkOutcome {
-    fn new(advance: usize, brk: bool, found: bool) -> Self {
-        Self {
-            advance,
-            brk,
-            found,
-        }
-    }
 }
 
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
