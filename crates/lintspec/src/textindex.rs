@@ -2,11 +2,12 @@
 //!
 //! The [`TextIndex`] type holds the line, column (both zero-indexed) and utf-8/utf-16 offsets for a given position
 //! in the text.
-use std::{fmt, ops::Range, slice};
+use std::{fmt, ops::Range};
 
 use derive_more::Add;
 use serde::Serialize;
 use wide::{CmpEq as _, CmpLt as _, i8x32};
+use zerocopy::transmute_ref;
 
 const SIMD_LANES: usize = i8x32::LANES as usize;
 
@@ -255,11 +256,8 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut next_offset = ofs_iter
         .next()
         .expect("there should be one element at least");
-    let bytes = source.as_bytes();
-    // SAFETY: this is safe as we're re-interpreting a valid slice of u8 as i8.
-    // All slice invariants are already upheld by the original slice and we use the same pointer and length as the
-    // original slice.
-    let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
+    // need to cast the bytes to `i8` to work with SIMD instructions from `wide`.
+    let bytes: &[i8] = transmute_ref!(source.as_bytes());
     'outer: loop {
         // check whether we can try to process a 16-bytes chunk with SIMD
         loop {
