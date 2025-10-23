@@ -259,7 +259,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     // need to cast the bytes to `i8` to work with SIMD instructions from `wide`.
     let bytes: &[i8] = transmute_ref!(source.as_bytes());
     'outer: loop {
-        // check whether we can try to process a 16-bytes chunk with SIMD
+        // process a chunk with SIMD
         loop {
             let advance = Advance::new(bytes, current.utf8, *next_offset);
             current.advance_by(&advance);
@@ -273,13 +273,13 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 };
             }
             if bytes[current.utf8] < 0 {
+                // a non-ASCII character was found, let's go to char-by-char processing
                 break;
             }
         }
-        // fall back to character-by-character processing
+        // fall back to char-by-char processing
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
-        let mut found_na = false;
         while let Some(c) = char_iter.next() {
             debug_assert!(
                 next_offset >= &current.utf8,
@@ -287,9 +287,6 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 current.utf8
             );
             current.advance(c, char_iter.peek());
-            if !c.is_ascii() {
-                found_na = true;
-            }
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
                 text_indices.push(current);
@@ -299,7 +296,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                     None => break 'outer, // all interesting offsets have been found
                 };
             }
-            if found_na && char_iter.peek().is_some_and(char::is_ascii) {
+            if char_iter.peek().is_some_and(char::is_ascii) {
                 // we're done processing the non-ASCII characters, let's go back to SIMD-optimized processing
                 break;
             }
