@@ -143,7 +143,8 @@ impl Advance {
     /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
     /// encountered, or the next offset of interest is reached.
     #[inline]
-    fn new(slice: &[i8], start: usize, next_offset: usize) -> Self {
+    #[must_use]
+    fn scan(slice: &[i8], start: usize, next_offset: usize) -> Self {
         let bytes = &slice[start..next_offset];
         let arr: [i8; SIMD_LANES] = bytes.first_chunk().copied().unwrap_or_else(|| {
             // if we have fewer than the required bytes, we pad with `-1` which corresponds to a non-ASCII character
@@ -278,7 +279,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     'outer: loop {
         // process a chunk with SIMD
         loop {
-            let advance = Advance::new(bytes, current.utf8, *next_offset);
+            let advance = Advance::scan(bytes, current.utf8, *next_offset);
             current.advance_by(&advance);
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
@@ -429,7 +430,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        let advance = Advance::scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
@@ -446,7 +447,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        let advance = Advance::scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
