@@ -310,7 +310,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 // for offsets that fall in the middle of a unicode character, we store the next valid position
                 text_indices.push(current);
                 // skip duplicates and advance to next offset
-                next_offset = match ofs_iter.find(|o| o != &next_offset) {
+                next_offset = match ofs_iter.find(|o| o > &&current.utf8) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };

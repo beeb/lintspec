@@ -744,21 +744,21 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
 /// Fill in the missing values in the spans of definitions.
 fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
     fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
-        let res;
-        (res, span.start) = indices
+        let idx;
+        (idx, span.start) = indices
             .iter()
             .enumerate()
             .skip(start_idx)
-            .find_map(|(i, ti)| (ti.utf8 == span.start.utf8).then_some((i, *ti)))
+            .find_map(|(i, ti)| (ti.utf8 >= span.start.utf8).then_some((i, *ti)))
             .expect("utf8 start offset should be present in cache");
         span.end = *indices
             .iter()
-            .skip(res + 1)
-            .find(|ti| ti.utf8 == span.end.utf8)
+            .skip(idx + 1)
+            .find(|ti| ti.utf8 >= span.end.utf8)
             .expect("utf8 end offset should be present in cache");
         // for the next definition or item inside of a definition, we can start after the start of this item
         // because start indices increase monotonically
-        res + 1
+        idx + 1
     }
     // definitions are sorted by start offset due to how the AST is traversed
     // likewise, params, members, etc., are also sorted by start offset
