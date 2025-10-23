@@ -277,7 +277,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     // need to cast the bytes to `i8` to work with SIMD instructions from `wide`.
     let bytes: &[i8] = transmute_ref!(source.as_bytes());
     'outer: loop {
-        // process a chunk with SIMD
+        // process ASCII chunks with SIMD
         loop {
             let advance = Advance::scan(bytes, current.utf8, *next_offset);
             current.advance_by(&advance);
@@ -295,7 +295,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 break;
             }
         }
-        // fall back to char-by-char processing
+        // fall back to char-by-char processing for unicode
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
         while let Some(c) = char_iter.next() {
