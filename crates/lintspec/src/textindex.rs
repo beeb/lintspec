@@ -74,6 +74,23 @@ impl TextIndex {
         }
     }
 
+    /// Advance the TextIndex knowing the char `c` is non-ASCII
+    #[inline]
+    fn advance_unicode(&mut self, c: char) {
+        debug_assert!(!c.is_ascii());
+        self.utf8 += c.len_utf8();
+        self.utf16 += c.len_utf16();
+        match c {
+            '\u{2028}' | '\u{2029}' => {
+                self.line += 1;
+                self.column = 0;
+            }
+            _ => {
+                self.column += 1;
+            }
+        }
+    }
+
     /// Advance this index according to the `Advance` parameter.
     #[inline]
     fn advance_by(&mut self, advance: &Advance) {
@@ -286,7 +303,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 "next offset {next_offset} is smaller than current {}",
                 current.utf8
             );
-            current.advance(c, char_iter.peek());
+            current.advance_unicode(c);
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
                 text_indices.push(current);
