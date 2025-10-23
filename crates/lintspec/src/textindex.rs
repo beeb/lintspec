@@ -73,17 +73,7 @@ impl TextIndex {
         }
     }
 
-    /// Advance all offsets by the given number of ASCII `bytes`.
-    ///
-    /// This function is a shortcut that can be used to hop over spans which contain no newlines and no non-ASCII
-    /// characters. The line number is _not_ incremented.
-    #[inline]
-    pub fn advance_by_ascii(&mut self, bytes: usize) {
-        self.utf8 += bytes;
-        self.utf16 += bytes;
-        self.column += bytes;
-    }
-
+    /// Advance this index according to the `Advance` parameter.
     #[inline]
     fn advance_by(&mut self, advance: &Advance) {
         self.utf8 += advance.bytes;
@@ -114,12 +104,14 @@ impl Ord for TextIndex {
     }
 }
 
+/// The type of operation to perform on the `TextIndex`'s `column` field
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Column {
     Increment(usize),
     Set(usize),
 }
 
+/// An update to perform on `TextIndex` after scanning a chunk of the input text
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Advance {
     bytes: usize,
@@ -128,10 +120,15 @@ struct Advance {
 }
 
 impl Advance {
+    /// Scan a chunk of text and compute how to advance the `TextIndex`
+    ///
+    /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
+    /// encountered, or the next offset of interest is reached.
     #[inline]
     fn new(slice: &[i8], start: usize, next_offset: usize) -> Self {
         let bytes = &slice[start..next_offset];
         let arr: [i8; SIMD_LANES] = bytes.first_chunk().copied().unwrap_or_else(|| {
+            // if we have fewer than the required bytes, we pad with `-1` which corresponds to a non-ASCII character
             let mut arr = [-1; SIMD_LANES];
             arr[0..bytes.len()].copy_from_slice(bytes);
             arr
@@ -141,6 +138,53 @@ impl Advance {
 }
 
 impl From<[i8; SIMD_LANES]> for Advance {
+    /// Scan a chunk of text and compute how to advance the `TextIndex`
+    ///
+    /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
+    /// encountered, or the next offset of interest is reached.
+    ///
+    /// Simplified example with a 16 bytes chunk:
+    ///
+    /// ```norust
+    /// input:          "ab\r\nefg\rijkl🦀"
+    /// non-ASCII mask: 0000_0000_0000_1111
+    /// LF mask:        0001_0000_0000_0000
+    /// CR mask:        0010_0001_0000_0000
+    /// to keep:        ^^^^ ^^^^ ^^^^
+    /// ```
+    ///
+    /// We will process an amount of bytes equal to `nonascii_mask.trailing_zeros()` (a contiguous segment of ASCII
+    /// bytes at the start of the chunk). This is the increment that will be applied to the `utf8` and `utf16` fields
+    /// of `TextIndex` (the bytes/code units offset).
+    ///
+    /// First we ignore everything starting at the first non-ASCII byte by shifting the masks:
+    ///
+    /// ```norust
+    /// padding:        vvvv
+    /// non-ASCII mask: 0000_0000_0000_0000
+    /// LF mask:        0000_0001_0000_0000
+    /// CR mask:        0000_0010_0001_0000
+    /// interesting:         ^^^^ ^^^^ ^^^^
+    /// to keep:                  ^^^^ ^^^^
+    /// ```
+    ///
+    /// The number of ASCII bytes on the last line is `lf_mask.leading_zeros()`. The total number of line returns is
+    /// `lf_mask.count_ones()`. We will increment the `line` field of `TextIndex` by this number.
+    ///
+    /// Then we ignore everything but the last line (what comes after the last LF) by shifting the masks in the other
+    /// direction:
+    ///
+    /// ```norust
+    /// padding:                  vvvv vvvv
+    /// non-ASCII mask: 0000_0000_0000_0000
+    /// LF mask:        0000_0000_0000_0000
+    /// CR mask:        0001_0000_0000_0000
+    /// interesting:    ^^^^ ^^^^
+    /// ```
+    ///
+    /// Finally, we subtract the number of `\r` bytes from the last line (`cr_mask.count_ones()`, which do not
+    /// increment the column count) from the number of bytes on the last line which we calculated before. This number
+    /// is the new value of the `column` field of `TextIndex`.
     #[inline]
     fn from(chunk: [i8; SIMD_LANES]) -> Self {
         let bytes = i8x32::new(chunk);
@@ -155,28 +199,32 @@ impl From<[i8; SIMD_LANES]> for Advance {
         // ignore non-ASCII characters at the end
         let n_ascii = nonascii_mask.trailing_zeros() as usize;
         if n_ascii == 0 {
+            // there are not ASCII bytes at the start of the chunk
             return Advance {
                 bytes: 0,
                 column: Column::Increment(0),
                 lines: 0,
             };
         }
-        let shift = SIMD_LANES - n_ascii;
+        let shift = SIMD_LANES - n_ascii; // this is < SIMD_LANES
         lf_mask <<= shift;
         cr_mask <<= shift;
 
         let mut n_lines = 0;
         let column = if lf_mask > 0 {
+            // the chunk contains multiple lines, we ignore everything but the last line
             n_lines = lf_mask.count_ones() as usize;
             let n_last_line = lf_mask.leading_zeros() as usize;
             if n_last_line == 0 {
+                // edge case where the last byte is \n
                 return Advance {
                     bytes: n_ascii,
                     column: Column::Set(0),
                     lines: n_lines,
                 };
             }
-            cr_mask >>= SIMD_LANES - n_last_line;
+            // we ignore the \r in the last line for the columns count
+            cr_mask >>= SIMD_LANES - n_last_line; // the shift amount is < SIMD_LANES
             Column::Set(n_last_line - cr_mask.count_ones() as usize)
         } else {
             Column::Increment(n_ascii - cr_mask.count_ones() as usize)
