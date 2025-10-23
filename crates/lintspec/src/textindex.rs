@@ -2,11 +2,12 @@
 //!
 //! The [`TextIndex`] type holds the line, column (both zero-indexed) and utf-8/utf-16 offsets for a given position
 //! in the text.
-use std::{fmt, ops::Range, slice};
+use std::{fmt, ops::Range};
 
 use derive_more::Add;
 use serde::Serialize;
 use wide::{CmpEq as _, CmpLt as _, i8x32};
+use zerocopy::transmute_ref;
 
 const SIMD_LANES: usize = i8x32::LANES as usize;
 
@@ -73,6 +74,23 @@ impl TextIndex {
         }
     }
 
+    /// Advance the TextIndex knowing the char `c` is non-ASCII
+    #[inline]
+    fn advance_unicode(&mut self, c: char) {
+        debug_assert!(!c.is_ascii());
+        self.utf8 += c.len_utf8();
+        self.utf16 += c.len_utf16();
+        match c {
+            '\u{2028}' | '\u{2029}' => {
+                self.line += 1;
+                self.column = 0;
+            }
+            _ => {
+                self.column += 1;
+            }
+        }
+    }
+
     /// Advance this index according to the `Advance` parameter.
     #[inline]
     fn advance_by(&mut self, advance: &Advance) {
@@ -125,7 +143,8 @@ impl Advance {
     /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
     /// encountered, or the next offset of interest is reached.
     #[inline]
-    fn new(slice: &[i8], start: usize, next_offset: usize) -> Self {
+    #[must_use]
+    fn scan(slice: &[i8], start: usize, next_offset: usize) -> Self {
         let bytes = &slice[start..next_offset];
         let arr: [i8; SIMD_LANES] = bytes.first_chunk().copied().unwrap_or_else(|| {
             // if we have fewer than the required bytes, we pad with `-1` which corresponds to a non-ASCII character
@@ -255,15 +274,12 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut next_offset = ofs_iter
         .next()
         .expect("there should be one element at least");
-    let bytes = source.as_bytes();
-    // SAFETY: this is safe as we're re-interpreting a valid slice of u8 as i8.
-    // All slice invariants are already upheld by the original slice and we use the same pointer and length as the
-    // original slice.
-    let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
+    // need to cast the bytes to `i8` to work with SIMD instructions from `wide`.
+    let bytes: &[i8] = transmute_ref!(source.as_bytes());
     'outer: loop {
-        // check whether we can try to process a 16-bytes chunk with SIMD
+        // process ASCII chunks with SIMD
         loop {
-            let advance = Advance::new(bytes, current.utf8, *next_offset);
+            let advance = Advance::scan(bytes, current.utf8, *next_offset);
             current.advance_by(&advance);
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
@@ -275,33 +291,31 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 };
             }
             if bytes[current.utf8] < 0 {
+                // a non-ASCII character was found, let's go to char-by-char processing
                 break;
             }
         }
-        // fall back to character-by-character processing
+        // fall back to char-by-char processing for unicode
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
-        let mut found_na = false;
         while let Some(c) = char_iter.next() {
             debug_assert!(
                 next_offset >= &current.utf8,
                 "next offset {next_offset} is smaller than current {}",
                 current.utf8
             );
-            current.advance(c, char_iter.peek());
-            if !c.is_ascii() {
-                found_na = true;
-            }
-            if &current.utf8 == next_offset {
+            current.advance_unicode(c);
+            if &current.utf8 >= next_offset {
                 // we reached a target position, store it
+                // for offsets that fall in the middle of a unicode character, we store the next valid position
                 text_indices.push(current);
                 // skip duplicates and advance to next offset
-                next_offset = match ofs_iter.find(|o| o != &next_offset) {
+                next_offset = match ofs_iter.find(|o| o > &&current.utf8) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
             }
-            if found_na && char_iter.peek().is_some_and(char::is_ascii) {
+            if char_iter.peek().is_some_and(char::is_ascii) {
                 // we're done processing the non-ASCII characters, let's go back to SIMD-optimized processing
                 break;
             }
@@ -416,7 +430,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        let advance = Advance::scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
@@ -433,7 +447,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        let advance = Advance::scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
