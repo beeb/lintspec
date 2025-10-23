@@ -73,15 +73,16 @@ impl TextIndex {
         }
     }
 
-    /// Advance all offsets by the given number of ASCII `bytes`.
-    ///
-    /// This function is a shortcut that can be used to hop over spans which contain no newlines and no non-ASCII
-    /// characters. The line number is _not_ incremented.
+    /// Advance this index according to the `Advance` parameter.
     #[inline]
-    pub fn advance_by_ascii(&mut self, bytes: usize) {
-        self.utf8 += bytes;
-        self.utf16 += bytes;
-        self.column += bytes;
+    fn advance_by(&mut self, advance: &Advance) {
+        self.utf8 += advance.bytes;
+        self.utf16 += advance.bytes;
+        self.line += advance.lines;
+        match advance.column {
+            Column::Increment(n) => self.column += n,
+            Column::Set(n) => self.column = n,
+        }
     }
 }
 
@@ -103,89 +104,137 @@ impl Ord for TextIndex {
     }
 }
 
-/// A byte mask of which characters are ASCII (except line endings) or not in a chunk of [`SIMD_LANES`] bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct AsciiMask(u32);
+/// The type of operation to perform on the `TextIndex`'s `column` field
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Column {
+    Increment(usize),
+    Set(usize),
+}
 
-impl AsciiMask {
-    /// Check how many consecutive bytes are ASCII at the start of the mask.
+/// An update to perform on `TextIndex` after scanning a chunk of the input text
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Advance {
+    bytes: usize,
+    lines: usize,
+    column: Column,
+}
+
+impl Advance {
+    /// Scan a chunk of text and compute how to advance the `TextIndex`
+    ///
+    /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
+    /// encountered, or the next offset of interest is reached.
     #[inline]
-    fn consecutive_ascii(self) -> usize {
-        self.0.trailing_zeros() as usize
+    fn new(slice: &[i8], start: usize, next_offset: usize) -> Self {
+        let bytes = &slice[start..next_offset];
+        let arr: [i8; SIMD_LANES] = bytes.first_chunk().copied().unwrap_or_else(|| {
+            // if we have fewer than the required bytes, we pad with `-1` which corresponds to a non-ASCII character
+            let mut arr = [-1; SIMD_LANES];
+            arr[0..bytes.len()].copy_from_slice(bytes);
+            arr
+        });
+        Self::from(arr)
     }
 }
 
-impl From<[i8; SIMD_LANES]> for AsciiMask {
-    /// Check the chunk of bytes for non-ASCII characters and newline characters.
+impl From<[i8; SIMD_LANES]> for Advance {
+    /// Scan a chunk of text and compute how to advance the `TextIndex`
     ///
-    /// The function returns a mask with bits flipped to 1 for items which correspond to `\n` or `\r` or non-ASCII
-    /// characters. The least significant bit in the mask corresponds to the first byte in the input.
+    /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
+    /// encountered, or the next offset of interest is reached.
     ///
-    /// This function uses SIMD to accelerate the checks.
+    /// Simplified example with a 16 bytes chunk:
+    ///
+    /// ```norust
+    /// input:          "ab\r\nefg\rijkl🦀"
+    /// non-ASCII mask: 0000_0000_0000_1111
+    /// LF mask:        0001_0000_0000_0000
+    /// CR mask:        0010_0001_0000_0000
+    /// to keep:        ^^^^ ^^^^ ^^^^
+    /// ```
+    ///
+    /// We will process an amount of bytes equal to `nonascii_mask.trailing_zeros()` (a contiguous segment of ASCII
+    /// bytes at the start of the chunk). This is the increment that will be applied to the `utf8` and `utf16` fields
+    /// of `TextIndex` (the bytes/code units offset).
+    ///
+    /// First we ignore everything starting at the first non-ASCII byte by shifting the masks:
+    ///
+    /// ```norust
+    /// padding:        vvvv
+    /// non-ASCII mask: 0000_0000_0000_0000
+    /// LF mask:        0000_0001_0000_0000
+    /// CR mask:        0000_0010_0001_0000
+    /// interesting:         ^^^^ ^^^^ ^^^^
+    /// to keep:                  ^^^^ ^^^^
+    /// ```
+    ///
+    /// The number of ASCII bytes on the last line is `lf_mask.leading_zeros()`. The total number of line returns is
+    /// `lf_mask.count_ones()`. We will increment the `line` field of `TextIndex` by this number.
+    ///
+    /// Then we ignore everything but the last line (what comes after the last LF) by shifting the masks in the other
+    /// direction:
+    ///
+    /// ```norust
+    /// padding:                  vvvv vvvv
+    /// non-ASCII mask: 0000_0000_0000_0000
+    /// LF mask:        0000_0000_0000_0000
+    /// CR mask:        0001_0000_0000_0000
+    /// interesting:    ^^^^ ^^^^
+    /// ```
+    ///
+    /// Finally, we subtract the number of `\r` bytes from the last line (`cr_mask.count_ones()`, which do not
+    /// increment the column count) from the number of bytes on the last line which we calculated before. This number
+    /// is the new value of the `column` field of `TextIndex`.
     #[inline]
     fn from(chunk: [i8; SIMD_LANES]) -> Self {
         let bytes = i8x32::new(chunk);
-
-        // find non-ASCII
-        // u8 values from 128 to 255 correspond to i8 values -128 to -1
         let nonascii_mask = bytes.simd_lt(i8x32::ZERO).to_bitmask();
-        // find newlines
         #[allow(clippy::cast_possible_wrap)]
         let lf_bytes = i8x32::splat(b'\n' as i8);
-        let lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
+        let mut lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
         #[allow(clippy::cast_possible_wrap)]
         let cr_bytes = i8x32::splat(b'\r' as i8);
-        let cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
-        // combine masks
-        Self(nonascii_mask | lf_mask | cr_mask)
-    }
-}
+        let mut cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
 
-/// A text chunk of length [`SIMD_LANES`] bytes allowing to easily check which of those are ASCII.
-#[derive(Debug)]
-struct TextChunk {
-    start_offset: usize,
-    mask: AsciiMask,
-}
+        // ignore non-ASCII characters at the end
+        let n_ascii = nonascii_mask.trailing_zeros() as usize;
+        if n_ascii == 0 {
+            // there are not ASCII bytes at the start of the chunk
+            return Advance {
+                bytes: 0,
+                column: Column::Increment(0),
+                lines: 0,
+            };
+        }
+        let shift = SIMD_LANES - n_ascii; // this is < SIMD_LANES
+        lf_mask <<= shift;
+        cr_mask <<= shift;
 
-impl TextChunk {
-    /// Create a new text chunk from a slice of bytes.
-    ///
-    /// Returns `None` if the slice contains fewer than `SIMD_LANES` elements after `start_offset`.
-    fn new(slice: &[i8], start_offset: usize) -> Option<Self> {
-        let mask = AsciiMask::from(*slice[start_offset..].first_chunk()?);
-        Some(Self { start_offset, mask })
-    }
-
-    /// Check the chunk against the next offset of interest and included newlines/non-ASCII characters.
-    #[inline]
-    fn check(&self, next_offset: usize) -> ChunkOutcome {
-        let ascii_bytes = self.mask.consecutive_ascii();
-        let bytes_until_target = next_offset - self.start_offset;
-        if bytes_until_target <= ascii_bytes {
-            ChunkOutcome {
-                advance: bytes_until_target,
-                brk: false,
-                found: true,
+        let mut n_lines = 0;
+        let column = if lf_mask > 0 {
+            // the chunk contains multiple lines, we ignore everything but the last line
+            n_lines = lf_mask.count_ones() as usize;
+            let n_last_line = lf_mask.leading_zeros() as usize;
+            if n_last_line == 0 {
+                // edge case where the last byte is \n
+                return Advance {
+                    bytes: n_ascii,
+                    column: Column::Set(0),
+                    lines: n_lines,
+                };
             }
+            // we ignore the \r in the last line for the columns count
+            cr_mask >>= SIMD_LANES - n_last_line; // the shift amount is < SIMD_LANES
+            Column::Set(n_last_line - cr_mask.count_ones() as usize)
         } else {
-            ChunkOutcome {
-                advance: ascii_bytes,
-                brk: ascii_bytes < SIMD_LANES,
-                found: false,
-            }
+            Column::Increment(n_ascii - cr_mask.count_ones() as usize)
+        };
+        Advance {
+            bytes: n_ascii,
+            column,
+            lines: n_lines,
         }
     }
-}
-
-/// The outcome of checking a chunk of text
-struct ChunkOutcome {
-    /// Number of bytes which are uninteresting and ASCII
-    advance: usize,
-    /// Whether a non-ASCII or newline character has been encountered, which means we need to break out of the loop
-    brk: bool,
-    /// Whether a text offset of interest has been found
-    found: bool,
 }
 
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
@@ -213,37 +262,26 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let bytes: &[i8] = unsafe { slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len()) };
     'outer: loop {
         // check whether we can try to process a 16-bytes chunk with SIMD
-        while let Some(chunk) = TextChunk::new(bytes, current.utf8) {
-            debug_assert!(next_offset >= &current.utf8);
-            let outcome = chunk.check(*next_offset);
-            current.advance_by_ascii(outcome.advance);
-            if outcome.found {
+        loop {
+            let advance = Advance::new(bytes, current.utf8, *next_offset);
+            current.advance_by(&advance);
+            if &current.utf8 == next_offset {
+                // we reached a target position, store it
                 text_indices.push(current);
-                // get the next offset of interest, ignoring any duplicates
+                // skip duplicates and advance to next offset
                 next_offset = match ofs_iter.find(|o| o != &next_offset) {
                     Some(o) => o,
                     None => break 'outer, // all interesting offsets have been found
                 };
-                continue;
             }
-            if outcome.brk {
+            if bytes[current.utf8] < 0 {
                 break;
             }
         }
-        if &current.utf8 == next_offset {
-            // we reached a target position, store it
-            text_indices.push(current);
-            // skip duplicates and advance to next offset
-            next_offset = match ofs_iter.find(|o| o != &next_offset) {
-                Some(o) => o,
-                None => break 'outer, // all interesting offsets have been found
-            };
-        }
-        // normally, the next byte is either part of a Unicode char or line ending
         // fall back to character-by-character processing
         let remaining_source = &source[current.utf8..];
         let mut char_iter = remaining_source.chars().peekable();
-        let mut found_na_nl = false;
+        let mut found_na = false;
         while let Some(c) = char_iter.next() {
             debug_assert!(
                 next_offset >= &current.utf8,
@@ -251,8 +289,8 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 current.utf8
             );
             current.advance(c, char_iter.peek());
-            if !c.is_ascii() || c == '\n' {
-                found_na_nl = true;
+            if !c.is_ascii() {
+                found_na = true;
             }
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
@@ -263,8 +301,8 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                     None => break 'outer, // all interesting offsets have been found
                 };
             }
-            if found_na_nl && char_iter.peek().is_some_and(char::is_ascii) {
-                // we're done processing the non-ASCII / newline characters, let's go back to SIMD-optimized processing
+            if found_na && char_iter.peek().is_some_and(char::is_ascii) {
+                // we're done processing the non-ASCII characters, let's go back to SIMD-optimized processing
                 break;
             }
         }
@@ -278,47 +316,132 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
 #[cfg(test)]
 #[allow(clippy::cast_possible_wrap)]
 mod tests {
-    use std::iter::repeat_n;
-
     use similar_asserts::assert_eq;
 
     use super::*;
 
     #[test]
-    fn test_mask_ascii_only() {
-        let chunk: Vec<_> = repeat_n('a', SIMD_LANES).map(|b| b as i8).collect();
-        let mask = AsciiMask::from(*chunk.first_chunk().unwrap()).0;
-        assert_eq!(mask, 0);
-    }
-
-    #[test]
-    fn test_mask_with_newline() {
-        let chunk: Vec<_> = b"abc\ndef\rghijklmnaaaaaaaaaaaaaaaa"
+    fn test_advance_simple() {
+        let chunk: Vec<_> = b"abcdabcdabcdabcdabcdabcdabcdabcd"
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let mask = AsciiMask::from(*chunk.first_chunk().unwrap()).0;
-        // \n is at position 3, \r is at position 7
-        assert_eq!(mask, 1 << 3 | 1 << 7);
+        let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
+        let advance = Advance::from(chunk);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 32,
+                lines: 0,
+                column: Column::Increment(32)
+            }
+        );
     }
 
     #[test]
-    fn test_mask_with_non_ascii() {
-        let input = "abcd🦀fghijklmnoaaaaaaaaaaaaaaaa";
-        let chunk: Vec<_> = input.bytes().map(|b| b as i8).collect();
-        let mask = AsciiMask::from(*chunk.first_chunk().unwrap()).0;
-        // the emoji takes 4 bytes starting at position 4
-        assert_eq!(mask, 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7);
+    fn test_advance_newline() {
+        let chunk: Vec<_> = b"abcdabcdabcdabcdabcdabcdabc\nabcd"
+            .iter()
+            .map(|b| *b as i8)
+            .collect();
+        let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
+        let advance = Advance::from(chunk);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 32,
+                lines: 1,
+                column: Column::Set(4)
+            }
+        );
     }
 
     #[test]
-    fn test_mask_mixed() {
-        let input = "ab\nc🦀\rfghijklmnopaaaaaaaaaaaaaaaa";
-        let chunk: Vec<_> = input.bytes().map(|b| b as i8).collect();
-        let mask = AsciiMask::from(*chunk.first_chunk().unwrap()).0;
-        // line endings at 2 and 8
-        // emoji at 4-7
-        assert_eq!(mask, 1 << 2 | 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7 | 1 << 8);
+    fn test_advance_multiple_newlines() {
+        let chunk: Vec<_> = b"abcdabcdabc\nabcdabcdabcdab\r\nabc\r"
+            .iter()
+            .map(|b| *b as i8)
+            .collect();
+        let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
+        let advance = Advance::from(chunk);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 32,
+                lines: 2,
+                column: Column::Set(3)
+            }
+        );
+    }
+
+    #[test]
+    fn test_advance_unicode() {
+        let chunk: Vec<_> = "abcdabcdabcdabcdabcdabcdabcd🦀"
+            .bytes()
+            .map(|b| b as i8)
+            .collect();
+        let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
+        let advance = Advance::from(chunk);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 28,
+                lines: 0,
+                column: Column::Increment(28)
+            }
+        );
+    }
+
+    #[test]
+    fn test_advance_unicode_newlines() {
+        let chunk: Vec<_> = "abcdabcdabc\nabcdabcdabc\nabcd🦀"
+            .bytes()
+            .map(|b| b as i8)
+            .collect();
+        let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
+        let advance = Advance::from(chunk);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 28,
+                lines: 2,
+                column: Column::Set(4)
+            }
+        );
+    }
+
+    #[test]
+    fn test_advance_next_offset() {
+        let chunk: Vec<_> = b"abcdabcdabcdabcdabcdabcdabcdabcd"
+            .iter()
+            .map(|b| *b as i8)
+            .collect();
+        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 28,
+                lines: 0,
+                column: Column::Increment(28)
+            }
+        );
+    }
+
+    #[test]
+    fn test_advance_next_offset_newline() {
+        let chunk: Vec<_> = b"abcdabcdabcdabc\nabcdabcdabc\nabcd"
+            .iter()
+            .map(|b| *b as i8)
+            .collect();
+        let advance = Advance::new(chunk.as_slice(), 0, 28);
+        assert_eq!(
+            advance,
+            Advance {
+                bytes: 28,
+                lines: 2,
+                column: Column::Set(0)
+            }
+        );
     }
 
     #[test]
