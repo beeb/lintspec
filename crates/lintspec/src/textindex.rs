@@ -304,8 +304,9 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
                 current.utf8
             );
             current.advance_unicode(c);
-            if &current.utf8 == next_offset {
+            if &current.utf8 >= next_offset {
                 // we reached a target position, store it
+                // for offsets that fall in the middle of a unicode character, we store the next valid position
                 text_indices.push(current);
                 // skip duplicates and advance to next offset
                 next_offset = match ofs_iter.find(|o| o != &next_offset) {
