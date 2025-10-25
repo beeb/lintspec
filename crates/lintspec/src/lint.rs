@@ -345,6 +345,7 @@ impl CheckParams<'_> {
         }
     }
 
+    /// Generate missing param diags if `@param` is required
     fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
         self.params.iter().filter_map(|p| {
             p.name.as_ref().map(|name| Diagnostic {
@@ -354,6 +355,7 @@ impl CheckParams<'_> {
         })
     }
 
+    /// Generate extra param diags if `@param` is required
     fn extra_diags(&self) -> impl Iterator<Item = Diagnostic> {
         // FIXME: would a hashmap be faster here?
         self.natspec
@@ -384,6 +386,7 @@ impl CheckParams<'_> {
             .flatten()
     }
 
+    /// Generate diagnostics for wrong number of `@param` comments (missing or more than one)
     fn count_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
         self.counts(natspec).filter_map(|(param, count)| {
             let name = param.name.as_ref().expect("param to have a name");
@@ -401,6 +404,7 @@ impl CheckParams<'_> {
         })
     }
 
+    /// Count how many times each parameter is documented
     fn counts(&self, natspec: &NatSpec) -> impl Iterator<Item = (&Identifier, usize)> {
         // FIXME: would a hashmap be faster here?
         self.params.iter().map(|p: &Identifier| {
