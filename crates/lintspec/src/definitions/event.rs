@@ -1,6 +1,6 @@
 //! Parsing and validation of event definitions.
 use crate::{
-    lint::{CheckParams, ItemDiagnostics, check_notice_and_dev},
+    lint::{CheckNoticeAndDev, CheckParams, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -55,13 +55,16 @@ impl Validate for EventDefinition {
             span: self.span(),
             diags: vec![],
         };
-        out.diags.extend(check_notice_and_dev(
-            &self.natspec,
-            opts.notice,
-            opts.dev,
-            options.notice_or_dev,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckNoticeAndDev::builder()
+                .natspec(&self.natspec)
+                .notice_rule(opts.notice)
+                .dev_rule(opts.dev)
+                .notice_or_dev(options.notice_or_dev)
+                .span(self.span())
+                .build()
+                .check(),
+        );
         out.diags.extend(
             CheckParams::builder()
                 .natspec(&self.natspec)

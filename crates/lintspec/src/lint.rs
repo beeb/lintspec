@@ -714,56 +714,78 @@ pub fn check_author(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Op
     }
 }
 
-/// Check if the `@notice` or `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and
-/// generate diagnostics if they don't.
-///
-/// This helper function should be used to honor the `notice_or_dev` option in the [`Config`]. If this option is
-/// enabled and one or both are required, it will check if either `@notice` or `@dev` is present in the `NatSpec`.
-///
-/// It will generate a diagnostic if neither is present. If either is forbidden, or the `notice_or_dev` option is
-/// disabled, it will check the `@notice` and `@dev` separately according to their respective rules.
-#[must_use]
-pub fn check_notice_and_dev(
-    natspec: &Option<NatSpec>,
+/// Notice and Dev NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckNoticeAndDev<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@notice`
     notice_rule: Req,
+    /// The rule to apply for `@dev`
     dev_rule: Req,
+    /// Whether to enforce either `@notice` or `@dev` if either or both are required
     notice_or_dev: bool,
+    /// The span of the source item
     span: TextRange,
-) -> Vec<Diagnostic> {
-    let mut res = Vec::new();
-    match (notice_or_dev, notice_rule, dev_rule) {
-        (true, Req::Required, Req::Ignored | Req::Required)
-        | (true, Req::Ignored, Req::Required) => {
-            if natspec.is_none()
-                || (!natspec.as_ref().unwrap().has_notice() && !natspec.as_ref().unwrap().has_dev())
-            {
-                res.push(Diagnostic {
-                    span,
-                    message: "@notice or @dev is missing".to_string(),
-                });
+}
+
+impl CheckNoticeAndDev<'_> {
+    /// Check if the `@notice` or `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and
+    /// generate diagnostics if they don't.
+    ///
+    /// This method honors the `notice_or_dev` option. If this option is enabled and one or both are required, it will
+    /// check if either `@notice` or `@dev` is present in the `NatSpec`.
+    ///
+    /// It will generate a diagnostic if neither is present. If either is forbidden, or the `notice_or_dev` option is
+    /// disabled, it will check the `@notice` and `@dev` separately according to their respective rules.
+    #[must_use]
+    pub fn check(&self) -> Vec<Diagnostic> {
+        match (self.notice_or_dev, self.notice_rule, self.dev_rule) {
+            (true, Req::Required, Req::Ignored | Req::Required)
+            | (true, Req::Ignored, Req::Required) => self.check_notice_or_dev(),
+            (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
+                self.check_separately()
             }
+            (true, Req::Ignored, Req::Ignored) => Vec::new(),
         }
-        (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
-            res.extend(
-                CheckNotice::builder()
-                    .natspec(natspec)
-                    .rule(notice_rule)
-                    .span(span.clone())
-                    .build()
-                    .check(),
-            );
-            res.extend(
-                CheckDev::builder()
-                    .natspec(natspec)
-                    .rule(dev_rule)
-                    .span(span)
-                    .build()
-                    .check(),
-            );
-        }
-        (true, Req::Ignored, Req::Ignored) => {}
     }
-    res
+
+    /// Check that either `@notice` or `@dev` is present
+    fn check_notice_or_dev(&self) -> Vec<Diagnostic> {
+        if self.natspec.is_none()
+            || (!self.natspec.as_ref().unwrap().has_notice()
+                && !self.natspec.as_ref().unwrap().has_dev())
+        {
+            vec![Diagnostic {
+                span: self.span.clone(),
+                message: "@notice or @dev is missing".to_string(),
+            }]
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Check `@notice` and `@dev` separately according to their respective rules
+    fn check_separately(&self) -> Vec<Diagnostic> {
+        let mut res = Vec::new();
+        res.extend(
+            CheckNotice::builder()
+                .natspec(self.natspec)
+                .rule(self.notice_rule)
+                .span(self.span.clone())
+                .build()
+                .check(),
+        );
+        res.extend(
+            CheckDev::builder()
+                .natspec(self.natspec)
+                .rule(self.dev_rule)
+                .span(self.span.clone())
+                .build()
+                .check(),
+        );
+        res
+    }
 }
 
 #[cfg(test)]
