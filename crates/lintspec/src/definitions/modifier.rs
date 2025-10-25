@@ -1,6 +1,6 @@
 //! Parsing and validation of modifier definitions.
 use crate::{
-    lint::{Diagnostic, ItemDiagnostics, check_notice_and_dev, check_params},
+    lint::{CheckParams, Diagnostic, ItemDiagnostics, check_notice_and_dev},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -92,12 +92,15 @@ impl Validate for ModifierDefinition {
             options.notice_or_dev,
             self.span(),
         ));
-        out.diags.extend(check_params(
-            &self.natspec,
-            opts.param,
-            &self.params,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckParams::builder()
+                .natspec(&self.natspec)
+                .rule(opts.param)
+                .params(&self.params)
+                .default_span(self.span())
+                .build()
+                .check(),
+        );
         out
     }
 }

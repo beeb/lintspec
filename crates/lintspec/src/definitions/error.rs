@@ -1,6 +1,6 @@
 //! Parsing and validation of error definitions.
 use crate::{
-    lint::{ItemDiagnostics, check_notice_and_dev, check_params},
+    lint::{CheckParams, ItemDiagnostics, check_notice_and_dev},
     natspec::NatSpec,
 };
 
@@ -62,12 +62,15 @@ impl Validate for ErrorDefinition {
             options.notice_or_dev,
             self.span(),
         ));
-        out.diags.extend(check_params(
-            &self.natspec,
-            opts.param,
-            &self.params,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckParams::builder()
+                .natspec(&self.natspec)
+                .rule(opts.param)
+                .params(&self.params)
+                .default_span(self.span())
+                .build()
+                .check(),
+        );
         out
     }
 }
@@ -217,5 +220,17 @@ mod tests {
         assert_eq!(res.diags[0].message, "@notice is missing");
         assert_eq!(res.diags[1].message, "@param a is missing");
         assert_eq!(res.diags[2].message, "@param b is missing");
+    }
+
+    #[test]
+    fn test_error_extra() {
+        let contents = "
+            /// @notice An error
+            /// @param a A param
+            error Foobar();
+            ";
+        let res = parse_file(contents).validate(&OPTIONS);
+        assert_eq!(res.diags.len(), 1);
+        assert_eq!(res.diags[0].message, "extra @param a");
     }
 }
