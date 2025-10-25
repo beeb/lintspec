@@ -313,7 +313,7 @@ impl CheckParams<'_> {
     pub fn check(&self) -> Vec<Diagnostic> {
         let mut res = match self.rule {
             Req::Ignored => return Vec::new(),
-            Req::Required if self.params.is_empty() => return Vec::new(),
+            Req::Required if self.params.is_empty() => return self.extra_diags().collect(),
             Req::Required => self.check_required(),
             Req::Forbidden => self.check_forbidden(),
         };
