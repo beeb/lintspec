@@ -574,7 +574,7 @@ pub struct CheckNotice<'a> {
     /// The rule to apply for `@notice`
     rule: Req,
     /// The span of the source item
-    span: TextRange,
+    span: &'a TextRange,
 }
 
 impl CheckNotice<'_> {
@@ -626,7 +626,7 @@ pub struct CheckDev<'a> {
     /// The rule to apply for `@dev`
     rule: Req,
     /// The span of the source item
-    span: TextRange,
+    span: &'a TextRange,
 }
 
 impl CheckDev<'_> {
@@ -678,7 +678,7 @@ pub struct CheckTitle<'a> {
     /// The rule to apply for `@title`
     rule: Req,
     /// The span of the source item
-    span: TextRange,
+    span: &'a TextRange,
 }
 
 impl CheckTitle<'_> {
@@ -730,7 +730,7 @@ pub struct CheckAuthor<'a> {
     /// The rule to apply for `@author`
     rule: Req,
     /// The span of the source item
-    span: TextRange,
+    span: &'a TextRange,
 }
 
 impl CheckAuthor<'_> {
@@ -786,7 +786,7 @@ pub struct CheckNoticeAndDev<'a> {
     /// Whether to enforce either `@notice` or `@dev` if either or both are required
     notice_or_dev: bool,
     /// The span of the source item
-    span: TextRange,
+    span: &'a TextRange,
 }
 
 impl CheckNoticeAndDev<'_> {
@@ -831,7 +831,7 @@ impl CheckNoticeAndDev<'_> {
             CheckNotice::builder()
                 .natspec(self.natspec)
                 .rule(self.notice_rule)
-                .span(self.span.clone())
+                .span(self.span)
                 .build()
                 .check(),
         );
@@ -839,7 +839,7 @@ impl CheckNoticeAndDev<'_> {
             CheckDev::builder()
                 .natspec(self.natspec)
                 .rule(self.dev_rule)
-                .span(self.span.clone())
+                .span(self.span)
                 .build()
                 .check(),
         );

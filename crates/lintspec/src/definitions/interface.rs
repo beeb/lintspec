@@ -53,7 +53,7 @@ impl Validate for InterfaceDefinition {
             CheckTitle::builder()
                 .natspec(&self.natspec)
                 .rule(opts.title)
-                .span(self.span())
+                .span(&self.span)
                 .build()
                 .check(),
         );
@@ -61,7 +61,7 @@ impl Validate for InterfaceDefinition {
             CheckAuthor::builder()
                 .natspec(&self.natspec)
                 .rule(opts.author)
-                .span(self.span())
+                .span(&self.span)
                 .build()
                 .check(),
         );
@@ -71,7 +71,7 @@ impl Validate for InterfaceDefinition {
                 .notice_rule(opts.notice)
                 .dev_rule(opts.dev)
                 .notice_or_dev(options.notice_or_dev)
-                .span(self.span())
+                .span(&self.span)
                 .build()
                 .check(),
         );
