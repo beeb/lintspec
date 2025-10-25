@@ -290,12 +290,16 @@ pub trait Validate {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
 }
 
-/// An object used to check if params are correctly documented.
+/// Params NatSpec checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckParams<'a> {
+    /// The parsed [`NatSpec`], if any
     natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@param`
     rule: Req,
+    /// The list of actual params/members
     params: &'a [Identifier],
+    /// The span of the source item, used for diagnostics which don't refer to a specific param
     default_span: TextRange,
 }
 
@@ -307,23 +311,17 @@ impl CheckParams<'_> {
     /// diagnostic if it is.
     #[must_use]
     pub fn check(&self) -> Vec<Diagnostic> {
-        if self.rule.is_ignored() || (self.rule.is_required() && self.params.is_empty()) {
-            return vec![];
-        }
-        let mut res = Vec::new();
-        if self.rule.is_required() {
-            // the rule is to enforce `@param` for each param
-            res.extend(self.check_required());
-        } else if let Some(natspec) = self.natspec
-            && natspec.has_param()
-        {
-            // the rule is to forbid `@param`
-            res.extend(self.check_forbidden());
-        }
+        let mut res = match self.rule {
+            Req::Ignored => return Vec::new(),
+            Req::Required if self.params.is_empty() => return Vec::new(),
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        };
         res.sort_unstable_by_key(|d| d.span.start.utf8);
         res
     }
 
+    /// Check params in case the rule is [`Req::Required`]
     fn check_required(&self) -> Vec<Diagnostic> {
         let Some(natspec) = self.natspec else {
             return self.missing_diags().collect();
@@ -333,11 +331,18 @@ impl CheckParams<'_> {
             .collect()
     }
 
+    /// Check params in case the rule is [`Req::Forbidden`]
     fn check_forbidden(&self) -> Vec<Diagnostic> {
-        vec![Diagnostic {
-            span: self.default_span.clone(),
-            message: "@param is forbidden".to_string(),
-        }]
+        if let Some(natspec) = self.natspec
+            && natspec.has_param()
+        {
+            vec![Diagnostic {
+                span: self.default_span.clone(),
+                message: "@param is forbidden".to_string(),
+            }]
+        } else {
+            Vec::new()
+        }
     }
 
     fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
