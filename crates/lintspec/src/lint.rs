@@ -493,6 +493,43 @@ impl CheckReturns<'_> {
         })
     }
 
+    /// Check a named return's NatSpec count
+    fn named_count_diag(natspec: &NatSpec, ret: &Identifier, name: &str) -> Option<Diagnostic> {
+        match natspec.count_return(ret) {
+            0 => Some(Diagnostic {
+                span: ret.span.clone(),
+                message: format!("@return {name} is missing"),
+            }),
+            1 => None,
+            2.. => Some(Diagnostic {
+                span: ret.span.clone(),
+                message: format!("@return {name} is present more than once"),
+            }),
+        }
+    }
+
+    /// Check an unnamed return's NatSpec
+    fn unnamed_diag(
+        &self,
+        returns_count: usize,
+        idx: usize,
+        ret: &Identifier,
+    ) -> Option<Diagnostic> {
+        if idx + 1 > returns_count {
+            let message = if self.is_var {
+                "@return is missing".to_string()
+            } else {
+                format!("@return missing for unnamed return #{}", idx + 1)
+            };
+            Some(Diagnostic {
+                span: ret.span.clone(),
+                message,
+            })
+        } else {
+            None
+        }
+    }
+
     /// Generate diagnostics for all returns (both named and unnamed) in order
     fn return_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
         let returns_count = natspec.count_all_returns();
@@ -502,32 +539,10 @@ impl CheckReturns<'_> {
             .filter_map(move |(idx, ret)| {
                 if let Some(name) = &ret.name {
                     // Handle named returns
-                    match natspec.count_return(ret) {
-                        0 => Some(Diagnostic {
-                            span: ret.span.clone(),
-                            message: format!("@return {name} is missing"),
-                        }),
-                        1 => None,
-                        2.. => Some(Diagnostic {
-                            span: ret.span.clone(),
-                            message: format!("@return {name} is present more than once"),
-                        }),
-                    }
+                    Self::named_count_diag(natspec, ret, name)
                 } else {
                     // Handle unnamed returns
-                    if idx + 1 > returns_count {
-                        let message = if self.is_var {
-                            "@return is missing".to_string()
-                        } else {
-                            format!("@return missing for unnamed return #{}", idx + 1)
-                        };
-                        Some(Diagnostic {
-                            span: ret.span.clone(),
-                            message,
-                        })
-                    } else {
-                        None
-                    }
+                    self.unnamed_diag(returns_count, idx, ret)
                 }
             })
     }
