@@ -618,25 +618,55 @@ impl CheckNotice<'_> {
     }
 }
 
-/// Check if the `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
-/// diagnostic if it doesn't.
-#[must_use]
-pub fn check_dev(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
-    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no dev
-    match (rule, natspec, &NatSpec::default()) {
-        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
-            if !natspec.has_dev() =>
+/// Dev NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckDev<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@dev`
+    rule: Req,
+    /// The span of the source item
+    span: TextRange,
+}
+
+impl CheckDev<'_> {
+    /// Check if the `@dev` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+    /// diagnostic if it doesn't.
+    #[must_use]
+    pub fn check(&self) -> Option<Diagnostic> {
+        match self.rule {
+            Req::Ignored => None,
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check dev in case the rule is [`Req::Required`]
+    fn check_required(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_dev()
         {
+            None
+        } else {
             Some(Diagnostic {
-                span,
+                span: self.span.clone(),
                 message: "@dev is missing".to_string(),
             })
         }
-        (Req::Forbidden, Some(natspec), _) if natspec.has_dev() => Some(Diagnostic {
-            span,
-            message: "@dev is forbidden".to_string(),
-        }),
-        _ => None,
+    }
+
+    /// Check dev in case the rule is [`Req::Forbidden`]
+    fn check_forbidden(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_dev()
+        {
+            Some(Diagnostic {
+                span: self.span.clone(),
+                message: "@dev is forbidden".to_string(),
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -722,7 +752,14 @@ pub fn check_notice_and_dev(
                     .build()
                     .check(),
             );
-            res.extend(check_dev(natspec, dev_rule, span));
+            res.extend(
+                CheckDev::builder()
+                    .natspec(natspec)
+                    .rule(dev_rule)
+                    .span(span)
+                    .build()
+                    .check(),
+            );
         }
         (true, Req::Ignored, Req::Ignored) => {}
     }
