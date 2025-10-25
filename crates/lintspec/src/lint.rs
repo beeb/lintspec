@@ -752,16 +752,15 @@ impl CheckNoticeAndDev<'_> {
 
     /// Check that either `@notice` or `@dev` is present
     fn check_notice_or_dev(&self) -> Vec<Diagnostic> {
-        if self.natspec.is_none()
-            || (!self.natspec.as_ref().unwrap().has_notice()
-                && !self.natspec.as_ref().unwrap().has_dev())
+        if let Some(natspec) = self.natspec
+            && (natspec.has_notice() || natspec.has_dev())
         {
+            Vec::new()
+        } else {
             vec![Diagnostic {
                 span: self.span.clone(),
                 message: "@notice or @dev is missing".to_string(),
             }]
-        } else {
-            Vec::new()
         }
     }
 
