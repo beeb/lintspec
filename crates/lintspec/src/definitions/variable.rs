@@ -112,7 +112,7 @@ impl Validate for VariableDeclaration {
                 .notice_rule(notice)
                 .dev_rule(dev)
                 .notice_or_dev(options.notice_or_dev)
-                .span(self.span())
+                .span(&self.span)
                 .build()
                 .check(),
         );

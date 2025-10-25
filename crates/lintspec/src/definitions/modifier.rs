@@ -91,7 +91,7 @@ impl Validate for ModifierDefinition {
                 .notice_rule(opts.notice)
                 .dev_rule(opts.dev)
                 .notice_or_dev(options.notice_or_dev)
-                .span(self.span())
+                .span(&self.span)
                 .build()
                 .check(),
         );
