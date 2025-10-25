@@ -1,6 +1,6 @@
 //! Parsing and validation of error definitions.
 use crate::{
-    lint::{ItemDiagnostics, check_notice_and_dev, check_params},
+    lint::{CheckParams, ItemDiagnostics, check_notice_and_dev},
     natspec::NatSpec,
 };
 
@@ -62,12 +62,15 @@ impl Validate for ErrorDefinition {
             options.notice_or_dev,
             self.span(),
         ));
-        out.diags.extend(check_params(
-            &self.natspec,
-            opts.param,
-            &self.params,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckParams::builder()
+                .natspec(&self.natspec)
+                .rule(opts.param)
+                .params(&self.params)
+                .default_span(self.span())
+                .build()
+                .check(),
+        );
         out
     }
 }

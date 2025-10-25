@@ -3,7 +3,6 @@
 //! The [`lint`] function parsers the source file and contained items, validates them according to the configured
 //! rules and emits a list of diagnostics, grouped by source item.
 use std::{
-    collections::HashMap,
     fs::File,
     io,
     path::{Path, PathBuf},
@@ -291,91 +290,128 @@ pub trait Validate {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
 }
 
-/// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
-/// diagnostic for each missing one or if there are more than 1 entry per param.
-///
-/// If the rule is [`Req::Forbidden`], it checks if `@param` is present in the [`NatSpec`] and generates a diagnostic
-/// if it is.
-#[must_use]
-pub fn check_params(
-    natspec: &Option<NatSpec>,
+/// An object used to check if params are correctly documented.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckParams<'a> {
+    natspec: &'a Option<NatSpec>,
     rule: Req,
-    params: &[Identifier],
+    params: &'a [Identifier],
     default_span: TextRange,
-) -> Vec<Diagnostic> {
-    let mut res = Vec::new();
-    if rule.is_ignored() || (rule.is_required() && params.is_empty()) {
-        return res;
-    }
-    if rule.is_required() {
-        let Some(natspec) = natspec else {
-            res.extend(params.iter().filter_map(|p| {
-                p.name.as_ref().map(|name| Diagnostic {
-                    span: p.span.clone(),
-                    message: format!("@param {name} is missing"),
-                })
-            }));
-            return res;
-        };
-        let param_names: HashMap<_, _> = params
-            .iter()
-            .filter_map(|p| p.name.as_ref().map(|n| (n, &p.span)))
-            .collect();
-        let mut natspec_counts = HashMap::<_, usize>::new();
-        natspec
-            .items
-            .iter()
-            .filter_map(|i| {
-                if let NatSpecKind::Param { ref name } = i.kind {
-                    Some(name)
-                } else {
-                    None
-                }
-            })
-            .for_each(|item| *natspec_counts.entry(item).or_default() += 1);
+}
 
-        for item in &natspec.items {
-            let NatSpecKind::Param { name } = &item.kind else {
-                continue;
-            };
-            if !param_names.contains_key(name) {
-                // the item's span is relative to the comment's start offset
-                let span_start = default_span.start + item.span.start;
-                let span_end = default_span.start + item.span.end;
-                res.push(Diagnostic {
-                    span: span_start..span_end,
-                    message: format!("extra @param {name}"),
-                });
-            }
+impl CheckParams<'_> {
+    /// Check a list of params to see if they are documented with a corresponding item in the [`NatSpec`], and generate
+    /// a diagnostic for each missing one or if there are more than 1 entry per param.
+    ///
+    /// If the rule is [`Req::Forbidden`], it checks if `@param` is present in the [`NatSpec`] and generates a
+    /// diagnostic if it is.
+    #[must_use]
+    pub fn check(&self) -> Vec<Diagnostic> {
+        if self.rule.is_ignored() || (self.rule.is_required() && self.params.is_empty()) {
+            return vec![];
         }
-        for (name, span) in param_names {
-            match natspec_counts.get(name) {
-                Some(count) if count > &1 => {
-                    res.push(Diagnostic {
-                        span: span.clone(),
-                        message: format!("@param {name} is present more than once"),
-                    });
-                }
-                None => {
-                    res.push(Diagnostic {
-                        span: span.clone(),
-                        message: format!("@param {name} is missing"),
-                    });
-                }
-                Some(_) => {}
-            }
+        let mut res = Vec::new();
+        if self.rule.is_required() {
+            // the rule is to enforce `@param` for each param
+            res.extend(self.check_required());
+        } else if let Some(natspec) = self.natspec
+            && natspec.has_param()
+        {
+            // the rule is to forbid `@param`
+            res.extend(self.check_forbidden());
         }
-    } else if let Some(natspec) = natspec
-        && natspec.has_param()
-    {
-        // the rule is to forbid `@param`
-        res.push(Diagnostic {
-            span: default_span,
-            message: "@param is forbidden".to_string(),
-        });
+        res.sort_unstable_by_key(|d| d.span.start.utf8);
+        res
     }
-    res.sort_unstable_by_key(|d| d.span.start.utf8);
-    res
+
+    fn check_required(&self) -> Vec<Diagnostic> {
+        let Some(natspec) = self.natspec else {
+            return self.missing_diags().collect();
+        };
+        self.extra_diags()
+            .chain(self.count_diags(natspec))
+            .collect()
+    }
+
+    fn check_forbidden(&self) -> Vec<Diagnostic> {
+        vec![Diagnostic {
+            span: self.default_span.clone(),
+            message: "@param is forbidden".to_string(),
+        }]
+    }
+
+    fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
+        self.params.iter().filter_map(|p| {
+            p.name.as_ref().map(|name| Diagnostic {
+                span: p.span.clone(),
+                message: format!("@param {name} is missing"),
+            })
+        })
+    }
+
+    fn extra_diags(&self) -> impl Iterator<Item = Diagnostic> {
+        // FIXME: would a hashmap be faster here?
+        self.natspec
+            .as_ref()
+            .map(|n| {
+                n.items.iter().filter_map(|item| {
+                    let NatSpecKind::Param { name } = &item.kind else {
+                        return None;
+                    };
+                    if self
+                        .params
+                        .iter()
+                        .any(|p| matches!(p.name.as_ref(), Some(param_name) if param_name == name))
+                    {
+                        None
+                    } else {
+                        // the item's span is relative to the comment's start offset
+                        let span_start = self.default_span.start + item.span.start;
+                        let span_end = self.default_span.start + item.span.end;
+                        Some(Diagnostic {
+                            span: span_start..span_end,
+                            message: format!("extra @param {name}"),
+                        })
+                    }
+                })
+            })
+            .into_iter()
+            .flatten()
+    }
+
+    fn count_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
+        self.counts(natspec).filter_map(|(param, count)| {
+            let name = param.name.as_ref().expect("param to have a name");
+            match count {
+                0 => Some(Diagnostic {
+                    span: param.span.clone(),
+                    message: format!("@param {name} is missing"),
+                }),
+                1 => None,
+                2.. => Some(Diagnostic {
+                    span: param.span.clone(),
+                    message: format!("@param {name} is present more than once"),
+                }),
+            }
+        })
+    }
+
+    fn counts(&self, natspec: &NatSpec) -> impl Iterator<Item = (&Identifier, usize)> {
+        // FIXME: would a hashmap be faster here?
+        self.params.iter().map(|p: &Identifier| {
+            let param_name = p.name.as_ref().expect("params to have a name");
+            (
+                p,
+                natspec
+                    .items
+                    .iter()
+                    .filter(
+                        |n| matches!(&n.kind, NatSpecKind::Param { name } if name == param_name),
+                    )
+                    .count(),
+            )
+        })
+    }
 }
 
 /// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
