@@ -356,7 +356,7 @@ impl CheckParams<'_> {
 
     /// Generate extra param diags if `@param` is required
     fn extra_diags(&self) -> impl Iterator<Item = Diagnostic> {
-        // FIXME: would a hashmap be faster here?
+        // a HashMap is significantly slower than linear search here (few elements)
         self.natspec
             .as_ref()
             .map(|n| {
@@ -405,7 +405,7 @@ impl CheckParams<'_> {
 
     /// Count how many times each parameter is documented
     fn counts(&self, natspec: &NatSpec) -> impl Iterator<Item = (&Identifier, usize)> {
-        // FIXME: would a hashmap be faster here?
+        // a HashMap is significantly slower than linear search here (few elements)
         self.params.iter().map(|p: &Identifier| {
             let param_name = p.name.as_ref().expect("params to have a name");
             (
