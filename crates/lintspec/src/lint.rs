@@ -670,47 +670,107 @@ impl CheckDev<'_> {
     }
 }
 
-/// Check if the `@title` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
-/// diagnostic if it doesn't.
-#[must_use]
-pub fn check_title(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
-    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
-    match (rule, natspec, &NatSpec::default()) {
-        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
-            if !natspec.has_title() =>
+/// Title NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckTitle<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@title`
+    rule: Req,
+    /// The span of the source item
+    span: TextRange,
+}
+
+impl CheckTitle<'_> {
+    /// Check if the `@title` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+    /// diagnostic if it doesn't.
+    #[must_use]
+    pub fn check(&self) -> Option<Diagnostic> {
+        match self.rule {
+            Req::Ignored => None,
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check title in case the rule is [`Req::Required`]
+    fn check_required(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_title()
         {
+            None
+        } else {
             Some(Diagnostic {
-                span,
+                span: self.span.clone(),
                 message: "@title is missing".to_string(),
             })
         }
-        (Req::Forbidden, Some(natspec), _) if natspec.has_title() => Some(Diagnostic {
-            span,
-            message: "@title is forbidden".to_string(),
-        }),
-        _ => None,
+    }
+
+    /// Check title in case the rule is [`Req::Forbidden`]
+    fn check_forbidden(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_title()
+        {
+            Some(Diagnostic {
+                span: self.span.clone(),
+                message: "@title is forbidden".to_string(),
+            })
+        } else {
+            None
+        }
     }
 }
 
-/// Check if the `@author` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
-/// diagnostic if it doesn't.
-#[must_use]
-pub fn check_author(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
-    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
-    match (rule, natspec, &NatSpec::default()) {
-        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
-            if !natspec.has_author() =>
+/// Author NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckAuthor<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@author`
+    rule: Req,
+    /// The span of the source item
+    span: TextRange,
+}
+
+impl CheckAuthor<'_> {
+    /// Check if the `@author` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+    /// diagnostic if it doesn't.
+    #[must_use]
+    pub fn check(&self) -> Option<Diagnostic> {
+        match self.rule {
+            Req::Ignored => None,
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check author in case the rule is [`Req::Required`]
+    fn check_required(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_author()
         {
+            None
+        } else {
             Some(Diagnostic {
-                span,
+                span: self.span.clone(),
                 message: "@author is missing".to_string(),
             })
         }
-        (Req::Forbidden, Some(natspec), _) if natspec.has_author() => Some(Diagnostic {
-            span,
-            message: "@author is forbidden".to_string(),
-        }),
-        _ => None,
+    }
+
+    /// Check author in case the rule is [`Req::Forbidden`]
+    fn check_forbidden(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_author()
+        {
+            Some(Diagnostic {
+                span: self.span.clone(),
+                message: "@author is forbidden".to_string(),
+            })
+        } else {
+            None
+        }
     }
 }
 

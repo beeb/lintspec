@@ -1,6 +1,6 @@
 //! Parsing and validation of library definitions.
 use crate::{
-    lint::{CheckNoticeAndDev, ItemDiagnostics, check_author, check_title},
+    lint::{CheckAuthor, CheckNoticeAndDev, CheckTitle, ItemDiagnostics},
     natspec::NatSpec,
 };
 
@@ -49,10 +49,22 @@ impl Validate for LibraryDefinition {
             span: self.span(),
             diags: vec![],
         };
-        out.diags
-            .extend(check_title(&self.natspec, opts.title, self.span()));
-        out.diags
-            .extend(check_author(&self.natspec, opts.author, self.span()));
+        out.diags.extend(
+            CheckTitle::builder()
+                .natspec(&self.natspec)
+                .rule(opts.title)
+                .span(self.span())
+                .build()
+                .check(),
+        );
+        out.diags.extend(
+            CheckAuthor::builder()
+                .natspec(&self.natspec)
+                .rule(opts.author)
+                .span(self.span())
+                .build()
+                .check(),
+        );
         out.diags.extend(
             CheckNoticeAndDev::builder()
                 .natspec(&self.natspec)
