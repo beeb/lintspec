@@ -1,6 +1,6 @@
 //! Parsing and validation of state variable declarations.
 use crate::{
-    lint::{Diagnostic, ItemDiagnostics, check_notice_and_dev, check_returns},
+    lint::{CheckReturns, Diagnostic, ItemDiagnostics, check_notice_and_dev},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -114,16 +114,19 @@ impl Validate for VariableDeclaration {
             self.span(),
         ));
         if let Some(returns) = returns {
-            out.diags.extend(check_returns(
-                &self.natspec,
-                returns,
-                &[Identifier {
-                    name: None,
-                    span: self.span(),
-                }],
-                self.span(),
-                true,
-            ));
+            out.diags.extend(
+                CheckReturns::builder()
+                    .natspec(&self.natspec)
+                    .rule(returns)
+                    .returns(&[Identifier {
+                        name: None,
+                        span: self.span(),
+                    }])
+                    .default_span(self.span())
+                    .is_var(true)
+                    .build()
+                    .check(),
+            );
         }
         out
     }
