@@ -494,9 +494,8 @@ impl CheckReturns<'_> {
     }
 
     /// Generate diagnostics for all returns (both named and unnamed) in order
-    #[allow(clippy::cast_possible_wrap)]
     fn return_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
-        let returns_count = natspec.count_all_returns() as isize;
+        let returns_count = natspec.count_all_returns();
         self.returns
             .iter()
             .enumerate()
@@ -516,7 +515,7 @@ impl CheckReturns<'_> {
                     }
                 } else {
                     // Handle unnamed returns
-                    if idx as isize > returns_count - 1 {
+                    if idx + 1 > returns_count {
                         let message = if self.is_var {
                             "@return is missing".to_string()
                         } else {
