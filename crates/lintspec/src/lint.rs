@@ -422,87 +422,148 @@ impl CheckParams<'_> {
     }
 }
 
-/// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate a
-/// diagnostic for each missing one or if there are more than 1 entry per param.
-///
-/// If the rule is [`Req::Forbidden`], it checks if `@return` is present in the [`NatSpec`] and generates a diagnostic
-/// if it is.
-#[allow(clippy::cast_possible_wrap)]
-#[must_use]
-pub fn check_returns(
-    natspec: &Option<NatSpec>,
+/// Returns NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckReturns<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@return`
     rule: Req,
-    returns: &[Identifier],
+    /// The list of actual return values
+    returns: &'a [Identifier],
+    /// The span of the source item, used for diagnostics which don't refer to a specific return
     default_span: TextRange,
+    /// Whether this is a state variable (affects diagnostic messages)
     is_var: bool,
-) -> Vec<Diagnostic> {
-    let mut res = Vec::new();
-    if rule.is_ignored() || (rule.is_required() && returns.is_empty()) {
-        return res;
+}
+
+impl CheckReturns<'_> {
+    /// Check a list of returns to see if they are documented with a corresponding item in the [`NatSpec`], and generate
+    /// a diagnostic for each missing one or if there are more than 1 entry per param.
+    ///
+    /// If the rule is [`Req::Forbidden`], it checks if `@return` is present in the [`NatSpec`] and generates a
+    /// diagnostic if it is.
+    #[must_use]
+    pub fn check(&self) -> Vec<Diagnostic> {
+        match self.rule {
+            Req::Ignored => Vec::new(),
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        }
     }
-    if rule.is_required() {
-        let Some(natspec) = natspec else {
-            res.extend(returns.iter().enumerate().map(|(idx, r)| {
-                let message = if let Some(name) = &r.name {
-                    format!("@return {name} is missing")
-                } else if is_var {
-                    "@return is missing".to_string()
-                } else {
-                    format!("@return missing for unnamed return #{}", idx + 1)
-                };
-                Diagnostic {
-                    span: r.span.clone(),
-                    message,
-                }
-            }));
-            return res;
+
+    /// Check returns in case the rule is [`Req::Required`]
+    fn check_required(&self) -> Vec<Diagnostic> {
+        let Some(natspec) = self.natspec else {
+            return self.missing_diags().collect();
         };
-        let mut unnamed_returns = 0;
-        let returns_count = natspec.count_all_returns() as isize;
-        for (idx, ret) in returns.iter().enumerate() {
-            let message = if let Some(name) = &ret.name {
-                match natspec.count_return(ret) {
-                    0 => format!("@return {name} is missing"),
-                    2.. => {
-                        format!("@return {name} is present more than once")
-                    }
-                    _ => {
-                        continue;
-                    }
-                }
+        self.return_diags(natspec)
+            .chain(self.extra_unnamed_diags(natspec))
+            .collect()
+    }
+
+    /// Check returns in case the rule is [`Req::Forbidden`]
+    fn check_forbidden(&self) -> Vec<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_return()
+        {
+            vec![Diagnostic {
+                span: self.default_span.clone(),
+                message: "@return is forbidden".to_string(),
+            }]
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Generate missing return diags if `@return` is required and there's no natspec
+    fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
+        self.returns.iter().enumerate().map(|(idx, r)| {
+            let message = if let Some(name) = &r.name {
+                format!("@return {name} is missing")
+            } else if self.is_var {
+                "@return is missing".to_string()
             } else {
-                unnamed_returns += 1;
-                if idx as isize > returns_count - 1 {
-                    if is_var {
-                        "@return is missing".to_string()
-                    } else {
-                        format!("@return missing for unnamed return #{}", idx + 1)
-                    }
-                } else {
-                    continue;
-                }
+                format!("@return missing for unnamed return #{}", idx + 1)
             };
-            res.push(Diagnostic {
+            Diagnostic {
+                span: r.span.clone(),
+                message,
+            }
+        })
+    }
+
+    /// Check a named return's NatSpec count
+    fn named_count_diag(natspec: &NatSpec, ret: &Identifier, name: &str) -> Option<Diagnostic> {
+        match natspec.count_return(ret) {
+            0 => Some(Diagnostic {
+                span: ret.span.clone(),
+                message: format!("@return {name} is missing"),
+            }),
+            1 => None,
+            2.. => Some(Diagnostic {
+                span: ret.span.clone(),
+                message: format!("@return {name} is present more than once"),
+            }),
+        }
+    }
+
+    /// Check an unnamed return's NatSpec
+    fn unnamed_diag(
+        &self,
+        returns_count: usize,
+        idx: usize,
+        ret: &Identifier,
+    ) -> Option<Diagnostic> {
+        if idx + 1 > returns_count {
+            let message = if self.is_var {
+                "@return is missing".to_string()
+            } else {
+                format!("@return missing for unnamed return #{}", idx + 1)
+            };
+            Some(Diagnostic {
                 span: ret.span.clone(),
                 message,
-            });
+            })
+        } else {
+            None
         }
-        if natspec.count_unnamed_returns() > unnamed_returns {
-            res.push(Diagnostic {
-                span: returns.last().cloned().map_or(default_span, |r| r.span),
-                message: "too many unnamed returns".to_string(),
-            });
-        }
-    } else if let Some(natspec) = natspec
-        && natspec.has_return()
-    {
-        // the rule is to forbid `@return`
-        res.push(Diagnostic {
-            span: default_span,
-            message: "@return is forbidden".to_string(),
-        });
     }
-    res
+
+    /// Generate diagnostics for all returns (both named and unnamed) in order
+    fn return_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
+        let returns_count = natspec.count_all_returns();
+        self.returns
+            .iter()
+            .enumerate()
+            .filter_map(move |(idx, ret)| {
+                if let Some(name) = &ret.name {
+                    // Handle named returns
+                    Self::named_count_diag(natspec, ret, name)
+                } else {
+                    // Handle unnamed returns
+                    self.unnamed_diag(returns_count, idx, ret)
+                }
+            })
+    }
+
+    /// Generate diagnostic for too many unnamed returns in natspec
+    fn extra_unnamed_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
+        let unnamed_returns = self.returns.iter().filter(|r| r.name.is_none()).count();
+        if natspec.count_unnamed_returns() > unnamed_returns {
+            Some(Diagnostic {
+                span: self
+                    .returns
+                    .last()
+                    .cloned()
+                    .map_or(self.default_span.clone(), |r| r.span),
+                message: "too many unnamed returns".to_string(),
+            })
+        } else {
+            None
+        }
+        .into_iter()
+    }
 }
 
 /// Check if the `@notice` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a

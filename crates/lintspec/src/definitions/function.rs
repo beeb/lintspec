@@ -1,6 +1,6 @@
 //! Parsing and validation of function definitions.
 use crate::{
-    lint::{CheckParams, Diagnostic, ItemDiagnostics, check_notice_and_dev, check_returns},
+    lint::{CheckParams, CheckReturns, Diagnostic, ItemDiagnostics, check_notice_and_dev},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -127,13 +127,16 @@ impl Validate for FunctionDefinition {
                 .build()
                 .check(),
         );
-        out.diags.extend(check_returns(
-            &self.natspec,
-            opts.returns,
-            &self.returns,
-            self.span(),
-            false,
-        ));
+        out.diags.extend(
+            CheckReturns::builder()
+                .natspec(&self.natspec)
+                .rule(opts.returns)
+                .returns(&self.returns)
+                .default_span(self.span())
+                .is_var(false)
+                .build()
+                .check(),
+        );
         out
     }
 }
