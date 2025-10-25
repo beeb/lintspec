@@ -566,25 +566,55 @@ impl CheckReturns<'_> {
     }
 }
 
-/// Check if the `@notice` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
-/// diagnostic if it doesn't.
-#[must_use]
-pub fn check_notice(natspec: &Option<NatSpec>, rule: Req, span: TextRange) -> Option<Diagnostic> {
-    // add default `NatSpec` to avoid duplicate match arms for None vs Some with no notice
-    match (rule, natspec, &NatSpec::default()) {
-        (Req::Required, Some(natspec), _) | (Req::Required, None, natspec)
-            if !natspec.has_notice() =>
+/// Notice NatSpec checker.
+#[derive(Debug, Clone, bon::Builder)]
+pub struct CheckNotice<'a> {
+    /// The parsed [`NatSpec`], if any
+    natspec: &'a Option<NatSpec>,
+    /// The rule to apply for `@notice`
+    rule: Req,
+    /// The span of the source item
+    span: TextRange,
+}
+
+impl CheckNotice<'_> {
+    /// Check if the `@notice` presence matches the requirements (`Req::Required` or `Req::Forbidden`) and generate a
+    /// diagnostic if it doesn't.
+    #[must_use]
+    pub fn check(&self) -> Option<Diagnostic> {
+        match self.rule {
+            Req::Ignored => None,
+            Req::Required => self.check_required(),
+            Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check notice in case the rule is [`Req::Required`]
+    fn check_required(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_notice()
         {
+            None
+        } else {
             Some(Diagnostic {
-                span,
+                span: self.span.clone(),
                 message: "@notice is missing".to_string(),
             })
         }
-        (Req::Forbidden, Some(natspec), _) if natspec.has_notice() => Some(Diagnostic {
-            span,
-            message: "@notice is forbidden".to_string(),
-        }),
-        _ => None,
+    }
+
+    /// Check notice in case the rule is [`Req::Forbidden`]
+    fn check_forbidden(&self) -> Option<Diagnostic> {
+        if let Some(natspec) = self.natspec
+            && natspec.has_notice()
+        {
+            Some(Diagnostic {
+                span: self.span.clone(),
+                message: "@notice is forbidden".to_string(),
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -684,7 +714,14 @@ pub fn check_notice_and_dev(
             }
         }
         (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
-            res.extend(check_notice(natspec, notice_rule, span.clone()));
+            res.extend(
+                CheckNotice::builder()
+                    .natspec(natspec)
+                    .rule(notice_rule)
+                    .span(span.clone())
+                    .build()
+                    .check(),
+            );
             res.extend(check_dev(natspec, dev_rule, span));
         }
         (true, Req::Ignored, Req::Ignored) => {}
