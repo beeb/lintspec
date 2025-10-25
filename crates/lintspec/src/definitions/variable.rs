@@ -1,6 +1,6 @@
 //! Parsing and validation of state variable declarations.
 use crate::{
-    lint::{CheckReturns, Diagnostic, ItemDiagnostics, check_notice_and_dev},
+    lint::{CheckNoticeAndDev, CheckReturns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
 
@@ -106,13 +106,16 @@ impl Validate for VariableDeclaration {
             });
             return out;
         }
-        out.diags.extend(check_notice_and_dev(
-            &self.natspec,
-            notice,
-            dev,
-            options.notice_or_dev,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckNoticeAndDev::builder()
+                .natspec(&self.natspec)
+                .notice_rule(notice)
+                .dev_rule(dev)
+                .notice_or_dev(options.notice_or_dev)
+                .span(self.span())
+                .build()
+                .check(),
+        );
         if let Some(returns) = returns {
             out.diags.extend(
                 CheckReturns::builder()

@@ -1,6 +1,6 @@
 //! Parsing and validation of contract definitions.
 use crate::{
-    lint::{ItemDiagnostics, check_author, check_notice_and_dev, check_title},
+    lint::{CheckNoticeAndDev, ItemDiagnostics, check_author, check_title},
     natspec::NatSpec,
 };
 
@@ -53,13 +53,16 @@ impl Validate for ContractDefinition {
             .extend(check_title(&self.natspec, opts.title, self.span()));
         out.diags
             .extend(check_author(&self.natspec, opts.author, self.span()));
-        out.diags.extend(check_notice_and_dev(
-            &self.natspec,
-            opts.notice,
-            opts.dev,
-            options.notice_or_dev,
-            self.span(),
-        ));
+        out.diags.extend(
+            CheckNoticeAndDev::builder()
+                .natspec(&self.natspec)
+                .notice_rule(opts.notice)
+                .dev_rule(opts.dev)
+                .notice_or_dev(options.notice_or_dev)
+                .span(self.span())
+                .build()
+                .check(),
+        );
         out
     }
 }
