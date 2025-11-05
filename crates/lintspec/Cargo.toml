@@ -1,6 +1,6 @@
 [package]
 name = "lintspec"
-version = "0.11.4"
+version = "0.12.0"
 description = "A blazingly fast linter for NatSpec comments in Solidity code"
 keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
 authors.workspace = true
