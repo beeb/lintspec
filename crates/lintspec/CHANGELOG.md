@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.12.0] - 2025-11-05
+
+### Changed
+
+- **(deps)** update dependencies ([#197](https://github.com/beeb/lintspec/pull/197)) - ([2356dc7](https://github.com/beeb/lintspec/commit/2356dc7d5b2026cb9b7c4ad433ead9996f926111))
+
+- **(lint)** [**breaking**] check params ([#189](https://github.com/beeb/lintspec/pull/189)) - ([b97b62a](https://github.com/beeb/lintspec/commit/b97b62a5b3d902f95410b2ff5ad6579de8a56574))
+
+- **(lint)** [**breaking**] check returns ([#190](https://github.com/beeb/lintspec/pull/190)) - ([2f96aac](https://github.com/beeb/lintspec/commit/2f96aacc49860f26361f6a7d0f71898bf46f10d5))
+
+- **(lint)** [**breaking**] check notice and dev ([#191](https://github.com/beeb/lintspec/pull/191)) - ([35b4f94](https://github.com/beeb/lintspec/commit/35b4f942f479e0a67ffe40b9c6165ed2c767714c))
+
+- **(lint)** [**breaking**] check author and title ([#192](https://github.com/beeb/lintspec/pull/192)) - ([4dc3c75](https://github.com/beeb/lintspec/commit/4dc3c75d7cbe2cd2913bea51bad32345d3b2ec94))
+
+- **(lint)** avoid cloning spans ([#193](https://github.com/beeb/lintspec/pull/193)) - ([091bbae](https://github.com/beeb/lintspec/commit/091bbae5505cad1ffe8b52f480d2fd4c4770cbf6))
+
+- **(textindex)** chunk processing ([#184](https://github.com/beeb/lintspec/pull/184)) - ([a58f9b9](https://github.com/beeb/lintspec/commit/a58f9b9d1e9220439e0474f66d5facf4d2eef98a))
+
+- **(textindex)** chunk check ([#186](https://github.com/beeb/lintspec/pull/186)) - ([9e55fa1](https://github.com/beeb/lintspec/commit/9e55fa15c14440d703efa5142b19bf15f50c923e))
+
+- **(textindex)** [**breaking**] process line endings with SIMD ([#187](https://github.com/beeb/lintspec/pull/187)) - ([b1f92f4](https://github.com/beeb/lintspec/commit/b1f92f4aeb21778c584e21f67fc7a18829473ba1))
+
+- **(textindex)** optimize unicode processing ([#188](https://github.com/beeb/lintspec/pull/188)) - ([a4273e3](https://github.com/beeb/lintspec/commit/a4273e30b6a77bb48bfc9bace020d0e0104a0982))
+
+
+
+
+
+
+**Full Changelog**: [0.11.4...0.12.0](https://github.com/beeb/lintspec/compare/v0.11.4...v0.12.0)
+
+
 ## [0.11.4] - 2025-10-21
 
 ### Changed
