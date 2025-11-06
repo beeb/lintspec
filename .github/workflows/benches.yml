@@ -23,7 +23,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build --all-features lint parser
+        run: cargo codspeed build --all-features --bench lint --bench parser
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
@@ -46,7 +46,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build --all-features -m walltime e2e
+        run: cargo codspeed build --all-features -m walltime --bench e2e
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
