@@ -2973,7 +2973,6 @@ checksum = "dd574186a61b234717745ee569f9323def8ac863c2e4b512a25d3b0ec39322fc"
 dependencies = [
  "mutants",
  "proc-macro2",
- "rustc-hash",
  "shadow_counted",
 ]
 
