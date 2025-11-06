@@ -8,9 +8,12 @@ on:
   # performance analysis in order to generate initial data.
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  benchmarks:
-    name: Run benchmarks
+  benchmarks-instrumentation:
+    name: Run benchmarks in instrumentation mode
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -23,11 +26,34 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build --all-features
+        run: cargo codspeed build --all-features --bench lint --bench parser
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
         with:
           mode: instrumentation
+          run: cargo codspeed run
+          token: ${{ secrets.CODSPEED_TOKEN }}
+
+  benchmarks-walltime:
+    name: Run benchmarks in walltime mode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup rust toolchain, cache and cargo-codspeed binary
+        uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-codspeed
+
+      - name: Build the benchmark target(s)
+        run: cargo codspeed build --all-features -m walltime --bench e2e
+
+      - name: Run the benchmarks
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: walltime
           run: cargo codspeed run
           token: ${{ secrets.CODSPEED_TOKEN }}
