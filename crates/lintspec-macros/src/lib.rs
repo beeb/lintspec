@@ -122,9 +122,12 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
         let to_method = format_ident!("to_{variant_name_snake}");
         let as_method = format_ident!("as_{variant_name_snake}");
         let inner_type = variant.value.body.content.into_token_stream();
+        // #[doc = #msg] feature is not supported yet
+        // let _doc_to = format!("Convert to the inner {variant_name_snake} definition.");
+        // let _doc_as = format!("Reference to the inner {variant_name_snake} definition.");
 
         quote! {
-            /// Convert to the inner #variant_name_lowercase definition
+            /// Convert to the inner definition.
             #[must_use]
             pub fn #to_method(self) -> Option<#inner_type> {
                 match self {
@@ -132,7 +135,8 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
                     _ => None,
                 }
             }
-            /// Reference to the inner #variant_name_lowercase definition
+
+            /// Reference to the inner definition.
             #[must_use]
             pub fn #as_method(&self) -> Option<&#inner_type> {
                 match self {
