@@ -21,6 +21,8 @@ fn e2e_uniswap(bencher: Bencher) {
     let mut git = Command::new("git");
     git.args([
         "clone",
+        "--branch",
+        "v4.0.0",
         "--depth=1",
         "https://github.com/Uniswap/v4-core.git",
     ])
