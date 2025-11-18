@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
+## [0.2.1] - 2025-11-18
+
+### Fixed
+
+- **(macros)** doc-comment and remove unsynn features ([#198](https://github.com/beeb/lintspec/pull/198)) - ([eb41088](https://github.com/beeb/lintspec/commit/eb410884b475cd3879f773cd600288bf6a92fbc2))
+
+- **(macros)** docs for generated code ([#202](https://github.com/beeb/lintspec/pull/202)) - ([8288b37](https://github.com/beeb/lintspec/commit/8288b3739f317723dbf6e8fdd8edcf58b4cd7bf4))
+
+
+
+
+
+
+**Full Changelog**: [0.2.0...0.2.1](https://github.com/beeb/lintspec/compare/v0.2.0...v0.2.1)
+
+
 ## [0.2.0] - 2025-10-15
 
 ### Changed
