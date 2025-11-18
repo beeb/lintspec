@@ -17,4 +17,7 @@ workspace = true
 proc-macro = true
 
 [dependencies]
-unsynn = { version = "0.2.0", default-features = false, features = ["docgen"] }
+unsynn = { version = "0.3.0", default-features = false, features = [
+    "docgen",
+    "proc_macro2",
+] }
