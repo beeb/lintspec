@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.12.1] - 2025-11-18
+
+### Tests
+
+
+-  set git tag for e2e bench ([#201](https://github.com/beeb/lintspec/pull/201)) - ([9af337a](https://github.com/beeb/lintspec/commit/9af337ac8ee3983a3b9b78a71737348853f9e482))
+
+
+
+
+**Full Changelog**: [0.12.0...0.12.1](https://github.com/beeb/lintspec/compare/v0.12.0...v0.12.1)
+
+
 ## [0.12.0] - 2025-11-05
 
 ### Changed
