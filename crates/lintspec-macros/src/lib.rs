@@ -1,10 +1,9 @@
 #![allow(clippy::doc_markdown)]
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 use unsynn::{
-    BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Error, Except,
-    Gt, Ident, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _, PathSep,
-    PathSepDelimited, Pound, ToTokens as _, TokenIter, TokenStream, TokenTree, Transaction,
-    format_ident, quote, unsynn,
+    BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Except, Gt,
+    Ident, LiteralString, Lt, Many, Optional, ParenthesisGroupContaining, Parse as _, PathSep,
+    PathSepDelimited, Pound, ToTokens as _, TokenStream, TokenTree, format_ident, quote, unsynn,
 };
 
 /// Represents a module path, consisting of an optional path separator followed by
@@ -122,12 +121,15 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
         let to_method = format_ident!("to_{variant_name_snake}");
         let as_method = format_ident!("as_{variant_name_snake}");
         let inner_type = variant.value.body.content.into_token_stream();
-        // #[doc = #msg] feature is not supported yet
-        // let _doc_to = format!("Convert to the inner {variant_name_snake} definition.");
-        // let _doc_as = format!("Reference to the inner {variant_name_snake} definition.");
+        let doc_to = LiteralString::from_str(format!(
+            "Convert to the inner {variant_name_snake} definition."
+        ));
+        let doc_as = LiteralString::from_str(format!(
+            "Reference to the inner {variant_name_snake} definition."
+        ));
 
         quote! {
-            /// Convert to the inner definition.
+            #[doc = #doc_to]
             #[must_use]
             pub fn #to_method(self) -> Option<#inner_type> {
                 match self {
@@ -136,7 +138,7 @@ pub fn derive_as_to_variant(input: proc_macro::TokenStream) -> proc_macro::Token
                 }
             }
 
-            /// Reference to the inner definition.
+            #[doc = #doc_as]
             #[must_use]
             pub fn #as_method(&self) -> Option<&#inner_type> {
                 match self {
