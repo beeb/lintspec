@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use lintspec_macros::AsToVariant;
 
 #[derive(AsToVariant)]

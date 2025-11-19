@@ -13,8 +13,8 @@ use std::{
 use solar_parse::{
     Parser,
     ast::{
-        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, ParameterList, Span,
-        Spanned, VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Ident, Item, ItemContract, ItemKind,
+        ParameterList, Span, Spanned, VariableDefinition,
         interface::{
             Session,
             source_map::{FileName, SourceMap},
@@ -110,15 +110,16 @@ impl Parse for SolarParser {
                     let _ = visitor.visit_source_unit(&ast);
                     Ok(visitor.definitions)
                 })
-                .map_err(|_| Error::ParsingError {
-                    path: pathbuf,
-                    loc: TextIndex::ZERO,
-                    message: this
-                        .sess
-                        .emitted_errors()
-                        .expect("should have a Result")
-                        .unwrap_err()
-                        .to_string(),
+                .map_err(|_| {
+                    let message = match this.sess.emitted_errors() {
+                        Some(Err(diags)) => diags.to_string(),
+                        None | Some(Ok(())) => "unknown error".to_string(),
+                    };
+                    Error::ParsingError {
+                        path: pathbuf,
+                        loc: TextIndex::ZERO,
+                        message,
+                    }
                 })?;
 
             let document_id = DocumentId::new();
@@ -382,7 +383,11 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
                     span,
                     params,
                     natspec,
-                    name: self.header.name.unwrap().to_string(),
+                    name: self
+                        .header
+                        .name
+                        .as_ref()
+                        .map_or("modifier".to_string(), Ident::to_string),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
                         r#override: self.header.override_.is_some(),
@@ -393,7 +398,11 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
             FunctionKind::Function => Some(
                 FunctionDefinition {
                     parent: visitor.current_parent.clone(),
-                    name: self.header.name.unwrap().to_string(),
+                    name: self
+                        .header
+                        .name
+                        .as_ref()
+                        .map_or("function".to_string(), Ident::to_string),
                     returns: returns.clone(),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
@@ -433,7 +442,10 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         Some(
             VariableDeclaration {
                 parent: visitor.current_parent.clone(),
-                name: self.name.unwrap().to_string(),
+                name: self
+                    .name
+                    .as_ref()
+                    .map_or("variable".to_string(), Ident::to_string),
                 span,
                 natspec,
                 attributes,

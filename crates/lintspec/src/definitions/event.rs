@@ -79,6 +79,7 @@ impl Validate for EventDefinition {
 }
 
 #[cfg(all(test, feature = "solar"))]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use std::sync::LazyLock;
 
