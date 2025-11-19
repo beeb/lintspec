@@ -27,6 +27,7 @@ use crate::{
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::DocumentId,
+    prelude::OrPanic as _,
     textindex::{TextIndex, TextRange},
     utils::{detect_solidity_version, get_latest_supported_version},
 };
@@ -147,7 +148,7 @@ impl Parse for SlangParser {
                 } else {
                     detect_solidity_version(&contents, &path)?
                 };
-                let parser = Parser::create(solidity_version).expect("parser should initialize");
+                let parser = Parser::create(solidity_version).or_panic("parser should initialize");
                 let output = parser.parse_file_contents(&contents);
                 (keep_contents.then_some(contents), output)
             };
@@ -163,7 +164,10 @@ impl Parse for SlangParser {
             }
             let document_id = DocumentId::new();
             if let Some(contents) = contents {
-                let mut documents = this.documents.lock().expect("mutex should not be poisoned");
+                let mut documents = this
+                    .documents
+                    .lock()
+                    .or_panic("mutex should not be poisoned");
                 documents.insert(document_id, contents);
             }
             let cursor = output.create_tree_cursor();
@@ -184,7 +188,7 @@ impl Parse for SlangParser {
         Ok(Arc::try_unwrap(self.documents)
             .map_err(|_| Error::DanglingParserReferences)?
             .into_inner()
-            .expect("mutex should not be poisoned"))
+            .or_panic("mutex should not be poisoned"))
     }
 }
 
@@ -207,7 +211,7 @@ impl Extract for ConstructorDefinition {
             @constructor_attr attributes:[ConstructorAttributes]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -241,7 +245,7 @@ impl Extract for EnumDefinition {
             @enum_members members:[EnumMembers]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -274,7 +278,7 @@ impl Extract for ErrorDefinition {
             @err_params members:[ErrorParametersDeclaration]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -307,7 +311,7 @@ impl Extract for EventDefinition {
             @event_params parameters:[EventParametersDeclaration]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -349,7 +353,7 @@ impl Extract for FunctionDefinition {
             ]?
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -397,7 +401,7 @@ impl Extract for ModifierDefinition {
             @modifier_attr attributes:[ModifierAttributes]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -437,7 +441,7 @@ impl Extract for StructDefinition {
             @struct_members members:[StructMembers]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -470,7 +474,7 @@ impl Extract for VariableDeclaration {
             @variable_name name:[Identifier]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -502,7 +506,7 @@ impl Extract for ContractDefinition {
             @contract_spec inheritance:[InheritanceSpecifier]?
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -535,7 +539,7 @@ impl Extract for InterfaceDefinition {
             @iface_spec inheritance:[InheritanceSpecifier]?
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -567,7 +571,7 @@ impl Extract for LibraryDefinition {
             @library_name name:[Identifier]
         ]",
         )
-        .expect("query should compile")
+        .or_panic("query should compile")
     }
 
     fn extract(m: QueryMatch) -> Result<Definition> {
@@ -748,7 +752,7 @@ pub fn extract_attributes(cursor: &Cursor) -> Attributes {
         match cursor
             .node()
             .as_terminal()
-            .expect("should be terminal kind")
+            .or_panic("should be terminal kind")
             .kind
         {
             TerminalKind::ExternalKeyword => out.visibility = Visibility::External,
@@ -810,7 +814,7 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
         @member_name name:[Identifier]
     ]",
     )
-    .expect("query should compile");
+    .or_panic("query should compile");
     for m in cursor.query(vec![query]) {
         let member_name = capture(&m, "member_name")?;
         out.push(Identifier {

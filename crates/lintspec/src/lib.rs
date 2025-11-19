@@ -9,6 +9,7 @@ pub mod files;
 pub mod lint;
 pub mod natspec;
 pub mod parser;
+pub(crate) mod prelude;
 pub mod textindex;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "cli")))]

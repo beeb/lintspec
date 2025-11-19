@@ -6,7 +6,10 @@ use std::{
 
 use ignore::{WalkBuilder, WalkState, types::TypesBuilder};
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    prelude::OrPanic as _,
+};
 
 /// Find paths to Solidity files in the provided parent paths, in parallel.
 ///
@@ -36,7 +39,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
     let types = TypesBuilder::new()
         .select("solidity")
         .build()
-        .expect("types builder should build");
+        .or_panic("types builder should build");
 
     // build the walker
     let mut walker: Option<WalkBuilder> = None;

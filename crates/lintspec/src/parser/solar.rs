@@ -35,6 +35,7 @@ use crate::{
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
+    prelude::OrPanic as _,
     textindex::{TextIndex, TextRange, compute_indices},
 };
 
@@ -124,7 +125,10 @@ impl Parse for SolarParser {
 
             let document_id = DocumentId::new();
             if keep_contents {
-                let mut documents = this.documents.lock().expect("mutex should not be poisoned");
+                let mut documents = this
+                    .documents
+                    .lock()
+                    .or_panic("mutex should not be poisoned");
                 documents.push((document_id, Arc::clone(&source_file)));
             }
             complete_text_ranges(&source_file.src, &mut definitions);
@@ -144,10 +148,10 @@ impl Parse for SolarParser {
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
         let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
         drop(sess);
-        Ok(Arc::try_unwrap(self.documents)
+        Arc::try_unwrap(self.documents)
             .map_err(|_| Error::DanglingParserReferences)?
             .into_inner()
-            .expect("mutex should not be poisoned")
+            .or_panic("mutex should not be poisoned")
             .into_iter()
             .map(|(id, doc)| {
                 let source_file =
@@ -158,7 +162,7 @@ impl Parse for SolarParser {
                         .map_err(|_| Error::DanglingParserReferences)?,
                 ))
             })
-            .collect::<Result<HashMap<_, _>>>()?)
+            .collect::<Result<HashMap<_, _>>>()
     }
 }
 
@@ -766,12 +770,12 @@ fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
             .enumerate()
             .skip(start_idx)
             .find_map(|(i, ti)| (ti.utf8 >= span.start.utf8).then_some((i, *ti)))
-            .expect("utf8 start offset should be present in cache");
+            .or_panic("utf8 start offset should be present in cache");
         span.end = *indices
             .iter()
             .skip(idx + 1)
             .find(|ti| ti.utf8 >= span.end.utf8)
-            .expect("utf8 end offset should be present in cache");
+            .or_panic("utf8 end offset should be present in cache");
         // for the next definition or item inside of a definition, we can start after the start of this item
         // because start indices increase monotonically
         idx + 1
