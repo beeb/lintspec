@@ -145,20 +145,20 @@ impl Parse for SolarParser {
         let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
         drop(sess);
         Ok(Arc::try_unwrap(self.documents)
-            .expect("all references should have been dropped")
+            .map_err(|_| Error::DanglingParserReferences)?
             .into_inner()
             .expect("mutex should not be poisoned")
             .into_iter()
             .map(|(id, doc)| {
-                let source_file = Arc::try_unwrap(doc)
-                    .expect("all SourceMap references should have been dropped");
-                (
+                let source_file =
+                    Arc::try_unwrap(doc).map_err(|_| Error::DanglingParserReferences)?;
+                Ok((
                     id,
                     Arc::try_unwrap(source_file.src)
-                        .expect("all SourceFile references should have been dropped"),
-                )
+                        .map_err(|_| Error::DanglingParserReferences)?,
+                ))
             })
-            .collect())
+            .collect::<Result<HashMap<_, _>>>()?)
     }
 }
 
@@ -463,7 +463,11 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             .fields
             .iter()
             .map(|m| Identifier {
-                name: Some(m.name.expect("name").to_string()),
+                name: Some(
+                    m.name
+                        .as_ref()
+                        .map_or("member".to_string(), Ident::to_string),
+                ),
                 span: visitor.span_to_textrange(m.span),
             })
             .collect();

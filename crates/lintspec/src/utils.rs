@@ -103,15 +103,14 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
                 let text = expr.node().unparse();
                 let text = text.trim();
                 // check if we are dealing with a version range with hyphen format
+                let v = version_reqs.last_mut().ok_or(Error::ParsingError {
+                    path: path.to_path_buf(),
+                    loc: expr.text_range().start.into(),
+                    message: "version expression is not in an expression set".to_string(),
+                })?;
                 if let Some((start, end)) = text.split_once('-') {
-                    let v = version_reqs
-                        .last_mut()
-                        .expect("version expression should be inside an expression set");
                     let _ = write!(v, ",>={},<={}", start.trim(), end.trim());
                 } else {
-                    let v = version_reqs
-                        .last_mut()
-                        .expect("version expression should be inside an expression set");
                     // for `semver`, the different specifiers should be combined with a comma if they must all match
                     if let Some(true) = text.chars().next().map(|c| c.is_ascii_digit()) {
                         // for `semver`, no comparator is the same as the caret comparator, but for solidity it means `=`

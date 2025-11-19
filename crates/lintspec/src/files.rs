@@ -34,7 +34,6 @@ pub fn find_sol_files<T: AsRef<Path>>(
 
     // types filter to only consider Solidity files
     let types = TypesBuilder::new()
-        .add_defaults()
         .select("solidity")
         .build()
         .expect("types builder should build");
@@ -89,8 +88,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
                 return WalkState::Continue;
             }
             // we found a suitable file
-            tx.send(path.to_path_buf())
-                .expect("channel receiver should never be dropped before end of function scope");
+            tx.send(path.to_path_buf()).ok();
             WalkState::Continue
         })
     });

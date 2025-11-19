@@ -685,9 +685,10 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
             break;
         }
     }
-    if let Some("MultiLineNatSpecComment") = items.last().map(|(kind, _, _)| kind.as_str()) {
+    if let Some("MultiLineNatSpecComment") = items.last().map(|(kind, _, _)| kind.as_str())
+        && let Some((_, _, natspec)) = items.pop()
+    {
         // if the last comment is multiline, we ignore all previous comments
-        let (_, _, natspec) = items.pop().expect("there should be at least one elem");
         return Ok(Some(natspec));
     }
     // the last comment is single-line

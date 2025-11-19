@@ -18,6 +18,7 @@ mod_module_files = "warn"
 module_name_repetitions = "allow"
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
+expect_used = "deny"
 
 [profile.release]
 lto = "thin"

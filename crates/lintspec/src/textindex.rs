@@ -258,8 +258,7 @@ impl From<[i8; SIMD_LANES]> for Advance {
 
 /// Compute the [`TextIndex`] list corresponding to the byte offsets in the given source.
 ///
-/// The list of offsets _MUST_ be sorted, but it can contain duplicates. The list of offsets _MUST_ have at least 1
-/// element. The source string slice _MUST NOT_ be empty.
+/// The list of offsets _MUST_ be sorted, but it can contain duplicates. The source string slice _MUST NOT_ be empty.
 ///
 /// This routine iterates through the characters and advances a running [`TextIndex`], storing a copy in the output
 /// if it matches a desired offset.
@@ -271,9 +270,9 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut current = TextIndex::ZERO;
 
     let mut ofs_iter = offsets.iter();
-    let mut next_offset = ofs_iter
-        .next()
-        .expect("there should be one element at least");
+    let Some(mut next_offset) = ofs_iter.next() else {
+        return text_indices;
+    };
     // need to cast the bytes to `i8` to work with SIMD instructions from `wide`.
     let bytes: &[i8] = transmute_ref!(source.as_bytes());
     'outer: loop {
