@@ -36,11 +36,8 @@ pub fn find_sol_files<T: AsRef<Path>>(
     let exclude = Arc::new(exclude.iter().map(PathBuf::as_path).collect::<Vec<_>>());
 
     // types filter to only consider Solidity files
-    let mut builder = TypesBuilder::new();
-    builder
-        .add("solidity", "*.sol")
-        .or_panic("glob should be valid");
-    let types = builder
+    let types = TypesBuilder::new()
+        .add_defaults()
         .select("solidity")
         .build()
         .or_panic("types builder should build");
