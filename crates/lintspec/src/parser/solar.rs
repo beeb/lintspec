@@ -13,8 +13,8 @@ use std::{
 use solar_parse::{
     Parser,
     ast::{
-        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, ParameterList, Span,
-        Spanned, VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Ident, Item, ItemContract, ItemKind,
+        ParameterList, Span, Spanned, VariableDefinition,
         interface::{
             Session,
             source_map::{FileName, SourceMap},
@@ -35,6 +35,7 @@ use crate::{
     error::{Error, Result},
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
+    prelude::OrPanic as _,
     textindex::{TextIndex, TextRange, compute_indices},
 };
 
@@ -110,20 +111,24 @@ impl Parse for SolarParser {
                     let _ = visitor.visit_source_unit(&ast);
                     Ok(visitor.definitions)
                 })
-                .map_err(|_| Error::ParsingError {
-                    path: pathbuf,
-                    loc: TextIndex::ZERO,
-                    message: this
-                        .sess
-                        .emitted_errors()
-                        .expect("should have a Result")
-                        .unwrap_err()
-                        .to_string(),
+                .map_err(|_| {
+                    let message = match this.sess.emitted_errors() {
+                        Some(Err(diags)) => diags.to_string(),
+                        None | Some(Ok(())) => "unknown error".to_string(),
+                    };
+                    Error::ParsingError {
+                        path: pathbuf,
+                        loc: TextIndex::ZERO,
+                        message,
+                    }
                 })?;
 
             let document_id = DocumentId::new();
             if keep_contents {
-                let mut documents = this.documents.lock().expect("mutex should not be poisoned");
+                let mut documents = this
+                    .documents
+                    .lock()
+                    .or_panic("mutex should not be poisoned");
                 documents.push((document_id, Arc::clone(&source_file)));
             }
             complete_text_ranges(&source_file.src, &mut definitions);
@@ -143,21 +148,21 @@ impl Parse for SolarParser {
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
         let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
         drop(sess);
-        Ok(Arc::try_unwrap(self.documents)
-            .expect("all references should have been dropped")
+        Arc::try_unwrap(self.documents)
+            .map_err(|_| Error::DanglingParserReferences)?
             .into_inner()
-            .expect("mutex should not be poisoned")
+            .or_panic("mutex should not be poisoned")
             .into_iter()
             .map(|(id, doc)| {
-                let source_file = Arc::try_unwrap(doc)
-                    .expect("all SourceMap references should have been dropped");
-                (
+                let source_file =
+                    Arc::try_unwrap(doc).map_err(|_| Error::DanglingParserReferences)?;
+                Ok((
                     id,
                     Arc::try_unwrap(source_file.src)
-                        .expect("all SourceFile references should have been dropped"),
-                )
+                        .map_err(|_| Error::DanglingParserReferences)?,
+                ))
             })
-            .collect())
+            .collect::<Result<HashMap<_, _>>>()
     }
 }
 
@@ -382,7 +387,11 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
                     span,
                     params,
                     natspec,
-                    name: self.header.name.unwrap().to_string(),
+                    name: self
+                        .header
+                        .name
+                        .as_ref()
+                        .map_or("modifier".to_string(), Ident::to_string),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
                         r#override: self.header.override_.is_some(),
@@ -393,7 +402,11 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
             FunctionKind::Function => Some(
                 FunctionDefinition {
                     parent: visitor.current_parent.clone(),
-                    name: self.header.name.unwrap().to_string(),
+                    name: self
+                        .header
+                        .name
+                        .as_ref()
+                        .map_or("function".to_string(), Ident::to_string),
                     returns: returns.clone(),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
@@ -433,7 +446,10 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         Some(
             VariableDeclaration {
                 parent: visitor.current_parent.clone(),
-                name: self.name.unwrap().to_string(),
+                name: self
+                    .name
+                    .as_ref()
+                    .map_or("variable".to_string(), Ident::to_string),
                 span,
                 natspec,
                 attributes,
@@ -451,7 +467,11 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
             .fields
             .iter()
             .map(|m| Identifier {
-                name: Some(m.name.expect("name").to_string()),
+                name: Some(
+                    m.name
+                        .as_ref()
+                        .map_or("member".to_string(), Ident::to_string),
+                ),
                 span: visitor.span_to_textrange(m.span),
             })
             .collect();
@@ -750,12 +770,12 @@ fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
             .enumerate()
             .skip(start_idx)
             .find_map(|(i, ti)| (ti.utf8 >= span.start.utf8).then_some((i, *ti)))
-            .expect("utf8 start offset should be present in cache");
+            .or_panic("utf8 start offset should be present in cache");
         span.end = *indices
             .iter()
             .skip(idx + 1)
             .find(|ti| ti.utf8 >= span.end.utf8)
-            .expect("utf8 end offset should be present in cache");
+            .or_panic("utf8 end offset should be present in cache");
         // for the next definition or item inside of a definition, we can start after the start of this item
         // because start indices increase monotonically
         idx + 1

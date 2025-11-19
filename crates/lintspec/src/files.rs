@@ -6,7 +6,10 @@ use std::{
 
 use ignore::{WalkBuilder, WalkState, types::TypesBuilder};
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    prelude::OrPanic as _,
+};
 
 /// Find paths to Solidity files in the provided parent paths, in parallel.
 ///
@@ -37,7 +40,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
         .add_defaults()
         .select("solidity")
         .build()
-        .expect("types builder should build");
+        .or_panic("types builder should build");
 
     // build the walker
     let mut walker: Option<WalkBuilder> = None;
@@ -89,8 +92,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
                 return WalkState::Continue;
             }
             // we found a suitable file
-            tx.send(path.to_path_buf())
-                .expect("channel receiver should never be dropped before end of function scope");
+            tx.send(path.to_path_buf()).ok();
             WalkState::Continue
         })
     });

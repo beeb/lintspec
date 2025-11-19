@@ -199,8 +199,7 @@ fn split_into_words(input: &str) -> Vec<String> {
         let next = chars.peek().copied();
 
         if c.is_uppercase() {
-            if !current_word.is_empty() {
-                let prev = current_word.chars().last().unwrap();
+            if let Some(prev) = current_word.chars().last() {
                 // Both cases should take the same action, so fold them together.
                 // Case 1: previous is lowercase or digit, now uppercase (e.g. fooBar, foo1Bar)
                 // Case 2: end of consecutive uppercase group, e.g. "BARBaz"

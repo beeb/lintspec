@@ -375,6 +375,7 @@ fn single_line_comment(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use similar_asserts::assert_eq;
     use winnow::error::ParseError;

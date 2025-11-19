@@ -388,7 +388,7 @@ impl CheckParams<'_> {
     /// Generate diagnostics for wrong number of `@param` comments (missing or more than one)
     fn count_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
         self.counts(natspec).filter_map(|(param, count)| {
-            let name = param.name.as_ref().expect("param to have a name");
+            let name = param.name.as_ref().map_or("unnamed_param", String::as_str);
             match count {
                 0 => Some(Diagnostic {
                     span: param.span.clone(),
@@ -407,7 +407,7 @@ impl CheckParams<'_> {
     fn counts(&self, natspec: &NatSpec) -> impl Iterator<Item = (&Identifier, usize)> {
         // a HashMap is significantly slower than linear search here (few elements)
         self.params.iter().map(|p: &Identifier| {
-            let param_name = p.name.as_ref().expect("params to have a name");
+            let param_name = p.name.as_ref().map_or("", String::as_str);
             (
                 p,
                 natspec

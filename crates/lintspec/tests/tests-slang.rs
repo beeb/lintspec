@@ -1,4 +1,5 @@
 #![cfg(all(feature = "solar", feature = "slang"))]
+#![allow(clippy::unwrap_used)]
 use lintspec::{
     lint::{ValidationOptions, lint},
     parser::{slang::SlangParser, solar::SolarParser},

@@ -79,6 +79,7 @@ impl Validate for EnumDefinition {
 }
 
 #[cfg(all(test, feature = "solar"))]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use std::sync::LazyLock;
 
