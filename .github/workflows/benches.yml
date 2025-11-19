@@ -2,7 +2,7 @@ name: CodSpeed
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
   # `workflow_dispatch` allows CodSpeed to trigger backtest
   # performance analysis in order to generate initial data.
@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # for codspeed OIDC token
 
 jobs:
   benchmarks-instrumentation:
@@ -33,7 +34,6 @@ jobs:
         with:
           mode: instrumentation
           run: cargo codspeed run
-          token: ${{ secrets.CODSPEED_TOKEN }}
 
   benchmarks-walltime:
     name: Run benchmarks in walltime mode
@@ -56,4 +56,3 @@ jobs:
         with:
           mode: walltime
           run: cargo codspeed run
-          token: ${{ secrets.CODSPEED_TOKEN }}
