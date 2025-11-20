@@ -912,7 +912,6 @@ impl From<TextIndex> for SlangTextIndex {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use std::{fs::File, ops::Range};
 

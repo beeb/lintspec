@@ -327,7 +327,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
 }
 
 #[cfg(test)]
-#[allow(clippy::cast_possible_wrap, clippy::unwrap_used)]
+#[allow(clippy::cast_possible_wrap)]
 mod tests {
     use similar_asserts::assert_eq;
 
