@@ -9,14 +9,14 @@ pub(crate) trait OrPanic<T> {
     fn or_panic(self, msg: &str) -> T;
 }
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 impl<T> OrPanic<T> for Option<T> {
     fn or_panic(self, msg: &str) -> T {
         self.expect(msg)
     }
 }
 
-#[allow(clippy::expect_used)]
+#[expect(clippy::expect_used)]
 impl<T, E> OrPanic<T> for Result<T, E>
 where
     E: fmt::Debug,

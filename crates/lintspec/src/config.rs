@@ -220,7 +220,7 @@ impl WithParamsRules {
 /// General config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct BaseConfig {
     /// Paths to files and folders to analyze
     #[builder(default)]
