@@ -6,7 +6,6 @@ use clap_complete::{generate, generate_to};
 
 use lintspec::cli::{Args, Commands, RunResult, read_config, run, write_default_config};
 
-#[allow(clippy::too_many_lines)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(any(feature = "slang", feature = "solar")))]
     compile_error!("no parser enabled, please enable feature `slang` or `solar`.");

@@ -12,6 +12,7 @@ repository = "https://github.com/beeb/lintspec"
 rust-version = "1.89.0"
 
 [workspace.lints.clippy]
+allow_attributes = "warn"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 mod_module_files = "warn"

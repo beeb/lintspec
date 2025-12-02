@@ -8,7 +8,6 @@ use lintspec::{
     parser::{Parse as _, solar::SolarParser},
 };
 
-#[allow(unused_variables)]
 #[must_use]
 pub fn snapshot_content(
     path: &str,

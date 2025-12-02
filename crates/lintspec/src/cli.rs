@@ -390,7 +390,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
     // lint all the requested Solidity files
     let options: ValidationOptions = config.into();
 
-    #[allow(unused_variables)]
+    #[cfg_attr(all(feature = "slang", feature = "slang"), expect(unused_variables))]
     #[cfg(feature = "solar")]
     let parser = SolarParser::default();
 

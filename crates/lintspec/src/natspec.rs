@@ -267,7 +267,7 @@ fn natspec_kind(input: &mut LocatingSlice<&str>) -> ModalResult<NatSpecKind> {
 }
 
 /// Parse the end of a multiline comment (one or more `*` followed by `/`)
-#[allow(clippy::unnecessary_wraps)]
+#[expect(clippy::unnecessary_wraps)]
 fn end_of_comment(input: &mut LocatingSlice<&str>) -> ModalResult<()> {
     let _ = (repeat::<_, _, (), (), _>(1.., '*'), '/').parse_next(input);
     Ok(())

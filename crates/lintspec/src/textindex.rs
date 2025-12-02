@@ -208,10 +208,10 @@ impl From<[i8; SIMD_LANES]> for Advance {
     fn from(chunk: [i8; SIMD_LANES]) -> Self {
         let bytes = i8x32::new(chunk);
         let nonascii_mask = bytes.simd_lt(i8x32::ZERO).to_bitmask();
-        #[allow(clippy::cast_possible_wrap)]
+        #[expect(clippy::cast_possible_wrap)]
         let lf_bytes = i8x32::splat(b'\n' as i8);
         let mut lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
-        #[allow(clippy::cast_possible_wrap)]
+        #[expect(clippy::cast_possible_wrap)]
         let cr_bytes = i8x32::splat(b'\r' as i8);
         let mut cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
 
@@ -327,7 +327,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
 }
 
 #[cfg(test)]
-#[allow(clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_wrap)]
 mod tests {
     use similar_asserts::assert_eq;
 
