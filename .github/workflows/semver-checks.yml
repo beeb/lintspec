@@ -14,12 +14,12 @@ jobs:
     timeout-minutes: 30
     if: ${{ !startsWith(github.head_ref, 'release-plz-') }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha || github.event.merge_group.head.sha }}
           path: PR_BRANCH
       - name: Checkout baseline
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.baseline-rev || github.event.pull_request.base.ref || github.event.merge_group.base.ref }}
           path: BASELINE_BRANCH

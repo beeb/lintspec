@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 30
     if: ${{ startsWith(github.head_ref, 'release-plz-') }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Publish dry-run
