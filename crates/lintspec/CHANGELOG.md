@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.12.2] - 2025-12-22
+
+### Changed
+
+- **(deps)** update deps ([#213](https://github.com/beeb/lintspec/pull/213)) - ([aa2375b](https://github.com/beeb/lintspec/commit/aa2375bb4b5d8776063c0c4da9c75b6483df4fd1))
+
+
+-  small improvements ([#203](https://github.com/beeb/lintspec/pull/203)) - ([2e3bd0d](https://github.com/beeb/lintspec/commit/2e3bd0de8cb461f839fdf778ad783e56e465a66d))
+-  clippy config ([#206](https://github.com/beeb/lintspec/pull/206)) - ([3811c30](https://github.com/beeb/lintspec/commit/3811c3003213711a50b3696bb23249ffa4174666))
+-  move all allow lints to expect ([#209](https://github.com/beeb/lintspec/pull/209)) - ([5ca3fdd](https://github.com/beeb/lintspec/commit/5ca3fddf3df251d971260d07d8971c1726c031cc))
+
+### Documentation
+
+
+-  typo ([#205](https://github.com/beeb/lintspec/pull/205)) - ([9a68ba4](https://github.com/beeb/lintspec/commit/9a68ba4f875888179fff49dec2413e7c723f6385))
+
+
+
+
+**Full Changelog**: [0.12.1...0.12.2](https://github.com/beeb/lintspec/compare/v0.12.1...v0.12.2)
+
+
 ## [0.12.1] - 2025-11-18
 
 ### Tests
