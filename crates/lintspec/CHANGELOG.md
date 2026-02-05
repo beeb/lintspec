@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.12.3] - 2026-02-05
+
+### Changed
+
+
+-  update Cargo.lock dependencies - ([0000000](https://github.com/beeb/lintspec/commit/0000000))
+
+
+
+
+**Full Changelog**: [0.12.2...0.12.3](https://github.com/beeb/lintspec/compare/v0.12.2...v0.12.3)
+
+
 ## [0.12.2] - 2025-12-22
 
 ### Changed
