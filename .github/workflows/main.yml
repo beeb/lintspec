@@ -2,11 +2,14 @@ name: Main workflow
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
 
 jobs:
   build-test:
@@ -61,7 +64,7 @@ jobs:
           cache-on-failure: true
       - run: cargo +nightly doc --all-features --no-deps --document-private-items
         env:
-          RUSTDOCFLAGS: '--cfg docsrs -D warnings'
+          RUSTDOCFLAGS: "--cfg docsrs -D warnings"
 
   fmt:
     runs-on: ubuntu-latest
