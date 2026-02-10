@@ -165,6 +165,19 @@ see the CLI usage information, run:
 lintspec help
 ```
 
+For arguments (`--[TYPE]--required`, `--[TYPE]--ignored`, `--[TYPE]--forbidden`) which expect an "item", the following
+values are available:
+
+```
+# for @title and @author
+contract, interface, library
+# for others
+contract, interface, library, constructor, enum,
+error, event,private_function, internal_function,
+public_function, external_function, modifier, struct,
+private_variable, internal_variable, public_variable,
+```
+
 ## Usage in GitHub Actions
 
 You can check your code in CI with the lintspec GitHub Action. Any `.lintspec.toml` or `.nsignore` file in the
