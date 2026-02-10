@@ -173,9 +173,9 @@ values are available:
 contract, interface, library
 # for others
 contract, interface, library, constructor, enum,
-error, event,private_function, internal_function,
-public_function, external_function, modifier, struct,
-private_variable, internal_variable, public_variable
+error, event,private-function, internal-function,
+public-function, external-function, modifier, struct,
+private-variable, internal-variable, public-variable
 ```
 
 ## Usage in GitHub Actions
