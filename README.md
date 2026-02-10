@@ -168,14 +168,14 @@ lintspec help
 For arguments (`--[TYPE]--required`, `--[TYPE]--ignored`, `--[TYPE]--forbidden`) which expect an "item", the following
 values are available:
 
-```
+```text
 # for @title and @author
 contract, interface, library
 # for others
 contract, interface, library, constructor, enum,
 error, event,private_function, internal_function,
 public_function, external_function, modifier, struct,
-private_variable, internal_variable, public_variable,
+private_variable, internal_variable, public_variable
 ```
 
 ## Usage in GitHub Actions
