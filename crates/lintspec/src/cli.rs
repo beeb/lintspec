@@ -13,7 +13,7 @@ use clap_complete::Shell;
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
-use crate::{
+use lintspec_core::{
     config::{Config, Req},
     definitions::{ContractType, ItemType},
     files::find_sol_files,
@@ -22,10 +22,10 @@ use crate::{
 };
 
 #[cfg(feature = "slang")]
-use crate::parser::slang::SlangParser;
+use lintspec_core::parser::slang::SlangParser;
 
 #[cfg(feature = "solar")]
-use crate::parser::solar::SolarParser;
+use lintspec_core::parser::solar::SolarParser;
 
 #[cfg(not(feature = "slang"))]
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -430,7 +430,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                     .create(true)
                     .write(true)
                     .open(path)
-                    .map_err(|err| crate::error::Error::IOError {
+                    .map_err(|err| lintspec_core::error::Error::IOError {
                         path: path.clone(),
                         err,
                     })?,

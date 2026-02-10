@@ -1,5 +1,5 @@
 #![cfg(feature = "solar")]
-use lintspec::lint::ValidationOptions;
+use lintspec_core::lint::ValidationOptions;
 
 mod common;
 use common::*;

@@ -1503,19 +1503,33 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 name = "lintspec"
 version = "0.12.2"
 dependencies = [
- "bon",
  "clap",
  "clap_complete",
  "codspeed-divan-compat",
- "derive_more",
  "dotenvy",
+ "dunce",
+ "figment",
+ "lintspec-core",
+ "miette",
+ "rayon",
+ "serde_json",
+ "temp-dir",
+ "toml 0.9.11+spec-1.1.0",
+]
+
+[[package]]
+name = "lintspec-core"
+version = "0.12.2"
+dependencies = [
+ "bon",
+ "codspeed-divan-compat",
+ "derive_more",
  "dunce",
  "figment",
  "ignore",
  "insta",
  "lintspec-macros",
  "miette",
- "rayon",
  "regex",
  "semver 1.0.27",
  "serde",
@@ -1525,7 +1539,6 @@ dependencies = [
  "solar-parse",
  "temp-dir",
  "thiserror",
- "toml 0.9.11+spec-1.1.0",
  "uuid",
  "wide",
  "winnow",

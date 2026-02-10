@@ -216,7 +216,6 @@ impl Validate for Definition {
 
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum ContractType {
     #[display("contract")]
@@ -227,9 +226,21 @@ pub enum ContractType {
     Library,
 }
 
+impl std::str::FromStr for ContractType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "contract" => Ok(Self::Contract),
+            "interface" => Ok(Self::Interface),
+            "library" => Ok(Self::Library),
+            _ => Err(format!("invalid contract type: {s}")),
+        }
+    }
+}
+
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     #[display("contract")]
@@ -256,7 +267,6 @@ pub enum ItemType {
     ExternalFunction,
     #[display("modifier")]
     Modifier,
-    #[cfg_attr(feature = "cli", value(skip))]
     ParsingError,
     #[display("struct")]
     Struct,
@@ -266,4 +276,30 @@ pub enum ItemType {
     InternalVariable,
     #[display("variable")]
     PublicVariable,
+}
+
+impl std::str::FromStr for ItemType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().replace('-', "_").as_str() {
+            "contract" => Ok(Self::Contract),
+            "interface" => Ok(Self::Interface),
+            "library" => Ok(Self::Library),
+            "constructor" => Ok(Self::Constructor),
+            "enum" => Ok(Self::Enum),
+            "error" => Ok(Self::Error),
+            "event" => Ok(Self::Event),
+            "private_function" => Ok(Self::PrivateFunction),
+            "internal_function" => Ok(Self::InternalFunction),
+            "public_function" => Ok(Self::PublicFunction),
+            "external_function" => Ok(Self::ExternalFunction),
+            "modifier" => Ok(Self::Modifier),
+            "struct" => Ok(Self::Struct),
+            "private_variable" => Ok(Self::PrivateVariable),
+            "internal_variable" => Ok(Self::InternalVariable),
+            "public_variable" => Ok(Self::PublicVariable),
+            _ => Err(format!("invalid item type: {s}")),
+        }
+    }
 }

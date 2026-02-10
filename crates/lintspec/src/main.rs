@@ -1,4 +1,3 @@
-#![cfg(feature = "cli")]
 use std::env;
 
 use clap::{CommandFactory as _, Parser as _};

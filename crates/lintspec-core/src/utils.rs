@@ -42,7 +42,7 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 ///
 /// ```
 /// # use std::path::PathBuf;
-/// # use lintspec::utils::{detect_solidity_version, semver::Version};
+/// # use lintspec_core::utils::{detect_solidity_version, semver::Version};
 /// assert_eq!(
 ///     detect_solidity_version("pragma solidity >=0.8.4 <0.8.26;", PathBuf::from("./file.sol")).unwrap(),
 ///     Version::new(0, 8, 25)
