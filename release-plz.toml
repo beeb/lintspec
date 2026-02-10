@@ -5,7 +5,13 @@ git_release_enable = false      # will use cargo-dist for that
 
 [[package]]
 name = "lintspec"
+version_group = "lintspec"
 git_tag_name = "v{{ version }}"
+
+[[package]]
+name = "lintspec-core"
+version_group = "lintspec"
+git_tag_enable = false
 
 [[package]]
 name = "lintspec-macros"
