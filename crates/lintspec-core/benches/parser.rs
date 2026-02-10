@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 use std::fs::{self, File};
 
 use divan::{Bencher, black_box};
