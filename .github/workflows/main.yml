@@ -24,7 +24,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
       - name: Run tests
         run: |
-          cargo hack -p lintspec-core nextest run --feature-powerset --at-least-one-of solar,slang
+          cargo hack -p lintspec-core nextest run --feature-powerset
           cargo nextest run -p lintspec-macros
 
   doctests:
