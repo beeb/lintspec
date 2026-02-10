@@ -4,7 +4,7 @@
 //! The [`Definition`] type provides a unified interface to interact with the various types.
 use constructor::ConstructorDefinition;
 use contract::ContractDefinition;
-use derive_more::{Display, From, IsVariant, TryInto};
+use derive_more::{Display, From, FromStr, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -215,47 +215,27 @@ impl Validate for Definition {
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
 #[serde(rename_all = "lowercase")]
+#[display(rename_all = "snake_case")]
 pub enum ContractType {
-    #[display("contract")]
     Contract,
-    #[display("interface")]
     Interface,
-    #[display("library")]
     Library,
-}
-
-impl std::str::FromStr for ContractType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "contract" => Ok(Self::Contract),
-            "interface" => Ok(Self::Interface),
-            "library" => Ok(Self::Library),
-            _ => Err(format!("invalid contract type: {s}")),
-        }
-    }
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
 #[serde(rename_all = "lowercase")]
+#[display(rename_all = "snake_case")]
+#[from_str(rename_all = "snake_case")]
 pub enum ItemType {
-    #[display("contract")]
     Contract,
-    #[display("interface")]
     Interface,
-    #[display("library")]
     Library,
-    #[display("constructor")]
     Constructor,
-    #[display("enum")]
     Enum,
-    #[display("error")]
     Error,
-    #[display("event")]
     Event,
     #[display("function")]
     PrivateFunction,
@@ -265,10 +245,8 @@ pub enum ItemType {
     PublicFunction,
     #[display("function")]
     ExternalFunction,
-    #[display("modifier")]
     Modifier,
     ParsingError,
-    #[display("struct")]
     Struct,
     #[display("variable")]
     PrivateVariable,
@@ -276,30 +254,4 @@ pub enum ItemType {
     InternalVariable,
     #[display("variable")]
     PublicVariable,
-}
-
-impl std::str::FromStr for ItemType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().replace('-', "_").as_str() {
-            "contract" => Ok(Self::Contract),
-            "interface" => Ok(Self::Interface),
-            "library" => Ok(Self::Library),
-            "constructor" => Ok(Self::Constructor),
-            "enum" => Ok(Self::Enum),
-            "error" => Ok(Self::Error),
-            "event" => Ok(Self::Event),
-            "private_function" => Ok(Self::PrivateFunction),
-            "internal_function" => Ok(Self::InternalFunction),
-            "public_function" => Ok(Self::PublicFunction),
-            "external_function" => Ok(Self::ExternalFunction),
-            "modifier" => Ok(Self::Modifier),
-            "struct" => Ok(Self::Struct),
-            "private_variable" => Ok(Self::PrivateVariable),
-            "internal_variable" => Ok(Self::InternalVariable),
-            "public_variable" => Ok(Self::PublicVariable),
-            _ => Err(format!("invalid item type: {s}")),
-        }
-    }
 }

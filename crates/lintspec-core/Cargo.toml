@@ -28,6 +28,7 @@ derive_more = { version = "2.0.1", features = [
     "add",
     "display",
     "from",
+    "from_str",
     "is_variant",
     "try_into",
 ] }
