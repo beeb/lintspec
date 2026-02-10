@@ -1533,7 +1533,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "lintspec"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "lintspec-core"
-version = "0.12.2"
+version = "0.13.0"
 dependencies = [
  "bon",
  "clap",

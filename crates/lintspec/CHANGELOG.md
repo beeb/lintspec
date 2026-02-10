@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.13.0] - 2026-02-10
+
+### Changed
+
+
+-  [**breaking**] split logic into core crate ([#216](https://github.com/beeb/lintspec/pull/216)) - ([fea17ce](https://github.com/beeb/lintspec/commit/fea17ce886823d59b2dc5c1f3f9a217258d154d8))
+
+### Documentation
+
+
+-  fix readme ([#218](https://github.com/beeb/lintspec/pull/218)) - ([f47acff](https://github.com/beeb/lintspec/commit/f47acff2a2e0b4b5f66b82c9a3e078280cf22e54))
+
+### Fixed
+
+
+-  derive ValueEnum for types used in clap ([#217](https://github.com/beeb/lintspec/pull/217)) - ([b2b045c](https://github.com/beeb/lintspec/commit/b2b045cf4fb796a83036223bf08a0c3c15a47d76))
+
+
+
+
+**Full Changelog**: [0.12.2...0.13.0](https://github.com/beeb/lintspec/compare/v0.12.2...v0.13.0)
+
+
 ## [0.12.2] - 2025-12-22
 
 ### Changed
