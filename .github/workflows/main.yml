@@ -88,7 +88,7 @@ jobs:
           cache-on-failure: true
       - name: cargo hack
         run: |
-          cargo hack -p lintspec-core check --feature-powerset --at-least-one-of solar,slang
+          cargo hack -p lintspec-core check --feature-powerset
           cargo hack -p lintspec check --feature-powerset --at-least-one-of solar,slang
 
   deny:
