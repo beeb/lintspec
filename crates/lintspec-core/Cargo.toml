@@ -1,6 +1,6 @@
 [package]
 name = "lintspec-core"
-version = "0.12.2"
+version = "0.13.0"
 description = "Core library for lintspec"
 keywords = ["natspec", "solidity", "linter", "documentation"]
 authors.workspace = true
