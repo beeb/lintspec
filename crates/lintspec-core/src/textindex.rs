@@ -74,7 +74,7 @@ impl TextIndex {
         }
     }
 
-    /// Advance the TextIndex knowing the char `c` is non-ASCII
+    /// Advance the `TextIndex` knowing the char `c` is non-ASCII
     #[inline]
     fn advance_unicode(&mut self, c: char) {
         debug_assert!(!c.is_ascii());

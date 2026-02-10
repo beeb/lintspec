@@ -290,7 +290,7 @@ pub trait Validate {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics;
 }
 
-/// Params NatSpec checker.
+/// Params `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckParams<'a> {
     /// The parsed [`NatSpec`], if any
@@ -422,7 +422,7 @@ impl CheckParams<'_> {
     }
 }
 
-/// Returns NatSpec checker.
+/// Returns `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckReturns<'a> {
     /// The parsed [`NatSpec`], if any
@@ -493,7 +493,7 @@ impl CheckReturns<'_> {
         })
     }
 
-    /// Check a named return's NatSpec count
+    /// Check a named return's `NatSpec` count
     fn named_count_diag(natspec: &NatSpec, ret: &Identifier, name: &str) -> Option<Diagnostic> {
         match natspec.count_return(ret) {
             0 => Some(Diagnostic {
@@ -508,7 +508,7 @@ impl CheckReturns<'_> {
         }
     }
 
-    /// Check an unnamed return's NatSpec
+    /// Check an unnamed return's `NatSpec`
     fn unnamed_diag(
         &self,
         returns_count: usize,
@@ -566,7 +566,7 @@ impl CheckReturns<'_> {
     }
 }
 
-/// Notice NatSpec checker.
+/// Notice `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckNotice<'a> {
     /// The parsed [`NatSpec`], if any
@@ -618,7 +618,7 @@ impl CheckNotice<'_> {
     }
 }
 
-/// Dev NatSpec checker.
+/// Dev `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckDev<'a> {
     /// The parsed [`NatSpec`], if any
@@ -670,7 +670,7 @@ impl CheckDev<'_> {
     }
 }
 
-/// Title NatSpec checker.
+/// Title `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckTitle<'a> {
     /// The parsed [`NatSpec`], if any
@@ -722,7 +722,7 @@ impl CheckTitle<'_> {
     }
 }
 
-/// Author NatSpec checker.
+/// Author `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckAuthor<'a> {
     /// The parsed [`NatSpec`], if any
@@ -774,7 +774,7 @@ impl CheckAuthor<'_> {
     }
 }
 
-/// Notice and Dev NatSpec checker.
+/// Notice and Dev `NatSpec` checker.
 #[derive(Debug, Clone, bon::Builder)]
 pub struct CheckNoticeAndDev<'a> {
     /// The parsed [`NatSpec`], if any
