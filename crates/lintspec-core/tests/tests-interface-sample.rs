@@ -1,5 +1,5 @@
 #![cfg(feature = "solar")]
-use lintspec::{
+use lintspec_core::{
     config::{ContractRules, Req},
     lint::ValidationOptions,
 };
@@ -8,12 +8,12 @@ mod common;
 use common::*;
 
 #[test]
-fn test_library() {
+fn test_interface() {
     insta::assert_snapshot!(snapshot_content(
-        "./test-data/LibrarySample.sol",
+        "./test-data/InterfaceSample.sol",
         &ValidationOptions::builder()
             .inheritdoc(false)
-            .libraries(
+            .interfaces(
                 ContractRules::builder()
                     .title(Req::Required)
                     .author(Req::Required)

@@ -4,7 +4,7 @@
 //! The [`Definition`] type provides a unified interface to interact with the various types.
 use constructor::ConstructorDefinition;
 use contract::ContractDefinition;
-use derive_more::{Display, From, IsVariant, TryInto};
+use derive_more::{Display, From, FromStr, IsVariant, TryInto};
 use enumeration::EnumDefinition;
 use error::ErrorDefinition;
 use event::EventDefinition;
@@ -215,36 +215,27 @@ impl Validate for Definition {
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
+#[serde(rename_all = "snake_case")]
+#[display(rename_all = "snake_case")]
 pub enum ContractType {
-    #[display("contract")]
     Contract,
-    #[display("interface")]
     Interface,
-    #[display("library")]
     Library,
 }
 
 /// A type of source item (function, struct, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
-#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
+#[serde(rename_all = "snake_case")]
+#[display(rename_all = "snake_case")]
+#[from_str(rename_all = "snake_case")]
 pub enum ItemType {
-    #[display("contract")]
     Contract,
-    #[display("interface")]
     Interface,
-    #[display("library")]
     Library,
-    #[display("constructor")]
     Constructor,
-    #[display("enum")]
     Enum,
-    #[display("error")]
     Error,
-    #[display("event")]
     Event,
     #[display("function")]
     PrivateFunction,
@@ -254,11 +245,8 @@ pub enum ItemType {
     PublicFunction,
     #[display("function")]
     ExternalFunction,
-    #[display("modifier")]
     Modifier,
-    #[cfg_attr(feature = "cli", value(skip))]
     ParsingError,
-    #[display("struct")]
     Struct,
     #[display("variable")]
     PrivateVariable,
@@ -266,4 +254,144 @@ pub enum ItemType {
     InternalVariable,
     #[display("variable")]
     PublicVariable,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_contract_type_display() {
+        assert_eq!(ContractType::Contract.to_string(), "contract");
+        assert_eq!(ContractType::Interface.to_string(), "interface");
+        assert_eq!(ContractType::Library.to_string(), "library");
+    }
+
+    #[test]
+    fn test_contract_type_from_str() {
+        assert_eq!(
+            ContractType::from_str("contract").unwrap(),
+            ContractType::Contract
+        );
+        assert_eq!(
+            ContractType::from_str("interface").unwrap(),
+            ContractType::Interface
+        );
+        assert_eq!(
+            ContractType::from_str("library").unwrap(),
+            ContractType::Library
+        );
+    }
+
+    #[test]
+    fn test_contract_type_from_str_case_insensitive() {
+        // FromStr is case-insensitive
+        assert_eq!(
+            ContractType::from_str("Contract").unwrap(),
+            ContractType::Contract
+        );
+        assert_eq!(
+            ContractType::from_str("INTERFACE").unwrap(),
+            ContractType::Interface
+        );
+        assert_eq!(
+            ContractType::from_str("Library").unwrap(),
+            ContractType::Library
+        );
+    }
+
+    #[test]
+    fn test_contract_type_from_str_invalid() {
+        assert!(ContractType::from_str("invalid").is_err());
+        assert!(ContractType::from_str("").is_err());
+    }
+
+    #[test]
+    fn test_item_type_display() {
+        assert_eq!(ItemType::Contract.to_string(), "contract");
+        assert_eq!(ItemType::Interface.to_string(), "interface");
+        assert_eq!(ItemType::Library.to_string(), "library");
+        assert_eq!(ItemType::Constructor.to_string(), "constructor");
+        assert_eq!(ItemType::Enum.to_string(), "enum");
+        assert_eq!(ItemType::Error.to_string(), "error");
+        assert_eq!(ItemType::Event.to_string(), "event");
+        assert_eq!(ItemType::Modifier.to_string(), "modifier");
+        assert_eq!(ItemType::ParsingError.to_string(), "parsing_error");
+        assert_eq!(ItemType::Struct.to_string(), "struct");
+        assert_eq!(ItemType::PrivateFunction.to_string(), "function");
+        assert_eq!(ItemType::InternalFunction.to_string(), "function");
+        assert_eq!(ItemType::PublicFunction.to_string(), "function");
+        assert_eq!(ItemType::ExternalFunction.to_string(), "function");
+        assert_eq!(ItemType::PrivateVariable.to_string(), "variable");
+        assert_eq!(ItemType::InternalVariable.to_string(), "variable");
+        assert_eq!(ItemType::PublicVariable.to_string(), "variable");
+    }
+
+    #[test]
+    fn test_item_type_from_str() {
+        assert_eq!(ItemType::from_str("contract").unwrap(), ItemType::Contract);
+        assert_eq!(
+            ItemType::from_str("interface").unwrap(),
+            ItemType::Interface
+        );
+        assert_eq!(ItemType::from_str("library").unwrap(), ItemType::Library);
+        assert_eq!(
+            ItemType::from_str("constructor").unwrap(),
+            ItemType::Constructor
+        );
+        assert_eq!(ItemType::from_str("enum").unwrap(), ItemType::Enum);
+        assert_eq!(ItemType::from_str("error").unwrap(), ItemType::Error);
+        assert_eq!(ItemType::from_str("event").unwrap(), ItemType::Event);
+        assert_eq!(ItemType::from_str("modifier").unwrap(), ItemType::Modifier);
+        assert_eq!(
+            ItemType::from_str("parsing_error").unwrap(),
+            ItemType::ParsingError
+        );
+        assert_eq!(ItemType::from_str("struct").unwrap(), ItemType::Struct);
+        assert_eq!(
+            ItemType::from_str("private_function").unwrap(),
+            ItemType::PrivateFunction
+        );
+        assert_eq!(
+            ItemType::from_str("internal_function").unwrap(),
+            ItemType::InternalFunction
+        );
+        assert_eq!(
+            ItemType::from_str("public_function").unwrap(),
+            ItemType::PublicFunction
+        );
+        assert_eq!(
+            ItemType::from_str("external_function").unwrap(),
+            ItemType::ExternalFunction
+        );
+        assert_eq!(
+            ItemType::from_str("private_variable").unwrap(),
+            ItemType::PrivateVariable
+        );
+        assert_eq!(
+            ItemType::from_str("internal_variable").unwrap(),
+            ItemType::InternalVariable
+        );
+        assert_eq!(
+            ItemType::from_str("public_variable").unwrap(),
+            ItemType::PublicVariable
+        );
+    }
+
+    #[test]
+    fn test_item_type_from_str_case_sensitive() {
+        assert!(ItemType::from_str("Contract").is_err());
+        assert!(ItemType::from_str("PRIVATE_FUNCTION").is_err());
+        assert!(ItemType::from_str("PrivateFunction").is_err());
+    }
+
+    #[test]
+    fn test_item_type_from_str_invalid() {
+        assert!(ItemType::from_str("invalid").is_err());
+        assert!(ItemType::from_str("function").is_err()); // ambiguous
+        assert!(ItemType::from_str("variable").is_err()); // ambiguous
+        assert!(ItemType::from_str("").is_err());
+    }
 }

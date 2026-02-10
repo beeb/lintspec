@@ -1,5 +1,5 @@
 #![cfg(feature = "solar")]
-use lintspec::{
+use lintspec_core::{
     config::{ContractRules, NoticeDevRules, Req, VariableConfig, WithParamsRules},
     lint::ValidationOptions,
 };

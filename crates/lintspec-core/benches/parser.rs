@@ -2,7 +2,7 @@
 use std::fs::{self, File};
 
 use divan::{Bencher, black_box};
-use lintspec::parser::{Parse, ParsedDocument};
+use lintspec_core::parser::{Parse, ParsedDocument};
 
 const FILES: &[&str] = &[
     "test-data/BasicSample.sol",
@@ -25,14 +25,14 @@ fn parse_file(mut parser: impl Parse, path: &str) -> ParsedDocument {
 #[cfg(feature = "solar")]
 #[divan::bench(args = FILES)]
 fn parse_solar(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::solar::SolarParser::default();
+    let parser = lintspec_core::parser::solar::SolarParser::default();
     bencher.bench_local(move || black_box(parse_file(parser.clone(), path)));
 }
 
 #[cfg(feature = "slang")]
 #[divan::bench(args = FILES)]
 fn parse_slang(bencher: Bencher, path: &str) {
-    let parser = lintspec::parser::slang::SlangParser::builder()
+    let parser = lintspec_core::parser::slang::SlangParser::builder()
         .skip_version_detection(true)
         .build();
     bencher.bench_local(move || {
@@ -45,9 +45,9 @@ fn parse_slang(bencher: Bencher, path: &str) {
 fn compute_indices(bencher: Bencher, path: &str) {
     use std::path::PathBuf;
 
-    use lintspec::parser::solar::complete_text_ranges;
+    use lintspec_core::parser::solar::complete_text_ranges;
 
-    let mut parser = lintspec::parser::solar::SolarParser::default();
+    let mut parser = lintspec_core::parser::solar::SolarParser::default();
     let source = black_box(fs::read_to_string(path).unwrap());
     let mut document = black_box(
         parser

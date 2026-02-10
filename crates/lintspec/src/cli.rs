@@ -13,7 +13,7 @@ use clap_complete::Shell;
 use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
-use crate::{
+use lintspec_core::{
     config::{Config, Req},
     definitions::{ContractType, ItemType},
     files::find_sol_files,
@@ -22,10 +22,10 @@ use crate::{
 };
 
 #[cfg(feature = "slang")]
-use crate::parser::slang::SlangParser;
+use lintspec_core::parser::slang::SlangParser;
 
 #[cfg(feature = "solar")]
-use crate::parser::solar::SolarParser;
+use lintspec_core::parser::solar::SolarParser;
 
 #[cfg(not(feature = "slang"))]
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -108,107 +108,107 @@ pub struct Args {
     pub skip_version_detection: Option<bool>,
 
     /// Ignore `@title` for these items (can be used more than once)
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub title_ignored: Vec<ContractType>,
 
     /// Enforce `@title` for these items (can be used more than once)
     ///
     /// This takes precedence over `--title-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub title_required: Vec<ContractType>,
 
     /// Forbid `@title` for these items (can be used more than once)
     ///
     /// This takes precedence over `--title-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub title_forbidden: Vec<ContractType>,
 
     /// Ignore `@author` for these items (can be used more than once)
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub author_ignored: Vec<ContractType>,
 
     /// Enforce `@author` for these items (can be used more than once)
     ///
     /// This takes precedence over `--author-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub author_required: Vec<ContractType>,
 
     /// Forbid `@author` for these items (can be used more than once)
     ///
     /// This takes precedence over `--author-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub author_forbidden: Vec<ContractType>,
 
     /// Ignore `@notice` for these items (can be used more than once)
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub notice_ignored: Vec<ItemType>,
 
     /// Enforce `@notice` for these items (can be used more than once)
     ///
     /// This takes precedence over `--notice-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub notice_required: Vec<ItemType>,
 
     /// Forbid `@notice` for these items (can be used more than once)
     ///
     /// This takes precedence over `--notice-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub notice_forbidden: Vec<ItemType>,
 
     /// Ignore `@dev` for these items (can be used more than once)
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub dev_ignored: Vec<ItemType>,
 
     /// Enforce `@dev` for these items (can be used more than once)
     ///
     /// This takes precedence over `--dev-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub dev_required: Vec<ItemType>,
 
     /// Forbid `@dev` for these items (can be used more than once)
     ///
     /// This takes precedence over `--dev-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub dev_forbidden: Vec<ItemType>,
 
     /// Ignore `@param` for these items (can be used more than once)
     ///
     /// Note that this setting is ignored for `*-variable`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub param_ignored: Vec<ItemType>,
 
     /// Enforce `@param` for these items (can be used more than once)
     ///
     /// Note that this setting is ignored for `*-variable`.
     /// This takes precedence over `--param-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub param_required: Vec<ItemType>,
 
     /// Forbid `@param` for these items (can be used more than once)
     ///
     /// Note that this setting is ignored for `*-variable`.
     /// This takes precedence over `--param-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub param_forbidden: Vec<ItemType>,
 
     /// Ignore `@return` for these items (can be used more than once)
     ///
     /// Note that this setting is only applicable for `*-function`, `public-variable`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub return_ignored: Vec<ItemType>,
 
     /// Enforce `@return` for these items (can be used more than once)
     ///
     /// Note that this setting is only applicable for `*-function`, `public-variable`.
     /// This takes precedence over `--return-ignored`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub return_required: Vec<ItemType>,
 
     /// Forbid `@return` for these items (can be used more than once)
     ///
     /// Note that this setting is only applicable for `*-function`, `public-variable`.
     /// This takes precedence over `--return-required`.
-    #[arg(long)]
+    #[arg(long, value_enum)]
     pub return_forbidden: Vec<ItemType>,
 
     /// Output diagnostics in JSON format
@@ -430,7 +430,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                     .create(true)
                     .write(true)
                     .open(path)
-                    .map_err(|err| crate::error::Error::IOError {
+                    .map_err(|err| lintspec_core::error::Error::IOError {
                         path: path.clone(),
                         err,
                     })?,
