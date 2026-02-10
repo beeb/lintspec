@@ -1,5 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-//! Core library for lintspec.
+//! Core library for [lintspec](https://crates.io/crates/lintspec).
 //!
 //! This crate provides the core parsing and validation logic for lintspec.
 pub mod config;
