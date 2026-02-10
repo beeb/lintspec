@@ -2,6 +2,7 @@
 name = "lintspec-core"
 version = "0.13.0"
 description = "Core library for lintspec"
+readme = "./README.md"
 keywords = ["natspec", "solidity", "linter", "documentation"]
 authors.workspace = true
 categories.workspace = true

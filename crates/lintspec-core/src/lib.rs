@@ -1,7 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-//! Core library for lintspec.
-//!
-//! This crate provides the core parsing and validation logic for lintspec.
+#![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 pub mod config;
 pub mod definitions;
 pub mod error;

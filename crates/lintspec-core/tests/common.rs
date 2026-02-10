@@ -1,5 +1,5 @@
 #![cfg(feature = "solar")]
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 use std::{
     io,
     path::{Path, PathBuf},
