@@ -25,7 +25,9 @@ clap_complete = "4.5.57"
 dotenvy = "0.15.7"
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
-lintspec-core = { path = "../lintspec-core", version = "0.12.2", default-features = false }
+lintspec-core = { path = "../lintspec-core", version = "0.12.2", default-features = false, features = [
+    "clap",
+] }
 miette = { version = "7.5.0", features = ["fancy"] }
 rayon = "1.10.0"
 serde_json = "1.0.138"

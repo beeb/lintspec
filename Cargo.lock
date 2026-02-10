@@ -1564,6 +1564,7 @@ name = "lintspec-core"
 version = "0.12.2"
 dependencies = [
  "bon",
+ "clap",
  "codspeed-divan-compat",
  "derive_more",
  "dunce",

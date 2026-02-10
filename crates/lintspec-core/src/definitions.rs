@@ -216,6 +216,7 @@ impl Validate for Definition {
 
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 #[display(rename_all = "snake_case")]
 pub enum ContractType {
@@ -226,9 +227,10 @@ pub enum ContractType {
 
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 #[display(rename_all = "snake_case")]
-#[from_str(rename_all = "snake_case")]
+#[from_str(rename_all = "kebab-case")] // to match ValueEnum's behavior
 pub enum ItemType {
     Contract,
     Interface,
@@ -346,36 +348,36 @@ mod tests {
         assert_eq!(ItemType::from_str("event").unwrap(), ItemType::Event);
         assert_eq!(ItemType::from_str("modifier").unwrap(), ItemType::Modifier);
         assert_eq!(
-            ItemType::from_str("parsing_error").unwrap(),
+            ItemType::from_str("parsing-error").unwrap(),
             ItemType::ParsingError
         );
         assert_eq!(ItemType::from_str("struct").unwrap(), ItemType::Struct);
         assert_eq!(
-            ItemType::from_str("private_function").unwrap(),
+            ItemType::from_str("private-function").unwrap(),
             ItemType::PrivateFunction
         );
         assert_eq!(
-            ItemType::from_str("internal_function").unwrap(),
+            ItemType::from_str("internal-function").unwrap(),
             ItemType::InternalFunction
         );
         assert_eq!(
-            ItemType::from_str("public_function").unwrap(),
+            ItemType::from_str("public-function").unwrap(),
             ItemType::PublicFunction
         );
         assert_eq!(
-            ItemType::from_str("external_function").unwrap(),
+            ItemType::from_str("external-function").unwrap(),
             ItemType::ExternalFunction
         );
         assert_eq!(
-            ItemType::from_str("private_variable").unwrap(),
+            ItemType::from_str("private-variable").unwrap(),
             ItemType::PrivateVariable
         );
         assert_eq!(
-            ItemType::from_str("internal_variable").unwrap(),
+            ItemType::from_str("internal-variable").unwrap(),
             ItemType::InternalVariable
         );
         assert_eq!(
-            ItemType::from_str("public_variable").unwrap(),
+            ItemType::from_str("public-variable").unwrap(),
             ItemType::PublicVariable
         );
     }

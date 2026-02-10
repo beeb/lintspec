@@ -19,11 +19,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["solar"]
+clap = ["dep:clap"]
 solar = ["dep:solar-parse"]
 slang = ["dep:regex", "dep:slang_solidity"]
 
 [dependencies]
 bon = "3.3.2"
+clap = { version = "4.5.29", features = ["derive"], optional = true }
 derive_more = { version = "2.0.1", features = [
     "add",
     "display",
