@@ -12,13 +12,13 @@ pub mod slang;
 pub mod solar;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct DocumentId(uuid::Uuid);
+pub struct DocumentId(u64);
 
 impl DocumentId {
     /// Generate a new random and unique document ID
     #[must_use]
     pub fn new() -> Self {
-        DocumentId(uuid::Uuid::new_v4())
+        DocumentId(fastrand::u64(..))
     }
 }
 
