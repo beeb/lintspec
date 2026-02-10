@@ -216,7 +216,7 @@ impl Validate for Definition {
 
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 #[display(rename_all = "snake_case")]
 pub enum ContractType {
     Contract,
@@ -226,7 +226,7 @@ pub enum ContractType {
 
 /// A type of source item (function, struct, etc.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 #[display(rename_all = "snake_case")]
 #[from_str(rename_all = "snake_case")]
 pub enum ItemType {
