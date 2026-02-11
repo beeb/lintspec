@@ -86,25 +86,21 @@ impl Validate for ModifierDefinition {
             });
             return out;
         }
-        out.diags.extend(
-            CheckNoticeAndDev::builder()
-                .natspec(&self.natspec)
-                .notice_rule(opts.notice)
-                .dev_rule(opts.dev)
-                .notice_or_dev(options.notice_or_dev)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
-        out.diags.extend(
-            CheckParams::builder()
-                .natspec(&self.natspec)
-                .rule(opts.param)
-                .params(&self.params)
-                .default_span(self.span())
-                .build()
-                .check(),
-        );
+        CheckNoticeAndDev::builder()
+            .natspec(&self.natspec)
+            .notice_rule(opts.notice)
+            .dev_rule(opts.dev)
+            .notice_or_dev(options.notice_or_dev)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
+        CheckParams::builder()
+            .natspec(&self.natspec)
+            .rule(opts.param)
+            .params(&self.params)
+            .default_span(self.span())
+            .build()
+            .check_into(&mut out.diags);
         out
     }
 }

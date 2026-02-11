@@ -50,32 +50,26 @@ impl Validate for InterfaceDefinition {
             span: self.span(),
             diags: vec![],
         };
-        out.diags.extend(
-            CheckTitle::builder()
-                .natspec(&self.natspec)
-                .rule(opts.title)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
-        out.diags.extend(
-            CheckAuthor::builder()
-                .natspec(&self.natspec)
-                .rule(opts.author)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
-        out.diags.extend(
-            CheckNoticeAndDev::builder()
-                .natspec(&self.natspec)
-                .notice_rule(opts.notice)
-                .dev_rule(opts.dev)
-                .notice_or_dev(options.notice_or_dev)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
+        CheckTitle::builder()
+            .natspec(&self.natspec)
+            .rule(opts.title)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
+        CheckAuthor::builder()
+            .natspec(&self.natspec)
+            .rule(opts.author)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
+        CheckNoticeAndDev::builder()
+            .natspec(&self.natspec)
+            .notice_rule(opts.notice)
+            .dev_rule(opts.dev)
+            .notice_or_dev(options.notice_or_dev)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
         out
     }
 }
