@@ -297,36 +297,42 @@ impl CheckParams<'_> {
     /// diagnostic if it is.
     #[must_use]
     pub fn check(&self) -> Vec<Diagnostic> {
-        let mut res = match self.rule {
-            Req::Ignored => return Vec::new(),
-            Req::Required => self.check_required(),
-            Req::Forbidden => self.check_forbidden(),
-        };
+        let mut res = Vec::new();
+        self.check_into(&mut res);
         res.sort_unstable_by_key(|d| d.span.start.utf8);
         res
     }
 
+    /// Check a list of params, appending diagnostics to the provided vector.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
+        match self.rule {
+            Req::Ignored => {}
+            Req::Required => self.check_required(out),
+            Req::Forbidden => self.check_forbidden(out),
+        }
+    }
+
     /// Check params in case the rule is [`Req::Required`]
-    fn check_required(&self) -> Vec<Diagnostic> {
+    fn check_required(&self, out: &mut Vec<Diagnostic>) {
         let Some(natspec) = self.natspec else {
-            return self.missing_diags().collect();
+            out.extend(self.missing_diags());
+            return;
         };
-        self.extra_diags()
-            .chain(self.count_diags(natspec))
-            .collect()
+        out.extend(self.extra_diags());
+        out.extend(self.count_diags(natspec));
     }
 
     /// Check params in case the rule is [`Req::Forbidden`]
-    fn check_forbidden(&self) -> Vec<Diagnostic> {
+    fn check_forbidden(&self, out: &mut Vec<Diagnostic>) {
         if let Some(natspec) = self.natspec
             && natspec.has_param()
         {
-            vec![Diagnostic {
+            out.push(Diagnostic {
                 span: self.default_span.clone(),
                 message: "@param is forbidden".to_string(),
-            }]
-        } else {
-            Vec::new()
+            });
         }
     }
 
@@ -435,34 +441,41 @@ impl CheckReturns<'_> {
     /// diagnostic if it is.
     #[must_use]
     pub fn check(&self) -> Vec<Diagnostic> {
+        let mut res = Vec::new();
+        self.check_into(&mut res);
+        res
+    }
+
+    /// Check a list of returns, appending diagnostics to the provided vector.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
         match self.rule {
-            Req::Ignored => Vec::new(),
-            Req::Required => self.check_required(),
-            Req::Forbidden => self.check_forbidden(),
+            Req::Ignored => {}
+            Req::Required => self.check_required(out),
+            Req::Forbidden => self.check_forbidden(out),
         }
     }
 
     /// Check returns in case the rule is [`Req::Required`]
-    fn check_required(&self) -> Vec<Diagnostic> {
+    fn check_required(&self, out: &mut Vec<Diagnostic>) {
         let Some(natspec) = self.natspec else {
-            return self.missing_diags().collect();
+            out.extend(self.missing_diags());
+            return;
         };
-        self.return_diags(natspec)
-            .chain(self.extra_unnamed_diags(natspec))
-            .collect()
+        out.extend(self.return_diags(natspec));
+        out.extend(self.extra_unnamed_diags(natspec));
     }
 
     /// Check returns in case the rule is [`Req::Forbidden`]
-    fn check_forbidden(&self) -> Vec<Diagnostic> {
+    fn check_forbidden(&self, out: &mut Vec<Diagnostic>) {
         if let Some(natspec) = self.natspec
             && natspec.has_return()
         {
-            vec![Diagnostic {
+            out.push(Diagnostic {
                 span: self.default_span.clone(),
                 message: "@return is forbidden".to_string(),
-            }]
-        } else {
-            Vec::new()
+            });
         }
     }
 
@@ -580,6 +593,15 @@ impl CheckNotice<'_> {
         }
     }
 
+    /// Check `@notice`, appending a diagnostic to the provided vector if needed.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
+        if let Some(diag) = self.check() {
+            out.push(diag);
+        }
+    }
+
     /// Check notice in case the rule is [`Req::Required`]
     fn check_required(&self) -> Option<Diagnostic> {
         if let Some(natspec) = self.natspec
@@ -629,6 +651,15 @@ impl CheckDev<'_> {
             Req::Ignored => None,
             Req::Required => self.check_required(),
             Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check `@dev`, appending a diagnostic to the provided vector if needed.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
+        if let Some(diag) = self.check() {
+            out.push(diag);
         }
     }
 
@@ -684,6 +715,15 @@ impl CheckTitle<'_> {
         }
     }
 
+    /// Check `@title`, appending a diagnostic to the provided vector if needed.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
+        if let Some(diag) = self.check() {
+            out.push(diag);
+        }
+    }
+
     /// Check title in case the rule is [`Req::Required`]
     fn check_required(&self) -> Option<Diagnostic> {
         if let Some(natspec) = self.natspec
@@ -733,6 +773,15 @@ impl CheckAuthor<'_> {
             Req::Ignored => None,
             Req::Required => self.check_required(),
             Req::Forbidden => self.check_forbidden(),
+        }
+    }
+
+    /// Check `@author`, appending a diagnostic to the provided vector if needed.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
+        if let Some(diag) = self.check() {
+            out.push(diag);
         }
     }
 
@@ -791,50 +840,53 @@ impl CheckNoticeAndDev<'_> {
     /// disabled, it will check the `@notice` and `@dev` separately according to their respective rules.
     #[must_use]
     pub fn check(&self) -> Vec<Diagnostic> {
+        let mut res = Vec::new();
+        self.check_into(&mut res);
+        res
+    }
+
+    /// Check `@notice` and `@dev`, appending diagnostics to the provided vector.
+    ///
+    /// This is more efficient than [`check`](Self::check) when collecting diagnostics into an existing vector.
+    pub fn check_into(&self, out: &mut Vec<Diagnostic>) {
         match (self.notice_or_dev, self.notice_rule, self.dev_rule) {
             (true, Req::Required, Req::Ignored | Req::Required)
-            | (true, Req::Ignored, Req::Required) => self.check_notice_or_dev(),
+            | (true, Req::Ignored, Req::Required) => self.check_notice_or_dev_into(out),
             (true, Req::Forbidden, _) | (true, _, Req::Forbidden) | (false, _, _) => {
-                self.check_separately()
+                self.check_separately(out);
             }
-            (true, Req::Ignored, Req::Ignored) => Vec::new(),
+            (true, Req::Ignored, Req::Ignored) => {}
         }
     }
 
     /// Check that either `@notice` or `@dev` is present
-    fn check_notice_or_dev(&self) -> Vec<Diagnostic> {
+    fn check_notice_or_dev_into(&self, out: &mut Vec<Diagnostic>) {
         if let Some(natspec) = self.natspec
             && (natspec.has_notice() || natspec.has_dev())
         {
-            Vec::new()
+            // OK
         } else {
-            vec![Diagnostic {
+            out.push(Diagnostic {
                 span: self.span.clone(),
                 message: "@notice or @dev is missing".to_string(),
-            }]
+            });
         }
     }
 
     /// Check `@notice` and `@dev` separately according to their respective rules
-    fn check_separately(&self) -> Vec<Diagnostic> {
-        let mut res = Vec::new();
-        res.extend(
-            CheckNotice::builder()
-                .natspec(self.natspec)
-                .rule(self.notice_rule)
-                .span(self.span)
-                .build()
-                .check(),
-        );
-        res.extend(
-            CheckDev::builder()
-                .natspec(self.natspec)
-                .rule(self.dev_rule)
-                .span(self.span)
-                .build()
-                .check(),
-        );
-        res
+    fn check_separately(&self, out: &mut Vec<Diagnostic>) {
+        CheckNotice::builder()
+            .natspec(self.natspec)
+            .rule(self.notice_rule)
+            .span(self.span)
+            .build()
+            .check_into(out);
+        CheckDev::builder()
+            .natspec(self.natspec)
+            .rule(self.dev_rule)
+            .span(self.span)
+            .build()
+            .check_into(out);
     }
 }
 

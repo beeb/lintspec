@@ -107,30 +107,26 @@ impl Validate for VariableDeclaration {
             });
             return out;
         }
-        out.diags.extend(
-            CheckNoticeAndDev::builder()
-                .natspec(&self.natspec)
-                .notice_rule(notice)
-                .dev_rule(dev)
-                .notice_or_dev(options.notice_or_dev)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
+        CheckNoticeAndDev::builder()
+            .natspec(&self.natspec)
+            .notice_rule(notice)
+            .dev_rule(dev)
+            .notice_or_dev(options.notice_or_dev)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
         if let Some(returns) = returns {
-            out.diags.extend(
-                CheckReturns::builder()
-                    .natspec(&self.natspec)
-                    .rule(returns)
-                    .returns(&[Identifier {
-                        name: None,
-                        span: self.span(),
-                    }])
-                    .default_span(self.span())
-                    .is_var(true)
-                    .build()
-                    .check(),
-            );
+            CheckReturns::builder()
+                .natspec(&self.natspec)
+                .rule(returns)
+                .returns(&[Identifier {
+                    name: None,
+                    span: self.span(),
+                }])
+                .default_span(self.span())
+                .is_var(true)
+                .build()
+                .check_into(&mut out.diags);
         }
         out
     }

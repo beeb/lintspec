@@ -113,35 +113,29 @@ impl Validate for FunctionDefinition {
             });
             return out;
         }
-        out.diags.extend(
-            CheckNoticeAndDev::builder()
-                .natspec(&self.natspec)
-                .notice_rule(opts.notice)
-                .dev_rule(opts.dev)
-                .notice_or_dev(options.notice_or_dev)
-                .span(&self.span)
-                .build()
-                .check(),
-        );
-        out.diags.extend(
-            CheckParams::builder()
-                .natspec(&self.natspec)
-                .rule(opts.param)
-                .params(&self.params)
-                .default_span(self.span())
-                .build()
-                .check(),
-        );
-        out.diags.extend(
-            CheckReturns::builder()
-                .natspec(&self.natspec)
-                .rule(opts.returns)
-                .returns(&self.returns)
-                .default_span(self.span())
-                .is_var(false)
-                .build()
-                .check(),
-        );
+        CheckNoticeAndDev::builder()
+            .natspec(&self.natspec)
+            .notice_rule(opts.notice)
+            .dev_rule(opts.dev)
+            .notice_or_dev(options.notice_or_dev)
+            .span(&self.span)
+            .build()
+            .check_into(&mut out.diags);
+        CheckParams::builder()
+            .natspec(&self.natspec)
+            .rule(opts.param)
+            .params(&self.params)
+            .default_span(self.span())
+            .build()
+            .check_into(&mut out.diags);
+        CheckReturns::builder()
+            .natspec(&self.natspec)
+            .rule(opts.returns)
+            .returns(&self.returns)
+            .default_span(self.span())
+            .is_var(false)
+            .build()
+            .check_into(&mut out.diags);
         out
     }
 }
