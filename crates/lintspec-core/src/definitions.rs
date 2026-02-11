@@ -80,7 +80,7 @@ pub struct Attributes {
 }
 
 /// The name and type of a source item's parent
-#[derive(Debug, Clone, Display, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Display, Serialize, PartialEq, Eq, IsVariant)]
 #[serde(untagged)]
 pub enum Parent {
     Contract(&'static str),
@@ -219,7 +219,7 @@ impl Validate for Definition {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, FromStr)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
-#[display(rename_all = "snake_case")]
+#[display(rename_all = "kebab-case")] // to match ValueEnum's behavior
 pub enum ContractType {
     Contract,
     Interface,

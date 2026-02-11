@@ -42,7 +42,7 @@ impl FunctionDefinition {
     ///
     /// Public/external functions as well as internal override functions require @inheritdoc if enforced.
     fn requires_inheritdoc(&self, options: &ValidationOptions) -> bool {
-        let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
+        let parent_is_contract = self.parent.as_ref().is_some_and(Parent::is_contract);
         let internal_override =
             self.attributes.visibility == Visibility::Internal && self.attributes.r#override;
         let public_external = matches!(

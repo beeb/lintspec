@@ -36,7 +36,7 @@ impl VariableDeclaration {
     ///
     /// Public state variables must have inheritdoc.
     fn requires_inheritdoc(&self) -> bool {
-        let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
+        let parent_is_contract = self.parent.as_ref().is_some_and(Parent::is_contract);
         let public = self.attributes.visibility == Visibility::Public;
         parent_is_contract && public
     }
