@@ -39,7 +39,7 @@ dunce = "1.0.5"
 fastrand = "2.3.0"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 ignore = "0.4.24"
-lasso = { version = "0.7.3", features = ["multi-threaded"] }
+inturn = "0.1.2"
 lintspec-macros = { path = "../lintspec-macros", version = "0.2.2" }
 regex = { version = "1.11.1", optional = true }
 semver = "1.0.25"
