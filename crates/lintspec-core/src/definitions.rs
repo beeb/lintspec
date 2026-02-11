@@ -18,6 +18,7 @@ use variable::VariableDeclaration;
 use crate::{
     definitions::{interface::InterfaceDefinition, library::LibraryDefinition},
     error::Error,
+    interner::Symbol,
     lint::{Diagnostic, ItemDiagnostics, Validate, ValidationOptions},
     textindex::TextRange,
 };
@@ -42,7 +43,7 @@ pub trait SourceItem {
     fn parent(&self) -> Option<Parent>;
 
     /// Retrieve the name of the source item
-    fn name(&self) -> String;
+    fn name(&self) -> Symbol;
 
     /// Retrieve the span of the source item
     fn span(&self) -> TextRange;
@@ -54,7 +55,7 @@ pub trait SourceItem {
 #[derive(Debug, Clone, bon::Builder)]
 #[builder(on(String, into))]
 pub struct Identifier {
-    pub name: Option<String>,
+    pub name: Option<Symbol>,
     pub span: TextRange,
 }
 
@@ -82,9 +83,9 @@ pub struct Attributes {
 #[derive(Debug, Clone, Display, Serialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Parent {
-    Contract(String),
-    Interface(String),
-    Library(String),
+    Contract(&'static str),
+    Interface(&'static str),
+    Library(&'static str),
 }
 
 /// A source item's definition
@@ -194,7 +195,7 @@ impl Validate for Definition {
                 ItemDiagnostics {
                     parent,
                     item_type: ItemType::ParsingError,
-                    name: String::new(),
+                    name: "",
                     span: span.clone(),
                     diags: vec![Diagnostic { span, message }],
                 }

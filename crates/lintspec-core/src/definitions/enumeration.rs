@@ -1,5 +1,6 @@
 //! Parsing and validation of enum definitions.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckParams, ItemDiagnostics},
     natspec::NatSpec,
 };
@@ -15,7 +16,7 @@ pub struct EnumDefinition {
     pub parent: Option<Parent>,
 
     /// The name of the enum
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the enum definition
     pub span: TextRange,
@@ -36,8 +37,8 @@ impl SourceItem for EnumDefinition {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -51,7 +52,7 @@ impl Validate for EnumDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };

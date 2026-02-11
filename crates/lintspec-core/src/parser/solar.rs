@@ -13,8 +13,8 @@ use std::{
 use solar_parse::{
     Parser,
     ast::{
-        ContractKind, DocComments, FunctionKind, Ident, Item, ItemContract, ItemKind,
-        ParameterList, Span, Spanned, VariableDefinition,
+        ContractKind, DocComments, FunctionKind, Item, ItemContract, ItemKind, ParameterList, Span,
+        Spanned, VariableDefinition,
         interface::{
             Session,
             source_map::{FileName, SourceMap},
@@ -33,6 +33,7 @@ use crate::{
         variable::VariableDeclaration,
     },
     error::{Error, Result},
+    interner::INTERNER,
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
     prelude::OrPanic as _,
@@ -106,7 +107,7 @@ impl Parse for SolarParser {
                     let mut parser = Parser::from_source_file(&this.sess, &arena, &source_file);
 
                     let ast = parser.parse_file().map_err(|err| err.emit())?;
-                    let mut visitor = LintspecVisitor::new(source_map);
+                    let mut visitor = LintspecVisitor::new(&this.sess);
 
                     let _ = visitor.visit_source_unit(&ast);
                     Ok(visitor.definitions)
@@ -172,16 +173,16 @@ impl Parse for SolarParser {
 pub struct LintspecVisitor<'ast> {
     current_parent: Option<Parent>,
     definitions: Vec<Definition>,
-    source_map: &'ast SourceMap,
+    sess: &'ast Session,
 }
 
 impl<'ast> LintspecVisitor<'ast> {
     /// Construct a new visitor
-    pub fn new(source_map: &'ast SourceMap) -> Self {
+    pub fn new(sess: &'ast Session) -> Self {
         Self {
             current_parent: None,
             definitions: Vec::default(),
-            source_map,
+            sess,
         }
     }
 
@@ -200,8 +201,8 @@ impl<'ast> LintspecVisitor<'ast> {
     ///
     /// Only the utf8 offset of the [`TextRange`] is initially populated, the rest being filled via [`complete_text_ranges`] to avoid duplicate work.
     fn span_to_textrange(&self, span: Span) -> TextRange {
-        let local_begin = self.source_map.lookup_byte_offset(span.lo());
-        let local_end = self.source_map.lookup_byte_offset(span.hi());
+        let local_begin = self.sess.source_map().lookup_byte_offset(span.lo());
+        let local_end = self.sess.source_map().lookup_byte_offset(span.hi());
 
         let start_utf8 = local_begin.pos.to_usize();
         let end_utf8 = local_end.pos.to_usize();
@@ -297,7 +298,7 @@ trait Extract {
 
 impl Extract for &solar_parse::ast::ItemContract<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let name = self.name.to_string();
+        let name = INTERNER.get_or_intern(self.name.as_str());
 
         let (natspec, span) = match extract_natspec(&item.docs, visitor, &[]) {
             Ok(extracted) => {
@@ -387,11 +388,9 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
                     span,
                     params,
                     natspec,
-                    name: self
-                        .header
-                        .name
-                        .as_ref()
-                        .map_or("modifier".to_string(), Ident::to_string),
+                    name: INTERNER.get_or_intern(
+                        self.header.name.as_ref().map_or("modifier", |n| n.as_str()),
+                    ),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
                         r#override: self.header.override_.is_some(),
@@ -402,11 +401,9 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
             FunctionKind::Function => Some(
                 FunctionDefinition {
                     parent: visitor.current_parent.clone(),
-                    name: self
-                        .header
-                        .name
-                        .as_ref()
-                        .map_or("function".to_string(), Ident::to_string),
+                    name: INTERNER.get_or_intern(
+                        self.header.name.as_ref().map_or("function", |n| n.as_str()),
+                    ),
                     returns: returns.clone(),
                     attributes: Attributes {
                         visibility: self.header.visibility.into(),
@@ -446,10 +443,7 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
         Some(
             VariableDeclaration {
                 parent: visitor.current_parent.clone(),
-                name: self
-                    .name
-                    .as_ref()
-                    .map_or("variable".to_string(), Ident::to_string),
+                name: INTERNER.get_or_intern(self.name.as_ref().map_or("variable", |n| n.as_str())),
                 span,
                 natspec,
                 attributes,
@@ -461,16 +455,14 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
 
 impl Extract for &solar_parse::ast::ItemStruct<'_> {
     fn extract_definition(self, item: &Item, visitor: &mut LintspecVisitor) -> Option<Definition> {
-        let name = self.name.to_string();
+        let name = INTERNER.get_or_intern(self.name.as_str());
 
         let members = self
             .fields
             .iter()
             .map(|m| Identifier {
                 name: Some(
-                    m.name
-                        .as_ref()
-                        .map_or("member".to_string(), Ident::to_string),
+                    INTERNER.get_or_intern(m.name.as_ref().map_or("member", |n| n.as_str())),
                 ),
                 span: visitor.span_to_textrange(m.span),
             })
@@ -508,7 +500,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
             .variants
             .iter()
             .map(|v| Identifier {
-                name: Some(v.name.to_string()),
+                name: Some(INTERNER.get_or_intern(v.name.as_str())),
                 span: visitor.span_to_textrange(v.span),
             })
             .collect();
@@ -529,7 +521,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
         Some(
             EnumDefinition {
                 parent: visitor.current_parent.clone(),
-                name: self.name.to_string(),
+                name: INTERNER.get_or_intern(self.name.as_str()),
                 span,
                 members,
                 natspec,
@@ -560,7 +552,7 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
             ErrorDefinition {
                 parent: visitor.current_parent.clone(),
                 span,
-                name: self.name.to_string(),
+                name: INTERNER.get_or_intern(self.name.as_str()),
                 params,
                 natspec,
             }
@@ -589,7 +581,7 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
         Some(
             EventDefinition {
                 parent: visitor.current_parent.clone(),
-                name: self.name.to_string(),
+                name: INTERNER.get_or_intern(self.name.as_str()),
                 span,
                 params,
                 natspec,
@@ -602,12 +594,13 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
 /// Create a [`Parent`] from solar's [`ItemContract`]
 impl From<&ItemContract<'_>> for Parent {
     fn from(contract: &ItemContract) -> Self {
+        let name = INTERNER
+            .get_or_intern(contract.name.as_str())
+            .resolve_with(&INTERNER);
         match contract.kind {
-            ContractKind::Contract | ContractKind::AbstractContract => {
-                Parent::Contract(contract.name.to_string())
-            }
-            ContractKind::Library => Parent::Library(contract.name.to_string()),
-            ContractKind::Interface => Parent::Interface(contract.name.to_string()),
+            ContractKind::Contract | ContractKind::AbstractContract => Parent::Contract(name),
+            ContractKind::Library => Parent::Library(name),
+            ContractKind::Interface => Parent::Interface(name),
         }
     }
 }
@@ -652,7 +645,7 @@ fn variable_definitions_to_identifiers(
             // If there is a named variable, we use its span
             if let Some(name) = r.name {
                 Identifier {
-                    name: Some(name.to_string()),
+                    name: Some(INTERNER.get_or_intern(name.as_str())),
                     span: visitor.span_to_textrange(name.span),
                 }
                 // Otherwise, we use the return span
@@ -678,22 +671,25 @@ fn extract_natspec(
     let mut combined = NatSpec::default();
 
     for doc in docs.iter() {
-        let snippet = visitor.source_map.span_to_snippet(doc.span).map_err(|e| {
-            // there should only be one file in the source map
-            let path = visitor
-                .source_map
-                .files()
-                .first()
-                .map_or(PathBuf::from("<stdin>"), |f| {
-                    PathBuf::from_str(&f.name.display().to_string())
-                        .unwrap_or(PathBuf::from("<unsupported path>"))
-                });
-            Error::ParsingError {
-                path,
-                loc: visitor.span_to_textrange(doc.span).start,
-                message: format!("{e:?}"),
-            }
-        })?;
+        let snippet = visitor
+            .sess
+            .source_map()
+            .span_to_snippet(doc.span)
+            .map_err(|e| {
+                // there should only be one file in the source map
+                let path = visitor.sess.source_map().files().first().map_or(
+                    PathBuf::from("<stdin>"),
+                    |f| {
+                        PathBuf::from_str(&f.name.display().to_string())
+                            .unwrap_or(PathBuf::from("<unsupported path>"))
+                    },
+                );
+                Error::ParsingError {
+                    path,
+                    loc: visitor.span_to_textrange(doc.span).start,
+                    message: format!("{e:?}"),
+                }
+            })?;
 
         let mut parsed = parse_comment(&mut snippet.as_str())
             .map_err(|e| Error::NatspecParsingError {

@@ -14,6 +14,7 @@ use crate::{
     config::{Config, ContractRules, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent},
     error::{Error, Result},
+    interner::INTERNER,
     natspec::{NatSpec, NatSpecKind},
     parser::{DocumentId, Parse, ParsedDocument},
     textindex::TextRange,
@@ -48,7 +49,7 @@ pub struct ItemDiagnostics {
     pub item_type: ItemType,
 
     /// The name of the item
-    pub name: String,
+    pub name: &'static str,
 
     /// The span of the item (for function-like items, only the declaration without the body)
     pub span: TextRange,
@@ -347,9 +348,12 @@ impl CheckParams<'_> {
     /// Generate missing param diags if `@param` is required
     fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
         self.params.iter().filter_map(|p| {
-            p.name.as_ref().map(|name| Diagnostic {
-                span: p.span.clone(),
-                message: format!("@param {name} is missing"),
+            p.name.map(|name| {
+                let name = INTERNER.resolve(name);
+                Diagnostic {
+                    span: p.span.clone(),
+                    message: format!("@param {name} is missing"),
+                }
             })
         })
     }
@@ -361,19 +365,20 @@ impl CheckParams<'_> {
             .as_ref()
             .map(|n| {
                 n.items.iter().filter_map(|item| {
-                    let NatSpecKind::Param { name } = &item.kind else {
+                    let NatSpecKind::Param { name } = item.kind else {
                         return None;
                     };
                     if self
                         .params
                         .iter()
-                        .any(|p| matches!(p.name.as_ref(), Some(param_name) if param_name == name))
+                        .any(|p| matches!(p.name, Some(param_name) if param_name == name))
                     {
                         None
                     } else {
                         // the item's span is relative to the comment's start offset
                         let span_start = self.default_span.start + item.span.start;
                         let span_end = self.default_span.start + item.span.end;
+                        let name = INTERNER.resolve(name);
                         Some(Diagnostic {
                             span: span_start..span_end,
                             message: format!("extra @param {name}"),
@@ -388,7 +393,7 @@ impl CheckParams<'_> {
     /// Generate diagnostics for wrong number of `@param` comments (missing or more than one)
     fn count_diags(&self, natspec: &NatSpec) -> impl Iterator<Item = Diagnostic> {
         self.counts(natspec).filter_map(|(param, count)| {
-            let name = param.name.as_ref().map_or("unnamed_param", String::as_str);
+            let name = param.name.map_or("unnamed_param", |n| INTERNER.resolve(n));
             match count {
                 0 => Some(Diagnostic {
                     span: param.span.clone(),
@@ -407,15 +412,15 @@ impl CheckParams<'_> {
     fn counts(&self, natspec: &NatSpec) -> impl Iterator<Item = (&Identifier, usize)> {
         // a HashMap is significantly slower than linear search here (few elements)
         self.params.iter().map(|p: &Identifier| {
-            let param_name = p.name.as_ref().map_or("", String::as_str);
+            let Some(param_name) = p.name else {
+                return (p, 0);
+            };
             (
                 p,
                 natspec
                     .items
                     .iter()
-                    .filter(
-                        |n| matches!(&n.kind, NatSpecKind::Param { name } if name == param_name),
-                    )
+                    .filter(|n| matches!(n.kind, NatSpecKind::Param { name } if name == param_name))
                     .count(),
             )
         })
@@ -479,7 +484,8 @@ impl CheckReturns<'_> {
     /// Generate missing return diags if `@return` is required and there's no natspec
     fn missing_diags(&self) -> impl Iterator<Item = Diagnostic> {
         self.returns.iter().enumerate().map(|(idx, r)| {
-            let message = if let Some(name) = &r.name {
+            let message = if let Some(name) = r.name {
+                let name = INTERNER.resolve(name);
                 format!("@return {name} is missing")
             } else if self.is_var {
                 "@return is missing".to_string()
@@ -537,9 +543,9 @@ impl CheckReturns<'_> {
             .iter()
             .enumerate()
             .filter_map(move |(idx, ret)| {
-                if let Some(name) = &ret.name {
+                if let Some(name) = ret.name {
                     // Handle named returns
-                    Self::named_count_diag(natspec, ret, name)
+                    Self::named_count_diag(natspec, ret, INTERNER.resolve(name))
                 } else {
                     // Handle unnamed returns
                     self.unnamed_diag(returns_count, idx, ret)

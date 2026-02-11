@@ -1,5 +1,6 @@
 //! Parsing and validation of state variable declarations.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckReturns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -18,7 +19,7 @@ pub struct VariableDeclaration {
     pub parent: Option<Parent>,
 
     /// The name of the state variable
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the state variable declaration
     pub span: TextRange,
@@ -55,8 +56,8 @@ impl SourceItem for VariableDeclaration {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -87,7 +88,7 @@ impl Validate for VariableDeclaration {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };

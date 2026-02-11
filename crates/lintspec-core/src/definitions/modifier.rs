@@ -1,5 +1,6 @@
 //! Parsing and validation of modifier definitions.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckParams, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -17,7 +18,7 @@ pub struct ModifierDefinition {
     pub parent: Option<Parent>,
 
     /// The name of the modifier
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the modifier definition, exluding the body
     pub span: TextRange,
@@ -51,8 +52,8 @@ impl SourceItem for ModifierDefinition {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -66,7 +67,7 @@ impl Validate for ModifierDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };
