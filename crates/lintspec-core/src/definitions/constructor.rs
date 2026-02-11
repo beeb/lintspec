@@ -34,7 +34,7 @@ impl SourceItem for ConstructorDefinition {
     }
 
     fn name(&self) -> Symbol {
-        INTERNER.get_or_intern("constructor")
+        INTERNER.get_or_intern_static("constructor")
     }
 
     fn span(&self) -> TextRange {

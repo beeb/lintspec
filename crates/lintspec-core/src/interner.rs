@@ -26,6 +26,10 @@ impl Interner {
         Symbol(self.0.get_or_intern(string))
     }
 
+    pub fn get_or_intern_static(&self, string: &'static str) -> Symbol {
+        Symbol(self.0.get_or_intern_static(string))
+    }
+
     pub fn resolve(&'static self, sym: Symbol) -> &'static str {
         self.0.resolve(&sym.0)
     }
