@@ -1,6 +1,6 @@
 [package]
 name = "lintspec"
-version = "0.13.0"
+version = "0.14.0"
 description = "A blazingly fast linter for NatSpec comments in Solidity code"
 keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
 authors.workspace = true
@@ -25,7 +25,7 @@ clap_complete = "4.5.57"
 dotenvy = "0.15.7"
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
-lintspec-core = { path = "../lintspec-core", version = "0.13.0", default-features = false, features = [
+lintspec-core = { path = "../lintspec-core", version = "0.14.0", default-features = false, features = [
     "clap",
 ] }
 miette = { version = "7.5.0", features = ["fancy"] }
