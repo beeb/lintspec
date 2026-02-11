@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.14.0] - 2026-02-11
+
+### Changed
+
+
+-  [**breaking**] intern strings ([#222](https://github.com/beeb/lintspec/pull/222)) - ([70c6f5c](https://github.com/beeb/lintspec/commit/70c6f5c7a8f173316327170f2067f7e91e25da33))
+-  [**breaking**] faster printing (compact) ([#225](https://github.com/beeb/lintspec/pull/225)) - ([e36cfbf](https://github.com/beeb/lintspec/commit/e36cfbfc731f357c1dc88b2b4a4c2ce29808a274))
+-  reduce vec allocations and sorting ([#226](https://github.com/beeb/lintspec/pull/226)) - ([045976c](https://github.com/beeb/lintspec/commit/045976c490d36cd14ca2b17b70a581f87747387e))
+
+### Documentation
+
+- **(core)** move to README ([#220](https://github.com/beeb/lintspec/pull/220)) - ([4feb91a](https://github.com/beeb/lintspec/commit/4feb91a394d8d21dcbb7bf42a882e8e3ac4bcfff))
+
+- **(interner)** add missing docs ([#224](https://github.com/beeb/lintspec/pull/224)) - ([29bc27c](https://github.com/beeb/lintspec/commit/29bc27c4b4969fe6fad979295ea99291b09f48aa))
+
+
+
+
+
+
+**Full Changelog**: [0.13.0...0.14.0](https://github.com/beeb/lintspec/compare/v0.13.0...v0.14.0)
+
+
 ## [0.13.0] - 2026-02-10
 
 ### Changed

@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.14.0] - 2026-02-11
+
+### Changed
+
+
+-  [**breaking**] faster printing (compact) ([#225](https://github.com/beeb/lintspec/pull/225)) - ([e36cfbf](https://github.com/beeb/lintspec/commit/e36cfbfc731f357c1dc88b2b4a4c2ce29808a274))
+
+### Documentation
+
+- **(core)** move to README ([#220](https://github.com/beeb/lintspec/pull/220)) - ([4feb91a](https://github.com/beeb/lintspec/commit/4feb91a394d8d21dcbb7bf42a882e8e3ac4bcfff))
+
+
+
+
+
+
+**Full Changelog**: [0.13.0...0.14.0](https://github.com/beeb/lintspec/compare/v0.13.0...v0.14.0)
+
+
 ## [0.13.0] - 2026-02-10
 
 ### Changed
