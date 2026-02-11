@@ -4,6 +4,7 @@ pub mod config;
 pub mod definitions;
 pub mod error;
 pub mod files;
+pub mod interner;
 pub mod lint;
 pub mod natspec;
 pub mod parser;

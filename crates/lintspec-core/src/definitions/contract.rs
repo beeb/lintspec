@@ -1,5 +1,6 @@
 //! Parsing and validation of contract definitions.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckAuthor, CheckNoticeAndDev, CheckTitle, ItemDiagnostics},
     natspec::NatSpec,
 };
@@ -12,7 +13,7 @@ use super::{ItemType, Parent, SourceItem, TextRange, Validate, ValidationOptions
 #[builder(on(String, into))]
 pub struct ContractDefinition {
     /// The name of the contract
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the contract definition
     pub span: TextRange,
@@ -30,8 +31,8 @@ impl SourceItem for ContractDefinition {
         None
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -45,7 +46,7 @@ impl Validate for ContractDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };

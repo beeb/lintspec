@@ -1,5 +1,6 @@
 //! Parsing and validation of constructors.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckParams, ItemDiagnostics},
     natspec::NatSpec,
 };
@@ -32,8 +33,8 @@ impl SourceItem for ConstructorDefinition {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        "constructor".to_string()
+    fn name(&self) -> Symbol {
+        INTERNER.get_or_intern_static("constructor")
     }
 
     fn span(&self) -> TextRange {
@@ -47,7 +48,7 @@ impl Validate for ConstructorDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };

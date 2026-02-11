@@ -1,5 +1,6 @@
 //! Parsing and validation of function definitions.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckParams, CheckReturns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -18,7 +19,7 @@ pub struct FunctionDefinition {
     pub parent: Option<Parent>,
 
     /// The name of the function
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the function definition, exluding the body
     pub span: TextRange,
@@ -41,7 +42,7 @@ impl FunctionDefinition {
     ///
     /// Public/external functions as well as internal override functions require @inheritdoc if enforced.
     fn requires_inheritdoc(&self, options: &ValidationOptions) -> bool {
-        let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
+        let parent_is_contract = self.parent.as_ref().is_some_and(Parent::is_contract);
         let internal_override =
             self.attributes.visibility == Visibility::Internal && self.attributes.r#override;
         let public_external = matches!(
@@ -68,8 +69,8 @@ impl SourceItem for FunctionDefinition {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -79,15 +80,16 @@ impl SourceItem for FunctionDefinition {
 
 impl Validate for FunctionDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
+        let name = self.name.resolve_with(&INTERNER);
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name,
             span: self.span(),
             diags: vec![],
         };
         // fallback and receive do not require NatSpec
-        if self.name == "receive" || self.name == "fallback" {
+        if name == "receive" || name == "fallback" {
             return out;
         }
         let opts = match self.attributes.visibility {

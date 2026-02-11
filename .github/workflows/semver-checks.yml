@@ -46,7 +46,7 @@ jobs:
           # Don't fail the workflow when semver-checks returns a non-zero exit code.
           set +e
 
-          cargo semver-checks --color never --baseline-root ../BASELINE_BRANCH --release-type minor > diagnostic.txt
+          cargo semver-checks -p lintspec-core --color never --baseline-root ../BASELINE_BRANCH --release-type minor > diagnostic.txt
           if [ "$?" -ne 0 ]; then
             echo "breaking=true" >> $GITHUB_OUTPUT
           else
@@ -94,11 +94,11 @@ jobs:
 
             <details>
               <summary>cargo-semver-checks summary</summary>
-            
+
               ```
               ${{ steps.check-changes.outputs.semver_checks_diagnostic }}
               ```
-            
+
             </details>
 
       # Post a help comment if there are breaking changes, and the PR hasn't been marked as breaking.
@@ -113,11 +113,11 @@ jobs:
 
             <details>
               <summary>cargo-semver-checks summary</summary>
-            
+
               ```
               ${{ steps.check-changes.outputs.semver_checks_diagnostic }}
               ```
-            
+
             </details>
 
       - name: Remove the checked out directories

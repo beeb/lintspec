@@ -1,5 +1,6 @@
 //! Parsing and validation of modifier definitions.
 use crate::{
+    interner::{INTERNER, Symbol},
     lint::{CheckNoticeAndDev, CheckParams, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -17,7 +18,7 @@ pub struct ModifierDefinition {
     pub parent: Option<Parent>,
 
     /// The name of the modifier
-    pub name: String,
+    pub name: Symbol,
 
     /// The span of the modifier definition, exluding the body
     pub span: TextRange,
@@ -37,7 +38,7 @@ impl ModifierDefinition {
     ///
     /// `override` modifiers must have inheritdoc.
     fn requires_inheritdoc(&self, options: &ValidationOptions) -> bool {
-        let parent_is_contract = matches!(self.parent, Some(Parent::Contract(_)));
+        let parent_is_contract = self.parent.as_ref().is_some_and(Parent::is_contract);
         options.inheritdoc_override && self.attributes.r#override && parent_is_contract
     }
 }
@@ -51,8 +52,8 @@ impl SourceItem for ModifierDefinition {
         self.parent.clone()
     }
 
-    fn name(&self) -> String {
-        self.name.clone()
+    fn name(&self) -> Symbol {
+        self.name
     }
 
     fn span(&self) -> TextRange {
@@ -66,7 +67,7 @@ impl Validate for ModifierDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name(),
+            name: self.name().resolve_with(&INTERNER),
             span: self.span(),
             diags: vec![],
         };
