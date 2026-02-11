@@ -30,7 +30,7 @@ impl Interner {
 
     /// Intern a string reference if needed, and return the corresponding [`Symbol`].
     ///
-    /// If the argument has a `'static` lifetime, use [`get_or_intern_static`] instead.
+    /// If the argument has a `'static` lifetime, use [`Interner::get_or_intern_static`] instead.
     pub fn get_or_intern(&self, string: impl AsRef<str>) -> Symbol {
         Symbol(self.0.intern(string.as_ref()))
     }
