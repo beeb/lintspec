@@ -75,8 +75,12 @@ pub fn print_reports(
         compact: bool,
     ) -> Result<(), io::Error> {
         if compact {
+            let source_name = match file_diags.path.strip_prefix(root_path) {
+                Ok(relative_path) => relative_path.to_string_lossy(),
+                Err(_) => file_diags.path.to_string_lossy(),
+            };
             for item_diags in file_diags.items {
-                item_diags.print_compact(f, &file_diags.path, root_path)?;
+                item_diags.print_compact(f, &source_name)?;
             }
         } else {
             let source_name = match file_diags.path.strip_prefix(root_path) {
