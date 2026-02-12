@@ -1,6 +1,6 @@
 //! Parsing and validation of function definitions.
 use crate::{
-    interner::{INTERNER, Symbol},
+    interner::Symbol,
     lint::{CheckNoticeAndDev, CheckParams, CheckReturns, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -80,7 +80,7 @@ impl SourceItem for FunctionDefinition {
 
 impl Validate for FunctionDefinition {
     fn validate(&self, options: &ValidationOptions) -> ItemDiagnostics {
-        let name = self.name.resolve_with(&INTERNER);
+        let name = self.name.resolve();
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),

@@ -14,7 +14,7 @@ pub use winnow::{ModalResult, Parser};
 
 use crate::{
     definitions::Identifier,
-    interner::{INTERNER, Symbol},
+    interner::{Symbol, get_or_intern},
     textindex::{TextIndex, TextRange},
 };
 
@@ -143,7 +143,7 @@ impl NatSpecItem {
             .split_whitespace()
             .next()
             .and_then(|first_word| {
-                let first_word = INTERNER.get_or_intern(first_word);
+                let first_word = get_or_intern(first_word);
                 returns
                     .iter()
                     .any(|r| match &r.name {
@@ -153,7 +153,7 @@ impl NatSpecItem {
                     .then_some(first_word)
             });
         if let Some(name) = &name
-            && let Some(comment) = self.comment.strip_prefix(name.resolve_with(&INTERNER))
+            && let Some(comment) = self.comment.strip_prefix(name.resolve())
         {
             self.comment = comment.trim_start().to_string();
         }
@@ -237,7 +237,7 @@ pub fn parse_comment(input: &mut &str) -> ModalResult<NatSpec> {
 /// Parse an identifier (contiguous non-whitespace characters)
 fn ident(input: &mut LocatingSlice<&str>) -> ModalResult<Symbol> {
     take_till(1.., |c: char| c.is_whitespace())
-        .map(|ident: &str| INTERNER.get_or_intern(ident))
+        .map(|ident: &str| get_or_intern(ident))
         .parse_next(input)
 }
 
@@ -395,20 +395,20 @@ mod tests {
             (
                 "@param  foo",
                 NatSpecKind::Param {
-                    name: INTERNER.get_or_intern("foo"),
+                    name: get_or_intern("foo"),
                 },
             ),
             ("@return", NatSpecKind::Return { name: None }),
             (
                 "@inheritdoc  ISomething",
                 NatSpecKind::Inheritdoc {
-                    parent: INTERNER.get_or_intern("ISomething"),
+                    parent: get_or_intern("ISomething"),
                 },
             ),
             (
                 "@custom:foo",
                 NatSpecKind::Custom {
-                    tag: INTERNER.get_or_intern("foo"),
+                    tag: get_or_intern("foo"),
                 },
             ),
         ];
@@ -433,7 +433,7 @@ mod tests {
             (
                 " @param foo The bar\r\n",
                 NatSpecKind::Param {
-                    name: INTERNER.get_or_intern("foo"),
+                    name: get_or_intern("foo"),
                 },
                 "The bar",
             ),
@@ -445,7 +445,7 @@ mod tests {
             (
                 "\t* @custom:foo bar\n",
                 NatSpecKind::Custom {
-                    tag: INTERNER.get_or_intern("foo"),
+                    tag: get_or_intern("foo"),
                 },
                 "bar",
             ),
@@ -482,7 +482,7 @@ mod tests {
             (
                 "/// @param foo This is bar\n",
                 NatSpecKind::Param {
-                    name: INTERNER.get_or_intern("foo"),
+                    name: get_or_intern("foo"),
                 },
                 "This is bar",
             ),
@@ -494,7 +494,7 @@ mod tests {
             (
                 "/// @custom:foo  This is bar\n",
                 NatSpecKind::Custom {
-                    tag: INTERNER.get_or_intern("foo"),
+                    tag: get_or_intern("foo"),
                 },
                 "This is bar",
             ),
@@ -569,7 +569,7 @@ mod tests {
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Custom {
-                            tag: INTERNER.get_or_intern("something")
+                            tag: get_or_intern("something")
                         },
                         comment: String::new(),
                         span: TextRange::default()
@@ -604,14 +604,14 @@ Another notice
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Param {
-                            name: INTERNER.get_or_intern("test")
+                            name: get_or_intern("test")
                         },
                         comment: String::new(),
                         span: TextRange::default()
                     },
                     NatSpecItem {
                         kind: NatSpecKind::Custom {
-                            tag: INTERNER.get_or_intern("something")
+                            tag: get_or_intern("something")
                         },
                         comment: String::new(),
                         span: TextRange::default()

@@ -25,7 +25,7 @@ use crate::{
         variable::VariableDeclaration,
     },
     error::{Error, Result},
-    interner::INTERNER,
+    interner::get_or_intern,
     natspec::{NatSpec, parse_comment},
     parser::DocumentId,
     prelude::OrPanic as _,
@@ -255,7 +255,7 @@ impl Extract for EnumDefinition {
         let members = capture(&m, "enum_members")?;
 
         let span = find_definition_start(&enumeration)..find_definition_end(&enumeration);
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let members = extract_enum_members(&members);
         let natspec = extract_comment(&enumeration.clone(), &[])?;
         let parent = extract_parent_name(enumeration);
@@ -288,7 +288,7 @@ impl Extract for ErrorDefinition {
         let params = capture(&m, "err_params")?;
 
         let span = find_definition_start(&err)..find_definition_end(&err);
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let params = extract_identifiers(&params);
         let natspec = extract_comment(&err.clone(), &[])?;
         let parent = extract_parent_name(err);
@@ -321,7 +321,7 @@ impl Extract for EventDefinition {
         let params = capture(&m, "event_params")?;
 
         let span = find_definition_start(&event)..find_definition_end(&event);
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let params = extract_params(&params, NonterminalKind::EventParameter);
         let natspec = extract_comment(&event.clone(), &[])?;
         let parent = extract_parent_name(event);
@@ -370,7 +370,7 @@ impl Extract for FunctionDefinition {
             .as_ref()
             .map_or_else(|| attributes.text_range().end.into(), find_definition_end);
         let span = span_start..span_end;
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let params = extract_params(&params, NonterminalKind::Parameter);
         let returns = returns
             .map(|r| extract_params(&r, NonterminalKind::Parameter))
@@ -414,7 +414,7 @@ impl Extract for ModifierDefinition {
         let span_start = find_definition_start(&modifier);
         let span_end = attr.text_range().end.into();
         let span = span_start..span_end;
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let params = params
             .map(|p| extract_params(&p, NonterminalKind::Parameter))
             .unwrap_or_default();
@@ -451,7 +451,7 @@ impl Extract for StructDefinition {
         let members = capture(&m, "struct_members")?;
 
         let span = find_definition_start(&structure)..find_definition_end(&structure);
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let members = extract_struct_members(&members)?;
         let natspec = extract_comment(&structure.clone(), &[])?;
         let parent = extract_parent_name(structure);
@@ -484,7 +484,7 @@ impl Extract for VariableDeclaration {
         let name = capture(&m, "variable_name")?;
 
         let span = find_definition_start(&variable)..find_definition_end(&variable);
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let natspec = extract_comment(&variable.clone(), &[])?;
         let parent = extract_parent_name(variable);
 
@@ -520,7 +520,7 @@ impl Extract for ContractDefinition {
             .as_ref()
             .map_or_else(|| name.text_range().end.into(), find_definition_end);
         let span = span_start..span_end;
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let natspec = extract_comment(&contract.clone(), &[])?;
 
         Ok(ContractDefinition {
@@ -553,7 +553,7 @@ impl Extract for InterfaceDefinition {
             .as_ref()
             .map_or_else(|| name.text_range().end.into(), find_definition_end);
         let span = span_start..span_end;
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let natspec = extract_comment(&iface.clone(), &[])?;
 
         Ok(InterfaceDefinition {
@@ -580,7 +580,7 @@ impl Extract for LibraryDefinition {
         let name = capture(&m, "library_name")?;
 
         let span = find_definition_start(&library)..name.text_range().end.into();
-        let name = INTERNER.get_or_intern(name.node().unparse().trim());
+        let name = get_or_intern(name.node().unparse().trim());
         let natspec = extract_comment(&library.clone(), &[])?;
 
         Ok(LibraryDefinition {
@@ -631,7 +631,7 @@ pub fn extract_params(cursor: &Cursor, kind: NonterminalKind) -> Vec<Identifier>
             }
             found = true;
             out.push(Identifier {
-                name: Some(INTERNER.get_or_intern(sub_cursor.node().unparse().trim())),
+                name: Some(get_or_intern(sub_cursor.node().unparse().trim())),
                 span: textrange(sub_cursor.text_range()),
             });
         }
@@ -731,7 +731,7 @@ pub fn extract_identifiers(cursor: &Cursor) -> Vec<Identifier> {
             continue;
         }
         out.push(Identifier {
-            name: Some(INTERNER.get_or_intern(cursor.node().unparse().trim())),
+            name: Some(get_or_intern(cursor.node().unparse().trim())),
             span: textrange(cursor.text_range()),
         });
     }
@@ -778,9 +778,7 @@ pub fn extract_parent_name(mut cursor: Cursor) -> Option<Parent> {
         ]) {
             for child in &parent.children {
                 if child.is_terminal_with_kind(TerminalKind::Identifier) {
-                    let name = INTERNER
-                        .get_or_intern(child.node.unparse().trim())
-                        .resolve_with(&INTERNER);
+                    let name = get_or_intern(child.node.unparse().trim()).resolve();
                     return Some(match parent.kind {
                         NonterminalKind::ContractDefinition => Parent::Contract(name),
                         NonterminalKind::InterfaceDefinition => Parent::Interface(name),
@@ -801,7 +799,7 @@ pub fn extract_enum_members(cursor: &Cursor) -> Vec<Identifier> {
     let mut out = Vec::new();
     while cursor.go_to_next_terminal_with_kind(TerminalKind::Identifier) {
         out.push(Identifier {
-            name: Some(INTERNER.get_or_intern(cursor.node().unparse().trim())),
+            name: Some(get_or_intern(cursor.node().unparse().trim())),
             span: textrange(cursor.text_range()),
         });
     }
@@ -821,7 +819,7 @@ pub fn extract_struct_members(cursor: &Cursor) -> Result<Vec<Identifier>> {
     for m in cursor.query(vec![query]) {
         let member_name = capture(&m, "member_name")?;
         out.push(Identifier {
-            name: Some(INTERNER.get_or_intern(member_name.node().unparse().trim())),
+            name: Some(get_or_intern(member_name.node().unparse().trim())),
             span: textrange(member_name.text_range()),
         });
     }
@@ -922,7 +920,6 @@ mod tests {
     use slang_solidity::{cst::Cursor, parser::Parser};
 
     use crate::{
-        interner::INTERNER,
         natspec::{NatSpecItem, NatSpecKind},
         utils::detect_solidity_version,
     };
@@ -943,7 +940,7 @@ mod tests {
                 items
                     .iter()
                     .find_map(|d| match d {
-                        $item_variant(def) if def.name == INTERNER.get_or_intern(name) => Some(def),
+                        $item_variant(def) if def.name == get_or_intern(name) => Some(def),
                         _ => None,
                     })
                     .unwrap()
@@ -961,7 +958,7 @@ mod tests {
                     .iter()
                     .find_map(|d| match d {
                         $item_variant(def)
-                            if def.name == INTERNER.get_or_intern(name) && def.parent == parent =>
+                            if def.name == get_or_intern(name) && def.parent == parent =>
                         {
                             Some(def)
                         }
@@ -1066,7 +1063,7 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Inheritdoc {
-                        parent: INTERNER.get_or_intern("IParserTest")
+                        parent: get_or_intern("IParserTest")
                     },
                     comment: String::new(),
                     span: single_line_textrange(4..27)
@@ -1093,7 +1090,7 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Inheritdoc {
-                    parent: INTERNER.get_or_intern("IParserTest")
+                    parent: get_or_intern("IParserTest")
                 },
                 comment: String::new(),
                 span: single_line_textrange(4..27)
@@ -1110,7 +1107,7 @@ mod tests {
             item.natspec.as_ref().unwrap().items,
             vec![NatSpecItem {
                 kind: NatSpecKind::Inheritdoc {
-                    parent: INTERNER.get_or_intern("IParserTest")
+                    parent: get_or_intern("IParserTest")
                 },
                 comment: String::new(),
                 span: single_line_textrange(4..27)
@@ -1133,7 +1130,7 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_param1")
+                        name: get_or_intern("_param1")
                     },
                     comment: "The only parameter".to_string(),
                     span: single_line_textrange(4..37)
@@ -1181,14 +1178,14 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_paramName")
+                        name: get_or_intern("_paramName")
                     },
                     comment: "The parameter name".to_string(),
                     span: single_line_textrange(4..40)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
-                        name: Some(INTERNER.get_or_intern("_returned"))
+                        name: Some(get_or_intern("_returned"))
                     },
                     comment: "The returned value".to_string(),
                     span: single_line_textrange(4..40)
@@ -1311,14 +1308,14 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("a")
+                        name: get_or_intern("a")
                     },
                     comment: "The first variable".to_string(),
                     span: single_line_textrange(4..32)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("b")
+                        name: get_or_intern("b")
                     },
                     comment: "The second variable".to_string(),
                     span: single_line_textrange(4..33)
@@ -1392,7 +1389,7 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_param1")
+                        name: get_or_intern("_param1")
                     },
                     comment: "The first parameter".to_string(),
                     span: TextIndex {
@@ -1409,7 +1406,7 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_param2")
+                        name: get_or_intern("_param2")
                     },
                     comment: "The second parameter".to_string(),
                     span: TextIndex {
@@ -1469,7 +1466,7 @@ mod tests {
             vec![
                 NatSpecItem {
                     kind: NatSpecKind::Inheritdoc {
-                        parent: INTERNER.get_or_intern("IParserTest")
+                        parent: get_or_intern("IParserTest")
                     },
                     comment: String::new(),
                     span: single_line_textrange(4..27)
@@ -1536,7 +1533,7 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_paramName")
+                        name: get_or_intern("_paramName")
                     },
                     comment: "The parameter name".to_string(),
                     span: TextIndex {
@@ -1553,7 +1550,7 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
-                        name: Some(INTERNER.get_or_intern("_returned"))
+                        name: Some(get_or_intern("_returned"))
                     },
                     comment: "The returned value".to_string(),
                     span: TextIndex {
@@ -1591,14 +1588,14 @@ mod tests {
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Param {
-                        name: INTERNER.get_or_intern("_paramName")
+                        name: get_or_intern("_paramName")
                     },
                     comment: "The parameter name".to_string(),
                     span: single_line_textrange(4..45)
                 },
                 NatSpecItem {
                     kind: NatSpecKind::Return {
-                        name: Some(INTERNER.get_or_intern("_returned"))
+                        name: Some(get_or_intern("_returned"))
                     },
                     comment: "The returned value".to_string(),
                     span: single_line_textrange(4..48)

@@ -1,19 +1,43 @@
 //! String interner used by data structures.
-use std::sync::LazyLock;
 
-/// The global string interner used by the parsers and other data structures.
-pub static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::new);
+thread_local! {
+    /// The thread-local string interner used by the parsers and other data structures.
+    pub static INTERNER: &'static Interner = Box::leak(Box::new(Interner::new()));
+}
+
+/// Intern a string reference if needed, and return the corresponding [`Symbol`].
+///
+/// If the argument has a `'static` lifetime, use [`get_or_intern_static`] instead.
+pub fn get_or_intern(s: impl AsRef<str>) -> Symbol {
+    INTERNER.with(|i| i.get_or_intern(s))
+}
+
+/// Intern a static string slice if needed, and return the corresponding [`Symbol`].
+#[expect(clippy::must_use_candidate)]
+pub fn get_or_intern_static(s: &'static str) -> Symbol {
+    INTERNER.with(|i| i.get_or_intern_static(s))
+}
+
+/// Resolve a symbol to its interned string slice.
+#[must_use]
+pub fn resolve(sym: Symbol) -> &'static str {
+    INTERNER.with(|i| i.resolve(sym))
+}
 
 /// The reference to an interned string from the [`INTERNER`].
 ///
-/// This type can be compared to rapidly check for string equality.
+/// NOTE: This symbol can only be resolved in the same thread where it was created. This is because the interner is
+/// thread-local. The resolved string slice has a static lifetime and can be used in other threads after resolution.
+///
+/// This type can be compared to rapidly check for string equality, within a single thread.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Symbol(inturn::Symbol);
 
 impl Symbol {
     /// Resolve the symbol to its interned string slice.
-    pub fn resolve_with(self, interner: &'static Interner) -> &'static str {
-        interner.resolve(self)
+    #[must_use]
+    pub fn resolve(self) -> &'static str {
+        INTERNER.with(|i| i.resolve(self))
     }
 }
 
@@ -41,6 +65,7 @@ impl Interner {
     }
 
     /// Resolve a symbol to its interned string slice.
+    #[must_use]
     pub fn resolve(&'static self, sym: Symbol) -> &'static str {
         self.0.resolve(sym.0)
     }

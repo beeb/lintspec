@@ -1,6 +1,6 @@
 //! Parsing and validation of modifier definitions.
 use crate::{
-    interner::{INTERNER, Symbol},
+    interner::Symbol,
     lint::{CheckNoticeAndDev, CheckParams, Diagnostic, ItemDiagnostics},
     natspec::{NatSpec, NatSpecKind},
 };
@@ -67,7 +67,7 @@ impl Validate for ModifierDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name().resolve_with(&INTERNER),
+            name: self.name().resolve(),
             span: self.span(),
             diags: vec![],
         };

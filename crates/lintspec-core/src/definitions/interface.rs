@@ -1,6 +1,6 @@
 //! Parsing and validation of interface definitions.
 use crate::{
-    interner::{INTERNER, Symbol},
+    interner::Symbol,
     lint::{CheckAuthor, CheckNoticeAndDev, CheckTitle, ItemDiagnostics},
     natspec::NatSpec,
 };
@@ -46,7 +46,7 @@ impl Validate for InterfaceDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name().resolve_with(&INTERNER),
+            name: self.name().resolve(),
             span: self.span(),
             diags: vec![],
         };

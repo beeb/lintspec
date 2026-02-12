@@ -1,6 +1,6 @@
 //! Parsing and validation of error definitions.
 use crate::{
-    interner::{INTERNER, Symbol},
+    interner::Symbol,
     lint::{CheckNoticeAndDev, CheckParams, ItemDiagnostics},
     natspec::NatSpec,
 };
@@ -52,7 +52,7 @@ impl Validate for ErrorDefinition {
         let mut out = ItemDiagnostics {
             parent: self.parent(),
             item_type: self.item_type(),
-            name: self.name().resolve_with(&INTERNER),
+            name: self.name().resolve(),
             span: self.span(),
             diags: vec![],
         };
