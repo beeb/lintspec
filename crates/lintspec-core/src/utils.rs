@@ -11,7 +11,7 @@ use slang_solidity::{
 };
 
 use crate::{
-    error::{Error, Result},
+    error::{ErrorKind, Result},
     prelude::OrPanic as _,
 };
 
@@ -72,13 +72,14 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
             parser.parse_nonterminal(NonterminalKind::PragmaDirective, pragma.as_str());
         if !parse_result.is_valid() {
             let Some(error) = parse_result.errors().first() else {
-                return Err(Error::UnknownError);
+                return Err(ErrorKind::UnknownError.into());
             };
-            return Err(Error::ParsingError {
+            return Err(ErrorKind::ParsingError {
                 path: path.to_path_buf(),
                 loc: error.text_range().start.into(),
                 message: error.message(),
-            });
+            }
+            .into());
         }
 
         let cursor = parse_result.create_tree_cursor();
@@ -107,7 +108,7 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
                 let text = expr.node().unparse();
                 let text = text.trim();
                 // check if we are dealing with a version range with hyphen format
-                let v = version_reqs.last_mut().ok_or(Error::ParsingError {
+                let v = version_reqs.last_mut().ok_or(ErrorKind::ParsingError {
                     path: path.to_path_buf(),
                     loc: expr.text_range().start.into(),
                     message: "version expression is not in an expression set".to_string(),
@@ -138,7 +139,9 @@ pub fn detect_solidity_version(src: impl AsRef<str>, path: impl AsRef<Path>) -> 
             })
             .max()
             .cloned()
-            .ok_or_else(|| Error::SolidityUnsupportedVersion(pragma.as_str().to_string()))
+            .ok_or_else(|| {
+                ErrorKind::SolidityUnsupportedVersion(pragma.as_str().to_string()).into()
+            })
     }
     inner(src.as_ref(), path.as_ref())
 }

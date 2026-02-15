@@ -10,9 +10,10 @@ use crate::{
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A lintspec error
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug, thiserror::Error, thiserror_ext::Box)]
+#[thiserror_ext(newtype(name = Error))]
 #[non_exhaustive]
-pub enum Error {
+pub enum ErrorKind {
     /// Solidity version is not supported
     #[error("the provided Solidity version is not supported: `{0}`")]
     SolidityUnsupportedVersion(String),

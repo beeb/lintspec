@@ -24,7 +24,7 @@ use crate::{
         library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
         variable::VariableDeclaration,
     },
-    error::{Error, Result},
+    error::{ErrorKind, Result},
     interner::INTERNER,
     natspec::{NatSpec, parse_comment},
     parser::DocumentId,
@@ -72,45 +72,51 @@ impl SlangParser {
             let def = match m.query_index() {
                 0 => Some(
                     ConstructorDefinition::extract(m)
-                        .unwrap_or_else(Definition::NatspecParsingError),
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
-                1 => {
-                    Some(EnumDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError))
-                }
+                1 => Some(
+                    EnumDefinition::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
+                ),
                 2 => Some(
-                    ErrorDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                    ErrorDefinition::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
                 3 => Some(
-                    EventDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                    EventDefinition::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
                 4 => {
                     let def = FunctionDefinition::extract(m)
-                        .unwrap_or_else(Definition::NatspecParsingError);
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner()));
                     if out.contains(&def) { None } else { Some(def) }
                 }
                 5 => {
                     let def = ModifierDefinition::extract(m)
-                        .unwrap_or_else(Definition::NatspecParsingError);
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner()));
                     if out.contains(&def) { None } else { Some(def) }
                 }
                 6 => Some(
-                    StructDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                    StructDefinition::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
                 7 => Some(
-                    VariableDeclaration::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                    VariableDeclaration::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
                 8 => {
                     let def = ContractDefinition::extract(m)
-                        .unwrap_or_else(Definition::NatspecParsingError);
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner()));
                     if out.contains(&def) { None } else { Some(def) }
                 }
                 9 => {
                     let def = InterfaceDefinition::extract(m)
-                        .unwrap_or_else(Definition::NatspecParsingError);
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner()));
                     if out.contains(&def) { None } else { Some(def) }
                 }
                 10 => Some(
-                    LibraryDefinition::extract(m).unwrap_or_else(Definition::NatspecParsingError),
+                    LibraryDefinition::extract(m)
+                        .unwrap_or_else(|e| Definition::NatspecParsingError(e.into_inner())),
                 ),
                 _ => unreachable!(),
             };
@@ -140,7 +146,7 @@ impl Parse for SlangParser {
                 let mut contents = String::new();
                 input
                     .read_to_string(&mut contents)
-                    .map_err(|err| Error::IOError {
+                    .map_err(|err| ErrorKind::IOError {
                         path: PathBuf::new(),
                         err,
                     })?;
@@ -155,13 +161,14 @@ impl Parse for SlangParser {
             };
             if !output.is_valid() {
                 let Some(error) = output.errors().first() else {
-                    return Err(Error::UnknownError);
+                    return Err(ErrorKind::UnknownError.into());
                 };
-                return Err(Error::ParsingError {
+                return Err(ErrorKind::ParsingError {
                     path,
                     loc: error.text_range().start.into(),
                     message: error.message(),
-                });
+                }
+                .into());
             }
             let document_id = DocumentId::new();
             if let Some(contents) = contents {
@@ -187,7 +194,7 @@ impl Parse for SlangParser {
 
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
         Ok(Arc::try_unwrap(self.documents)
-            .map_err(|_| Error::DanglingParserReferences)?
+            .map_err(|_| ErrorKind::DanglingParserReferences)?
             .into_inner()
             .or_panic("mutex should not be poisoned"))
     }
@@ -599,7 +606,7 @@ pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
         .map(|capture| capture.cursors().first().cloned())
     {
         Some(Some(res)) => Ok(res),
-        _ => Err(Error::UnknownError),
+        _ => Err(ErrorKind::UnknownError.into()),
     }
 }
 
@@ -611,7 +618,7 @@ pub fn capture_opt(m: &QueryMatch, name: &str) -> Result<Option<Cursor>> {
     {
         Some(Some(res)) => Ok(Some(res)),
         Some(None) => Ok(None),
-        _ => Err(Error::UnknownError),
+        _ => Err(ErrorKind::UnknownError.into()),
     }
 }
 
@@ -664,7 +671,7 @@ pub fn extract_comment(cursor: &Cursor, returns: &[Identifier]) -> Result<Option
                 cursor.node().kind().to_string(), // the node type to differentiate multiline from single line
                 cursor.text_range().start.line, // the line number to remove unwanted single-line comments
                 parse_comment(&mut trimmed)
-                    .map_err(|e| Error::NatspecParsingError {
+                    .map_err(|e| ErrorKind::NatspecParsingError {
                         parent: extract_parent_name(cursor.clone()),
                         span: textrange(cursor.text_range()),
                         message: e.to_string(),

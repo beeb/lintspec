@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::{
     config::{Config, ContractRules, FunctionConfig, Req, VariableConfig, WithParamsRules},
     definitions::{Identifier, ItemType, Parent},
-    error::{Error, Result},
+    error::{ErrorKind, Result},
     interner::INTERNER,
     natspec::{NatSpec, NatSpecKind},
     parser::{DocumentId, Parse, ParsedDocument},
@@ -132,7 +132,7 @@ pub fn lint(
             items,
         })
     }
-    let file = File::open(&path).map_err(|err| Error::IOError {
+    let file = File::open(&path).map_err(|err| ErrorKind::IOError {
         path: path.as_ref().to_path_buf(),
         err,
     })?;

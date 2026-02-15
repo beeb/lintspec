@@ -17,7 +17,7 @@ use variable::VariableDeclaration;
 
 use crate::{
     definitions::{interface::InterfaceDefinition, library::LibraryDefinition},
-    error::Error,
+    error::ErrorKind,
     interner::Symbol,
     lint::{Diagnostic, ItemDiagnostics, Validate, ValidationOptions},
     textindex::TextRange,
@@ -102,7 +102,7 @@ pub enum Definition {
     Modifier(ModifierDefinition),
     Struct(StructDefinition),
     Variable(VariableDeclaration),
-    NatspecParsingError(Error),
+    NatspecParsingError(ErrorKind),
 }
 
 impl PartialEq for Definition {
@@ -124,8 +124,8 @@ impl PartialEq for Definition {
             (Self::Struct(a), Self::Struct(b)) => a.span.start == b.span.start,
             (Self::Variable(a), Self::Variable(b)) => a.span.start == b.span.start,
             (
-                Self::NatspecParsingError(Error::NatspecParsingError { span: span_a, .. }),
-                Self::NatspecParsingError(Error::NatspecParsingError { span: span_b, .. }),
+                Self::NatspecParsingError(ErrorKind::NatspecParsingError { span: span_a, .. }),
+                Self::NatspecParsingError(ErrorKind::NatspecParsingError { span: span_b, .. }),
             ) => span_a.start == span_b.start,
             (Self::NatspecParsingError(a), Self::NatspecParsingError(b)) => {
                 a.to_string() == b.to_string() // try to compare on error message
@@ -151,7 +151,7 @@ impl Definition {
             Definition::Modifier(d) => Some(d.span()),
             Definition::Struct(d) => Some(d.span()),
             Definition::Variable(d) => Some(d.span()),
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
                 Some(span.clone())
             }
             Definition::NatspecParsingError(_) => None,
@@ -172,7 +172,9 @@ impl Definition {
             Definition::Modifier(d) => Some(&mut d.span),
             Definition::Struct(d) => Some(&mut d.span),
             Definition::Variable(d) => Some(&mut d.span),
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => Some(span),
+            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
+                Some(span)
+            }
             Definition::NatspecParsingError(_) => None,
         }
     }
@@ -185,7 +187,7 @@ impl Validate for Definition {
             // if there was an error while parsing the NatSpec comments, a special diagnostic is generated
             Definition::NatspecParsingError(error) => {
                 let (parent, span, message) = match error {
-                    Error::NatspecParsingError {
+                    ErrorKind::NatspecParsingError {
                         parent,
                         span,
                         message,
