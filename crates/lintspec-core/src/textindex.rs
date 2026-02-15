@@ -1,7 +1,7 @@
 //! A text index type
 //!
-//! The [`TextIndex`] type holds the line, column (both zero-indexed) and utf-8/utf-16 offsets for a given position
-//! in the text.
+//! The [`TextIndex`] type holds the line, column (zero-indexed, in all 3 LSP encodings) and utf-8 byte offset for a
+//! given position in the text.
 use std::{fmt, ops::Range};
 
 use derive_more::Add;
@@ -19,19 +19,28 @@ pub type TextRange = Range<TextIndex>;
 /// Lines and columns start at 0.
 #[derive(Default, Hash, Copy, Clone, PartialEq, Eq, Debug, Serialize, Add)]
 pub struct TextIndex {
+    /// Byte offset from the start of the document
     pub utf8: usize,
-    pub utf16: usize,
+    /// Line number (0-based)
     pub line: usize,
-    pub column: usize,
+    /// Column offset in bytes (0-based)
+    pub col_utf8: usize,
+    /// Column offset in UTF-16 code units (0-based)
+    pub col_utf16: usize,
+    /// Column offset in UTF-32 code points (0-based)
+    ///
+    /// This is the same as Rust's [`char`] count.
+    pub col_utf32: usize,
 }
 
 impl TextIndex {
-    /// Shorthand for `TextIndex { utf8: 0, utf16: 0, line: 0, char: 0 }`.
+    /// Shorthand for a `TextIndex` with all fields set to 0.
     pub const ZERO: TextIndex = TextIndex {
         utf8: 0,
-        utf16: 0,
         line: 0,
-        column: 0,
+        col_utf8: 0,
+        col_utf16: 0,
+        col_utf32: 0,
     };
 
     /// Advance the index, accounting for lf/nl/ls/ps characters and combinations.
@@ -45,30 +54,37 @@ impl TextIndex {
         // fast path for ASCII characters
         if c.is_ascii() {
             self.utf8 += 1;
-            self.utf16 += 1;
             match (c, next) {
                 ('\r', Some(&'\n')) => {
                     // ignore for now, we will increment the line number when we process the \n
                 }
                 ('\n' | '\r', _) => {
                     self.line += 1;
-                    self.column = 0;
+                    self.col_utf8 = 0;
+                    self.col_utf16 = 0;
+                    self.col_utf32 = 0;
                 }
                 _ => {
-                    self.column += 1;
+                    self.col_utf8 += 1;
+                    self.col_utf16 += 1;
+                    self.col_utf32 += 1;
                 }
             }
         } else {
             // slow path for Unicode
-            self.utf8 += c.len_utf8();
-            self.utf16 += c.len_utf16();
+            let bytes = c.len_utf8();
+            self.utf8 += bytes;
             match c {
                 '\u{2028}' | '\u{2029}' => {
                     self.line += 1;
-                    self.column = 0;
+                    self.col_utf8 = 0;
+                    self.col_utf16 = 0;
+                    self.col_utf32 = 0;
                 }
                 _ => {
-                    self.column += 1;
+                    self.col_utf8 += bytes;
+                    self.col_utf16 += c.len_utf16();
+                    self.col_utf32 += 1;
                 }
             }
         }
@@ -78,15 +94,19 @@ impl TextIndex {
     #[inline]
     fn advance_unicode(&mut self, c: char) {
         debug_assert!(!c.is_ascii());
-        self.utf8 += c.len_utf8();
-        self.utf16 += c.len_utf16();
+        let bytes = c.len_utf8();
+        self.utf8 += bytes;
         match c {
             '\u{2028}' | '\u{2029}' => {
                 self.line += 1;
-                self.column = 0;
+                self.col_utf8 = 0;
+                self.col_utf16 = 0;
+                self.col_utf32 = 0;
             }
             _ => {
-                self.column += 1;
+                self.col_utf8 += bytes;
+                self.col_utf16 += c.len_utf16();
+                self.col_utf32 += 1;
             }
         }
     }
@@ -95,18 +115,26 @@ impl TextIndex {
     #[inline]
     fn advance_by(&mut self, advance: &Advance) {
         self.utf8 += advance.bytes;
-        self.utf16 += advance.bytes;
         self.line += advance.lines;
+        // ASCII-only path: 1 byte = 1 UTF-16 code unit = 1 code point
         match advance.column {
-            Column::Increment(n) => self.column += n,
-            Column::Set(n) => self.column = n,
+            Column::Increment(n) => {
+                self.col_utf8 += n;
+                self.col_utf16 += n;
+                self.col_utf32 += n;
+            }
+            Column::Set(n) => {
+                self.col_utf8 = n;
+                self.col_utf16 = n;
+                self.col_utf32 = n;
+            }
         }
     }
 }
 
 impl fmt::Display for TextIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.line + 1, self.column + 1)
+        write!(f, "{}:{}", self.line + 1, self.col_utf32 + 1)
     }
 }
 
@@ -173,8 +201,8 @@ impl From<[i8; SIMD_LANES]> for Advance {
     /// ```
     ///
     /// We will process an amount of bytes equal to `nonascii_mask.trailing_zeros()` (a contiguous segment of ASCII
-    /// bytes at the start of the chunk). This is the increment that will be applied to the `utf8` and `utf16` fields
-    /// of `TextIndex` (the bytes/code units offset).
+    /// bytes at the start of the chunk). This is the increment that will be applied to the `utf8` field of `TextIndex`
+    /// (the byte offset). Since this path is ASCII-only, all three column encodings advance equally.
     ///
     /// First we ignore everything starting at the first non-ASCII byte by shifting the masks:
     ///
@@ -469,27 +497,30 @@ mod tests {
             result[1],
             TextIndex {
                 utf8: 5,
-                utf16: 5,
                 line: 0,
-                column: 5
+                col_utf8: 5,
+                col_utf16: 5,
+                col_utf32: 5
             }
         );
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 6,
-                utf16: 6,
                 line: 0,
-                column: 6
+                col_utf8: 6,
+                col_utf16: 6,
+                col_utf32: 6
             }
         );
         assert_eq!(
             result[3],
             TextIndex {
                 utf8: 10,
-                utf16: 10,
                 line: 0,
-                column: 10
+                col_utf8: 10,
+                col_utf16: 10,
+                col_utf32: 10
             }
         );
     }
@@ -501,49 +532,45 @@ mod tests {
         let result = compute_indices(source, &offsets);
 
         assert_eq!(result.len(), 5);
-        assert_eq!(
-            result[0],
-            TextIndex {
-                utf8: 0,
-                utf16: 0,
-                line: 0,
-                column: 0
-            }
-        );
+        assert_eq!(result[0], TextIndex::ZERO);
         assert_eq!(
             result[1],
             TextIndex {
                 utf8: 5,
-                utf16: 5,
                 line: 0,
-                column: 5
+                col_utf8: 5,
+                col_utf16: 5,
+                col_utf32: 5
             }
         );
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 6,
-                utf16: 6,
                 line: 1,
-                column: 0
+                col_utf8: 0,
+                col_utf16: 0,
+                col_utf32: 0
             }
         );
         assert_eq!(
             result[3],
             TextIndex {
                 utf8: 12,
-                utf16: 12,
                 line: 2,
-                column: 0
+                col_utf8: 0,
+                col_utf16: 0,
+                col_utf32: 0
             }
         );
         assert_eq!(
             result[4],
             TextIndex {
                 utf8: 15,
-                utf16: 15,
                 line: 2,
-                column: 3
+                col_utf8: 3,
+                col_utf16: 3,
+                col_utf32: 3
             }
         );
     }
@@ -554,31 +581,26 @@ mod tests {
         let offsets = vec![0, 3, 7]; // h, crab, l
         let result = compute_indices(source, &offsets);
 
-        assert_eq!(
-            result[0],
-            TextIndex {
-                utf8: 0,
-                utf16: 0,
-                line: 0,
-                column: 0
-            }
-        );
+        assert_eq!(result[0], TextIndex::ZERO);
         assert_eq!(
             result[1],
             TextIndex {
                 utf8: 3,
-                utf16: 3,
                 line: 0,
-                column: 3
+                col_utf8: 3,
+                col_utf16: 3,
+                col_utf32: 3
             }
         );
+        // 🦀 = 4 bytes UTF-8, 2 UTF-16 code units, 1 code point
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 7,
-                utf16: 5,
                 line: 0,
-                column: 4
+                col_utf8: 7,
+                col_utf16: 5,
+                col_utf32: 4
             }
         );
     }
@@ -593,45 +615,50 @@ mod tests {
             result[0],
             TextIndex {
                 utf8: 8,
-                utf16: 8,
                 line: 0,
-                column: 8
+                col_utf8: 8,
+                col_utf16: 8,
+                col_utf32: 8
             }
         );
         assert_eq!(
             result[1],
             TextIndex {
                 utf8: 13,
-                utf16: 13,
                 line: 0,
-                column: 13
+                col_utf8: 13,
+                col_utf16: 13,
+                col_utf32: 13
             }
         );
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 14,
-                utf16: 14,
                 line: 0,
-                column: 13 // \r doesn't advance
+                col_utf8: 13, // \r doesn't advance
+                col_utf16: 13,
+                col_utf32: 13
             }
         );
         assert_eq!(
             result[3],
             TextIndex {
                 utf8: 16,
-                utf16: 16,
                 line: 1,
-                column: 1
+                col_utf8: 1,
+                col_utf16: 1,
+                col_utf32: 1
             }
         );
         assert_eq!(
             result[4],
             TextIndex {
                 utf8: 36,
-                utf16: 36,
                 line: 1,
-                column: 21
+                col_utf8: 21,
+                col_utf16: 21,
+                col_utf32: 21
             }
         );
     }
@@ -643,31 +670,25 @@ mod tests {
         let result = compute_indices(source, &offsets);
 
         assert_eq!(result.len(), 3); // duplicates should be handled
-        assert_eq!(
-            result[0],
-            TextIndex {
-                utf8: 0,
-                utf16: 0,
-                line: 0,
-                column: 0
-            }
-        );
+        assert_eq!(result[0], TextIndex::ZERO);
         assert_eq!(
             result[1],
             TextIndex {
                 utf8: 2,
-                utf16: 2,
                 line: 0,
-                column: 2
+                col_utf8: 2,
+                col_utf16: 2,
+                col_utf32: 2
             }
         );
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 4,
-                utf16: 4,
                 line: 0,
-                column: 4
+                col_utf8: 4,
+                col_utf16: 4,
+                col_utf32: 4
             }
         );
     }
@@ -685,27 +706,30 @@ mod tests {
             result[1],
             TextIndex {
                 utf8: 5,
-                utf16: 5,
                 line: 0,
-                column: 5
+                col_utf8: 5,
+                col_utf16: 5,
+                col_utf32: 5
             }
         );
         assert_eq!(
             result[2],
             TextIndex {
                 utf8: 8,
-                utf16: 6,
                 line: 1,
-                column: 0
+                col_utf8: 0,
+                col_utf16: 0,
+                col_utf32: 0
             }
         );
         assert_eq!(
             result[3],
             TextIndex {
                 utf8: 16,
-                utf16: 12,
                 line: 2,
-                column: 0
+                col_utf8: 0,
+                col_utf16: 0,
+                col_utf32: 0
             }
         );
     }

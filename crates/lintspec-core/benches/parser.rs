@@ -45,7 +45,7 @@ fn parse_slang(bencher: Bencher, path: &str) {
 fn compute_indices(bencher: Bencher, path: &str) {
     use std::path::PathBuf;
 
-    use lintspec_core::parser::solar::complete_text_ranges;
+    use lintspec_core::parser::complete_text_ranges;
 
     let mut parser = lintspec_core::parser::solar::SolarParser::default();
     let source = black_box(fs::read_to_string(path).unwrap());

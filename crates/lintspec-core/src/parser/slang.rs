@@ -33,7 +33,7 @@ use crate::{
     utils::{detect_solidity_version, get_latest_supported_version},
 };
 
-use super::{Parse, ParsedDocument};
+use super::{Parse, ParsedDocument, complete_text_ranges};
 
 /// A parser that uses [`slang_solidity`] to identify source items
 #[derive(Debug, Clone, Default, bon::Builder)]
@@ -143,23 +143,20 @@ impl Parse for SlangParser {
             keep_contents: bool,
         ) -> Result<ParsedDocument> {
             let path = path.unwrap_or(PathBuf::from("<stdin>"));
-            let (contents, output) = {
-                let mut contents = String::new();
-                input
-                    .read_to_string(&mut contents)
-                    .map_err(|err| ErrorKind::IOError {
-                        path: PathBuf::new(),
-                        err,
-                    })?;
-                let solidity_version = if this.skip_version_detection {
-                    get_latest_supported_version()
-                } else {
-                    detect_solidity_version(&contents, &path)?
-                };
-                let parser = Parser::create(solidity_version).or_panic("parser should initialize");
-                let output = parser.parse_file_contents(&contents);
-                (keep_contents.then_some(contents), output)
+            let mut source = String::new();
+            input
+                .read_to_string(&mut source)
+                .map_err(|err| ErrorKind::IOError {
+                    path: PathBuf::new(),
+                    err,
+                })?;
+            let solidity_version = if this.skip_version_detection {
+                get_latest_supported_version()
+            } else {
+                detect_solidity_version(&source, &path)?
             };
+            let parser = Parser::create(solidity_version).or_panic("parser should initialize");
+            let output = parser.parse_file_contents(&source);
             if !output.is_valid() {
                 let Some(error) = output.errors().first() else {
                     return Err(ErrorKind::UnknownError.into());
@@ -172,16 +169,18 @@ impl Parse for SlangParser {
                 .into());
             }
             let document_id = DocumentId::new();
-            if let Some(contents) = contents {
+            let cursor = output.create_tree_cursor();
+            let mut definitions = SlangParser::find_items(cursor);
+            complete_text_ranges(&source, &mut definitions);
+            if keep_contents {
                 let mut documents = this
                     .documents
                     .lock()
                     .or_panic("mutex should not be poisoned");
-                documents.insert(document_id, contents);
+                documents.insert(document_id, source);
             }
-            let cursor = output.create_tree_cursor();
             Ok(ParsedDocument {
-                definitions: SlangParser::find_items(cursor),
+                definitions,
                 id: document_id,
             })
         }
@@ -904,20 +903,11 @@ impl From<SlangTextIndex> for TextIndex {
     fn from(value: SlangTextIndex) -> Self {
         Self {
             utf8: value.utf8,
-            utf16: value.utf16,
             line: value.line,
-            column: value.column,
-        }
-    }
-}
-
-impl From<TextIndex> for SlangTextIndex {
-    fn from(value: TextIndex) -> Self {
-        Self {
-            utf8: value.utf8,
-            utf16: value.utf16,
-            line: value.line,
-            column: value.column,
+            col_utf32: value.column,
+            // col_utf8 and col_utf16 are filled by the completion step
+            col_utf8: 0,
+            col_utf16: 0,
         }
     }
 }
@@ -1004,14 +994,16 @@ mod tests {
     fn single_line_textrange(range: Range<usize>) -> TextRange {
         TextIndex {
             utf8: range.start,
-            utf16: range.start,
             line: 0,
-            column: range.start,
+            col_utf8: range.start,
+            col_utf16: range.start,
+            col_utf32: range.start,
         }..TextIndex {
             utf8: range.end,
-            utf16: range.end,
             line: 0,
-            column: range.end,
+            col_utf8: range.end,
+            col_utf16: range.end,
+            col_utf32: range.end,
         }
     }
 
@@ -1388,14 +1380,16 @@ mod tests {
                     comment: "A function with different style of natspec".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(9, 1),
-                        utf16: adjust_offset_windows!(9, 1),
                         line: 1,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(59, 1),
-                        utf16: adjust_offset_windows!(59, 1),
                         line: 1,
-                        column: 55,
+                        col_utf8: 55,
+                        col_utf16: 55,
+                        col_utf32: 55,
                     }
                 },
                 NatSpecItem {
@@ -1405,14 +1399,16 @@ mod tests {
                     comment: "The first parameter".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(65, 2),
-                        utf16: adjust_offset_windows!(65, 2),
                         line: 2,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(100, 2),
-                        utf16: adjust_offset_windows!(100, 2),
                         line: 2,
-                        column: 40,
+                        col_utf8: 40,
+                        col_utf16: 40,
+                        col_utf32: 40,
                     }
                 },
                 NatSpecItem {
@@ -1422,14 +1418,16 @@ mod tests {
                     comment: "The second parameter".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(106, 3),
-                        utf16: adjust_offset_windows!(106, 3),
                         line: 3,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(142, 3),
-                        utf16: adjust_offset_windows!(142, 3),
                         line: 3,
-                        column: 41,
+                        col_utf8: 41,
+                        col_utf16: 41,
+                        col_utf32: 41,
                     }
                 },
                 NatSpecItem {
@@ -1437,14 +1435,16 @@ mod tests {
                     comment: "The returned value".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(148, 4),
-                        utf16: adjust_offset_windows!(148, 4),
                         line: 4,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(174, 4),
-                        utf16: adjust_offset_windows!(174, 4),
                         line: 4,
-                        column: 31,
+                        col_utf8: 31,
+                        col_utf16: 31,
+                        col_utf32: 31,
                     }
                 },
             ]
@@ -1532,14 +1532,16 @@ mod tests {
                     comment: "Some private stuff".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(9, 1),
-                        utf16: adjust_offset_windows!(9, 1),
                         line: 1,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(37, 1),
-                        utf16: adjust_offset_windows!(37, 1),
                         line: 1,
-                        column: 33,
+                        col_utf8: 33,
+                        col_utf16: 33,
+                        col_utf32: 33,
                     }
                 },
                 NatSpecItem {
@@ -1549,14 +1551,16 @@ mod tests {
                     comment: "The parameter name".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(43, 2),
-                        utf16: adjust_offset_windows!(43, 2),
                         line: 2,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(84, 2),
-                        utf16: adjust_offset_windows!(84, 2),
                         line: 2,
-                        column: 46,
+                        col_utf8: 46,
+                        col_utf16: 46,
+                        col_utf32: 46,
                     }
                 },
                 NatSpecItem {
@@ -1566,14 +1570,16 @@ mod tests {
                     comment: "The returned value".to_string(),
                     span: TextIndex {
                         utf8: adjust_offset_windows!(90, 3),
-                        utf16: adjust_offset_windows!(90, 3),
                         line: 3,
-                        column: 5,
+                        col_utf8: 5,
+                        col_utf16: 5,
+                        col_utf32: 5,
                     }..TextIndex {
                         utf8: adjust_offset_windows!(134, 3),
-                        utf16: adjust_offset_windows!(134, 3),
                         line: 3,
-                        column: 49,
+                        col_utf8: 49,
+                        col_utf16: 49,
+                        col_utf32: 49,
                     }
                 },
             ]
@@ -1713,14 +1719,16 @@ mod tests {
                 comment: "An enum 👨🏾‍👩🏾‍👧🏾".to_string(),
                 span: TextIndex {
                     utf8: 4,
-                    utf16: 4,
                     line: 0,
-                    column: 4,
+                    col_utf8: 4,
+                    col_utf16: 4,
+                    col_utf32: 4,
                 }..TextIndex {
                     utf8: 50,
-                    utf16: 34,
                     line: 0,
-                    column: 28,
+                    col_utf8: 50,
+                    col_utf16: 34,
+                    col_utf32: 28,
                 },
             }]
         );
