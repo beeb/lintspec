@@ -66,6 +66,7 @@ impl SlangParser {
     }
 
     /// Find source item definitions from a root CST [`Cursor`]
+    #[must_use]
     pub fn find_items(cursor: Cursor) -> Vec<Definition> {
         let mut out = Vec::new();
         for m in cursor.query(Self::queries()) {
