@@ -600,7 +600,7 @@ impl Extract for LibraryDefinition {
     }
 }
 
-/// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`]
+/// Retrieve and unwrap the first capture of a parser match, or return with an [`Error`](crate::error::Error)
 pub fn capture(m: &QueryMatch, name: &str) -> Result<Cursor> {
     match m
         .capture(name)
