@@ -7,7 +7,7 @@ use std::{
 use ignore::{WalkBuilder, WalkState, types::TypesBuilder};
 
 use crate::{
-    error::{Error, Result},
+    error::{ErrorKind, Result},
     prelude::OrPanic as _,
 };
 
@@ -27,9 +27,12 @@ pub fn find_sol_files<T: AsRef<Path>>(
     let exclude = exclude
         .iter()
         .map(|p| {
-            dunce::canonicalize(p.as_ref()).map_err(|err| Error::IOError {
-                path: p.as_ref().to_path_buf(),
-                err,
+            dunce::canonicalize(p.as_ref()).map_err(|err| {
+                ErrorKind::IOError {
+                    path: p.as_ref().to_path_buf(),
+                    err,
+                }
+                .into()
             })
         })
         .collect::<Result<Vec<_>>>()?;
@@ -45,7 +48,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
     // build the walker
     let mut walker: Option<WalkBuilder> = None;
     for path in paths {
-        let path = dunce::canonicalize(path.as_ref()).map_err(|err| Error::IOError {
+        let path = dunce::canonicalize(path.as_ref()).map_err(|err| ErrorKind::IOError {
             path: path.as_ref().to_path_buf(),
             err,
         })?;

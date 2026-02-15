@@ -430,7 +430,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                     .create(true)
                     .write(true)
                     .open(path)
-                    .map_err(|err| lintspec_core::error::Error::IOError {
+                    .map_err(|err| lintspec_core::error::ErrorKind::IOError {
                         path: path.clone(),
                         err,
                     })?,

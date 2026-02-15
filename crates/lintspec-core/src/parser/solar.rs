@@ -32,7 +32,7 @@ use crate::{
         library::LibraryDefinition, modifier::ModifierDefinition, structure::StructDefinition,
         variable::VariableDeclaration,
     },
-    error::{Error, Result},
+    error::{ErrorKind, Result},
     interner::INTERNER,
     natspec::{NatSpec, parse_comment},
     parser::{DocumentId, Parse, ParsedDocument},
@@ -87,14 +87,14 @@ impl Parse for SolarParser {
             let mut buf = String::new();
             input
                 .read_to_string(&mut buf)
-                .map_err(|err| Error::IOError {
+                .map_err(|err| ErrorKind::IOError {
                     path: pathbuf.clone(),
                     err,
                 })?;
             let source_map = this.sess.source_map();
             let source_file = source_map
                 .new_source_file(path.map_or(FileName::Stdin, FileName::Real), buf) // should never fail since the content was read already
-                .map_err(|err| Error::IOError {
+                .map_err(|err| ErrorKind::IOError {
                     path: pathbuf.clone(),
                     err,
                 })?;
@@ -117,7 +117,7 @@ impl Parse for SolarParser {
                         Some(Err(diags)) => diags.to_string(),
                         None | Some(Ok(())) => "unknown error".to_string(),
                     };
-                    Error::ParsingError {
+                    ErrorKind::ParsingError {
                         path: pathbuf,
                         loc: TextIndex::ZERO,
                         message,
@@ -147,20 +147,20 @@ impl Parse for SolarParser {
     }
 
     fn get_sources(self) -> Result<HashMap<DocumentId, String>> {
-        let sess = Arc::try_unwrap(self.sess).map_err(|_| Error::DanglingParserReferences)?;
+        let sess = Arc::try_unwrap(self.sess).map_err(|_| ErrorKind::DanglingParserReferences)?;
         drop(sess);
         Arc::try_unwrap(self.documents)
-            .map_err(|_| Error::DanglingParserReferences)?
+            .map_err(|_| ErrorKind::DanglingParserReferences)?
             .into_inner()
             .or_panic("mutex should not be poisoned")
             .into_iter()
             .map(|(id, doc)| {
                 let source_file =
-                    Arc::try_unwrap(doc).map_err(|_| Error::DanglingParserReferences)?;
+                    Arc::try_unwrap(doc).map_err(|_| ErrorKind::DanglingParserReferences)?;
                 Ok((
                     id,
                     Arc::try_unwrap(source_file.src)
-                        .map_err(|_| Error::DanglingParserReferences)?,
+                        .map_err(|_| ErrorKind::DanglingParserReferences)?,
                 ))
             })
             .collect::<Result<HashMap<_, _>>>()
@@ -327,7 +327,7 @@ impl Extract for &solar_parse::ast::ItemContract<'_> {
                     },
                 )
             }
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         Some(match self.kind {
@@ -369,7 +369,7 @@ impl Extract for &solar_parse::ast::ItemFunction<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         match self.kind {
@@ -432,7 +432,7 @@ impl Extract for &solar_parse::ast::VariableDefinition<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         let attributes = Attributes {
@@ -478,7 +478,7 @@ impl Extract for &solar_parse::ast::ItemStruct<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         Some(
@@ -515,7 +515,7 @@ impl Extract for &solar_parse::ast::ItemEnum<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         Some(
@@ -545,7 +545,7 @@ impl Extract for &solar_parse::ast::ItemError<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         Some(
@@ -575,7 +575,7 @@ impl Extract for &solar_parse::ast::ItemEvent<'_> {
                     )
                 },
             ),
-            Err(e) => return Some(Definition::NatspecParsingError(e)),
+            Err(e) => return Some(Definition::NatspecParsingError(e.into_inner())),
         };
 
         Some(
@@ -684,7 +684,7 @@ fn extract_natspec(
                             .unwrap_or(PathBuf::from("<unsupported path>"))
                     },
                 );
-                Error::ParsingError {
+                ErrorKind::ParsingError {
                     path,
                     loc: visitor.span_to_textrange(doc.span).start,
                     message: format!("{e:?}"),
@@ -692,7 +692,7 @@ fn extract_natspec(
             })?;
 
         let mut parsed = parse_comment(&mut snippet.as_str())
-            .map_err(|e| Error::NatspecParsingError {
+            .map_err(|e| ErrorKind::NatspecParsingError {
                 parent: visitor.current_parent.clone(),
                 span: visitor.span_to_textrange(doc.span),
                 message: e.to_string(),
@@ -740,7 +740,7 @@ fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
                     .iter()
                     .for_each(|i| register_span(&mut offsets, &i.span));
             }
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
                 register_span(&mut offsets, span);
             }
             Definition::Contract(_)
@@ -808,7 +808,7 @@ fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
                     idx = populate_span(text_indices, idx, &mut p.span);
                 }
             }
-            Definition::NatspecParsingError(Error::NatspecParsingError { span, .. }) => {
+            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
                 idx = populate_span(text_indices, idx, span);
             }
             Definition::Contract(_)
