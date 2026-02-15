@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.15.0] - 2026-02-15
+
+### Changed
+
+- **(error)** [**breaking**] rename enum to ErrorKind and create boxed Error type ([#228](https://github.com/beeb/lintspec/pull/228)) - ([6b85ad9](https://github.com/beeb/lintspec/commit/6b85ad9a2f290d2398f9187d7413ce39f56b4082))
+
+
+
+
+
+
+**Full Changelog**: [0.14.0...0.15.0](https://github.com/beeb/lintspec/compare/v0.14.0...v0.15.0)
+
+
 ## [0.14.0] - 2026-02-11
 
 ### Changed
