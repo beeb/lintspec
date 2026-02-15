@@ -903,8 +903,9 @@ impl From<SlangTextIndex> for TextIndex {
     fn from(value: SlangTextIndex) -> Self {
         Self {
             utf8: value.utf8,
-            line: value.line,
-            col_utf32: value.column,
+            line: u32::try_from(value.line).or_panic("slang line number is too large for u32"),
+            col_utf32: u32::try_from(value.column)
+                .or_panic("slang column number is too large for u32"),
             // col_utf8 and col_utf16 are filled by the completion step
             col_utf8: 0,
             col_utf16: 0,
@@ -991,19 +992,20 @@ mod tests {
         };
     }
 
+    #[expect(clippy::cast_possible_truncation)]
     fn single_line_textrange(range: Range<usize>) -> TextRange {
         TextIndex {
             utf8: range.start,
             line: 0,
-            col_utf8: range.start,
-            col_utf16: range.start,
-            col_utf32: range.start,
+            col_utf8: range.start as u32,
+            col_utf16: range.start as u32,
+            col_utf32: range.start as u32,
         }..TextIndex {
             utf8: range.end,
             line: 0,
-            col_utf8: range.end,
-            col_utf16: range.end,
-            col_utf32: range.end,
+            col_utf8: range.end as u32,
+            col_utf16: range.end as u32,
+            col_utf32: range.end as u32,
         }
     }
 

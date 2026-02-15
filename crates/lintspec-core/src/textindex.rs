@@ -22,15 +22,15 @@ pub struct TextIndex {
     /// Byte offset from the start of the document
     pub utf8: usize,
     /// Line number (0-based)
-    pub line: usize,
+    pub line: u32,
     /// Column offset in bytes (0-based)
-    pub col_utf8: usize,
+    pub col_utf8: u32,
     /// Column offset in UTF-16 code units (0-based)
-    pub col_utf16: usize,
+    pub col_utf16: u32,
     /// Column offset in UTF-32 code points (0-based)
     ///
     /// This is the same as Rust's [`char`] count.
-    pub col_utf32: usize,
+    pub col_utf32: u32,
 }
 
 impl TextIndex {
@@ -81,9 +81,10 @@ impl TextIndex {
                     self.col_utf16 = 0;
                     self.col_utf32 = 0;
                 }
+                #[expect(clippy::cast_possible_truncation)]
                 _ => {
-                    self.col_utf8 += bytes;
-                    self.col_utf16 += c.len_utf16();
+                    self.col_utf8 += bytes as u32;
+                    self.col_utf16 += c.len_utf16() as u32;
                     self.col_utf32 += 1;
                 }
             }
@@ -103,9 +104,10 @@ impl TextIndex {
                 self.col_utf16 = 0;
                 self.col_utf32 = 0;
             }
+            #[expect(clippy::cast_possible_truncation)]
             _ => {
-                self.col_utf8 += bytes;
-                self.col_utf16 += c.len_utf16();
+                self.col_utf8 += bytes as u32;
+                self.col_utf16 += c.len_utf16() as u32;
                 self.col_utf32 += 1;
             }
         }
@@ -114,7 +116,7 @@ impl TextIndex {
     /// Advance this index according to the `Advance` parameter.
     #[inline]
     fn advance_by(&mut self, advance: &Advance) {
-        self.utf8 += advance.bytes;
+        self.utf8 += advance.bytes as usize;
         self.line += advance.lines;
         // ASCII-only path: 1 byte = 1 UTF-16 code unit = 1 code point
         match advance.column {
@@ -153,15 +155,15 @@ impl Ord for TextIndex {
 /// The type of operation to perform on the `TextIndex`'s `column` field
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Column {
-    Increment(usize),
-    Set(usize),
+    Increment(u32),
+    Set(u32),
 }
 
 /// An update to perform on `TextIndex` after scanning a chunk of the input text
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Advance {
-    bytes: usize,
-    lines: usize,
+    bytes: u32,
+    lines: u32,
     column: Column,
 }
 
@@ -233,18 +235,17 @@ impl From<[i8; SIMD_LANES]> for Advance {
     /// increment the column count) from the number of bytes on the last line which we calculated before. This number
     /// is the new value of the `column` field of `TextIndex`.
     #[inline]
+    #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     fn from(chunk: [i8; SIMD_LANES]) -> Self {
         let bytes = i8x32::new(chunk);
         let nonascii_mask = bytes.simd_lt(i8x32::ZERO).to_bitmask();
-        #[expect(clippy::cast_possible_wrap)]
         let lf_bytes = i8x32::splat(b'\n' as i8);
         let mut lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
-        #[expect(clippy::cast_possible_wrap)]
         let cr_bytes = i8x32::splat(b'\r' as i8);
         let mut cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
 
         // ignore non-ASCII characters at the end
-        let n_ascii = nonascii_mask.trailing_zeros() as usize;
+        let n_ascii = nonascii_mask.trailing_zeros();
         if n_ascii == 0 {
             // there are not ASCII bytes at the start of the chunk
             return Advance {
@@ -253,15 +254,15 @@ impl From<[i8; SIMD_LANES]> for Advance {
                 lines: 0,
             };
         }
-        let shift = SIMD_LANES - n_ascii; // this is < SIMD_LANES
+        let shift = SIMD_LANES as u32 - n_ascii; // this is < SIMD_LANES
         lf_mask <<= shift;
         cr_mask <<= shift;
 
         let mut n_lines = 0;
         let column = if lf_mask > 0 {
             // the chunk contains multiple lines, we ignore everything but the last line
-            n_lines = lf_mask.count_ones() as usize;
-            let n_last_line = lf_mask.leading_zeros() as usize;
+            n_lines = lf_mask.count_ones();
+            let n_last_line = lf_mask.leading_zeros();
             if n_last_line == 0 {
                 // edge case where the last byte is \n
                 return Advance {
@@ -271,10 +272,10 @@ impl From<[i8; SIMD_LANES]> for Advance {
                 };
             }
             // we ignore the \r in the last line for the columns count
-            cr_mask >>= SIMD_LANES - n_last_line; // the shift amount is < SIMD_LANES
-            Column::Set(n_last_line - cr_mask.count_ones() as usize)
+            cr_mask >>= SIMD_LANES as u32 - n_last_line; // the shift amount is < SIMD_LANES
+            Column::Set(n_last_line - cr_mask.count_ones())
         } else {
-            Column::Increment(n_ascii - cr_mask.count_ones() as usize)
+            Column::Increment(n_ascii - cr_mask.count_ones())
         };
         Advance {
             bytes: n_ascii,
