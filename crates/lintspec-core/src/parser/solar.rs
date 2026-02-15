@@ -35,9 +35,9 @@ use crate::{
     error::{ErrorKind, Result},
     interner::INTERNER,
     natspec::{NatSpec, parse_comment},
-    parser::{DocumentId, Parse, ParsedDocument},
+    parser::{DocumentId, Parse, ParsedDocument, complete_text_ranges},
     prelude::OrPanic as _,
-    textindex::{TextIndex, TextRange, compute_indices},
+    textindex::{TextIndex, TextRange},
 };
 
 type Documents = Vec<(DocumentId, Arc<SourceFile>)>;
@@ -191,7 +191,7 @@ impl<'ast> LintspecVisitor<'ast> {
     /// This is empty until the AST has been visited with [`LintspecVisitor::visit_source_unit`].
     ///
     /// Note that the spans for each definition and their corresponding members/params/returns only contain the `utf8`
-    /// byte offset but no line/column/utf16 information. These can be populated with `complete_text_ranges`.
+    /// byte offset but no line/column information. These can be populated with [`complete_text_ranges`].
     #[must_use]
     pub fn definitions(&self) -> &Vec<Definition> {
         &self.definitions
@@ -702,134 +702,4 @@ fn extract_natspec(
     }
 
     Ok(Some((combined, docs.span())))
-}
-
-/// Gather all the start and end byte offsets for the definitions, including their members/params/returns.
-///
-/// The result is sorted.
-fn gather_offsets(definitions: &[Definition]) -> Vec<usize> {
-    fn register_span(offsets: &mut Vec<usize>, span: &TextRange) {
-        offsets.push(span.start.utf8);
-        offsets.push(span.end.utf8);
-    }
-    let mut offsets = Vec::with_capacity(definitions.len() * 16); // seems about right from code in the wild
-    // register all start and end utf-8 offsets for the definitions and their relevant properties
-    // definitions are sorted by start offset due to how the AST is traversed
-    for def in definitions {
-        def.span().inspect(|s| register_span(&mut offsets, s));
-        match def {
-            Definition::Constructor(ConstructorDefinition { params, .. })
-            | Definition::Error(ErrorDefinition { params, .. })
-            | Definition::Event(EventDefinition { params, .. })
-            | Definition::Modifier(ModifierDefinition { params, .. })
-            | Definition::Enumeration(EnumDefinition {
-                members: params, ..
-            })
-            | Definition::Struct(StructDefinition {
-                members: params, ..
-            }) => {
-                for p in params {
-                    register_span(&mut offsets, &p.span);
-                }
-            }
-            Definition::Function(d) => {
-                d.params
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-                d.returns
-                    .iter()
-                    .for_each(|i| register_span(&mut offsets, &i.span));
-            }
-            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
-                register_span(&mut offsets, span);
-            }
-            Definition::Contract(_)
-            | Definition::Interface(_)
-            | Definition::Library(_)
-            | Definition::Variable(_)
-            | Definition::NatspecParsingError(_) => {}
-        }
-    }
-    // we might have duplicate offsets and they are out of order (because a struct definition's span end is greater than
-    // the span start of its first member for example)
-    // we will deduplicate on the fly as we iterate to avoid re-allocating
-    offsets.sort_unstable();
-    offsets
-}
-
-/// Fill in the missing values in the spans of definitions.
-fn populate(text_indices: &[TextIndex], definitions: &mut Vec<Definition>) {
-    fn populate_span(indices: &[TextIndex], start_idx: usize, span: &mut TextRange) -> usize {
-        let idx;
-        (idx, span.start) = indices
-            .iter()
-            .enumerate()
-            .skip(start_idx)
-            .find_map(|(i, ti)| (ti.utf8 >= span.start.utf8).then_some((i, *ti)))
-            .or_panic("utf8 start offset should be present in cache");
-        span.end = *indices
-            .iter()
-            .skip(idx + 1)
-            .find(|ti| ti.utf8 >= span.end.utf8)
-            .or_panic("utf8 end offset should be present in cache");
-        // for the next definition or item inside of a definition, we can start after the start of this item
-        // because start indices increase monotonically
-        idx + 1
-    }
-    // definitions are sorted by start offset due to how the AST is traversed
-    // likewise, params, members, etc., are also sorted by start offset
-    // this means that we can populate spans while ignoring all items in `text_indices` prior to the index corresponding
-    // to the start offset of the previous definition
-    let mut idx = 0;
-    for def in definitions {
-        if let Some(span) = def.span_mut() {
-            idx = populate_span(text_indices, idx, span);
-        }
-        match def {
-            Definition::Constructor(ConstructorDefinition { params, .. })
-            | Definition::Error(ErrorDefinition { params, .. })
-            | Definition::Event(EventDefinition { params, .. })
-            | Definition::Modifier(ModifierDefinition { params, .. })
-            | Definition::Enumeration(EnumDefinition {
-                members: params, ..
-            })
-            | Definition::Struct(StructDefinition {
-                members: params, ..
-            }) => {
-                for p in params {
-                    idx = populate_span(text_indices, idx, &mut p.span);
-                }
-            }
-            Definition::Function(d) => {
-                for p in &mut d.params {
-                    idx = populate_span(text_indices, idx, &mut p.span);
-                }
-                for p in &mut d.returns {
-                    idx = populate_span(text_indices, idx, &mut p.span);
-                }
-            }
-            Definition::NatspecParsingError(ErrorKind::NatspecParsingError { span, .. }) => {
-                idx = populate_span(text_indices, idx, span);
-            }
-            Definition::Contract(_)
-            | Definition::Interface(_)
-            | Definition::Library(_)
-            | Definition::Variable(_)
-            | Definition::NatspecParsingError(_) => {}
-        }
-    }
-}
-
-/// Complete the [`TextRange`] of a list of [`Definition`].
-///
-/// `solar` only gives us the utf-8 byte offsets, but we need the line/column and utf-16 offsets too.
-pub fn complete_text_ranges(source: &str, definitions: &mut Vec<Definition>) {
-    let offsets = gather_offsets(definitions);
-    if offsets.is_empty() {
-        return;
-    }
-
-    let text_indices = compute_indices(source, &offsets);
-
-    populate(&text_indices, definitions);
 }
