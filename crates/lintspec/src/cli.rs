@@ -5,12 +5,13 @@ use std::{
     fs::{self, File},
     io,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
+use ariadne::{
+    CharSet, Color, Config as AriadneConfig, IndexType, Label, Report, ReportKind, Source,
+};
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
-use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
 
 use lintspec_core::{
@@ -413,37 +414,31 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
         .collect::<Result<Vec<_>, _>>()?;
 
     // check if we should output to file or to stderr/stdout
-    let mut output_file: Box<dyn std::io::Write> = match &config.output.out {
-        Some(path) => {
-            let _ = miette::set_hook(Box::new(|_| {
-                Box::new(
-                    miette::MietteHandlerOpts::new()
-                        .terminal_links(false)
-                        .unicode(false)
-                        .color(false)
-                        .build(),
-                )
-            }));
-            Box::new(
-                File::options()
-                    .truncate(true)
-                    .create(true)
-                    .write(true)
-                    .open(path)
-                    .map_err(|err| lintspec_core::error::ErrorKind::IOError {
-                        path: path.clone(),
-                        err,
-                    })?,
-            )
-        }
-        None => {
-            if diagnostics.is_empty() {
+    let (mut output_file, ariadne_config, color): (Box<dyn std::io::Write>, AriadneConfig, bool) =
+        if let Some(path) = &config.output.out {
+            let file = File::options()
+                .truncate(true)
+                .create(true)
+                .write(true)
+                .open(path)
+                .map_err(|err| lintspec_core::error::ErrorKind::IOError {
+                    path: path.clone(),
+                    err,
+                })?;
+            let cfg = AriadneConfig::default()
+                .with_color(false)
+                .with_char_set(CharSet::Ascii)
+                .with_index_type(IndexType::Byte);
+            (Box::new(file), cfg, false)
+        } else {
+            let writer: Box<dyn std::io::Write> = if diagnostics.is_empty() {
                 Box::new(std::io::stdout())
             } else {
                 Box::new(std::io::stderr())
-            }
-        }
-    };
+            };
+            let cfg = AriadneConfig::default().with_index_type(IndexType::Byte);
+            (writer, cfg, true)
+        };
 
     // no issue was found
     if diagnostics.is_empty() {
@@ -482,6 +477,8 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                 file_diags,
                 source,
                 config.output.compact,
+                ariadne_config,
+                color,
             )?;
         }
     }
@@ -503,6 +500,32 @@ pub fn write_default_config() -> Result<PathBuf, Box<dyn Error>> {
     Ok(dunce::canonicalize(&path)?)
 }
 
+/// Strip ANSI escape sequences (CSI sequences) from a byte buffer.
+///
+/// This is a workaround for ariadne 0.6.0 where `ReportKind::Custom` does not respect
+/// `Config::with_color(false)` for the report header.
+#[must_use]
+pub fn strip_ansi(input: &[u8]) -> Vec<u8> {
+    let mut output = Vec::with_capacity(input.len());
+    let mut i = 0;
+    while i < input.len() {
+        if input[i] == 0x1b && input.get(i + 1) == Some(&b'[') {
+            // Skip ESC[ and everything up to the terminating byte (0x40..=0x7E)
+            i += 2;
+            while i < input.len() && !matches!(input[i], 0x40..=0x7E) {
+                i += 1;
+            }
+            if i < input.len() {
+                i += 1; // skip the terminating character
+            }
+        } else {
+            output.push(input[i]);
+            i += 1;
+        }
+    }
+    output
+}
+
 /// Print the reports for a given file, either as pretty or compact text output
 ///
 /// The root path is the current working directory used to compute relative paths if possible. If the file path is
@@ -514,6 +537,8 @@ pub fn print_reports(
     file_diags: FileDiagnostics,
     contents: String,
     compact: bool,
+    ariadne_config: AriadneConfig,
+    color: bool,
 ) -> Result<(), io::Error> {
     fn inner(
         f: &mut impl io::Write,
@@ -521,54 +546,75 @@ pub fn print_reports(
         file_diags: FileDiagnostics,
         contents: String,
         compact: bool,
+        ariadne_config: AriadneConfig,
+        color: bool,
     ) -> Result<(), io::Error> {
+        let source_name = match file_diags.path.strip_prefix(root_path) {
+            Ok(relative_path) => relative_path.to_string_lossy(),
+            Err(_) => file_diags.path.to_string_lossy(),
+        };
         if compact {
-            let source_name = match file_diags.path.strip_prefix(root_path) {
-                Ok(relative_path) => relative_path.to_string_lossy(),
-                Err(_) => file_diags.path.to_string_lossy(),
-            };
             for item_diags in file_diags.items {
                 item_diags.print_compact(f, &source_name)?;
             }
         } else {
-            let source_name = match file_diags.path.strip_prefix(root_path) {
-                Ok(relative_path) => relative_path.to_string_lossy(),
-                Err(_) => file_diags.path.to_string_lossy(),
-            };
-            let source = Arc::new(NamedSource::new(source_name, contents));
+            let source_name = source_name.into_owned();
+            let source = Source::from(contents);
             for item_diags in file_diags.items {
-                print_report(f, Arc::clone(&source), item_diags)?;
+                print_report(f, &source_name, &source, item_diags, ariadne_config, color)?;
             }
         }
         Ok(())
     }
-    inner(f, root_path.as_ref(), file_diags, contents, compact)
+    inner(
+        f,
+        root_path.as_ref(),
+        file_diags,
+        contents,
+        compact,
+        ariadne_config,
+        color,
+    )
 }
 
-/// Print a single report related to one source item with [`miette`].
+/// Print a single report related to one source item with [`ariadne`].
 ///
 /// The writer can be anything that implement [`io::Write`].
-fn print_report(
+pub fn print_report(
     f: &mut impl io::Write,
-    source: Arc<NamedSource<String>>,
+    source_name: &str,
+    source: &Source,
     item: ItemDiagnostics,
+    config: AriadneConfig,
+    color: bool,
 ) -> Result<(), io::Error> {
+    let kind = ReportKind::Custom(&item.item_type.to_string(), Color::Yellow);
     let msg = if let Some(parent) = &item.parent {
-        format!("{} {}.{}", item.item_type, parent, item.name)
+        format!("{}.{}", parent, item.name)
     } else {
-        format!("{} {}", item.item_type, item.name)
+        item.name.to_string()
     };
+    let first_start = item.diags.first().map_or(0, |d| d.span.start.utf8);
+    let first_end = item.diags.first().map_or(0, |d| d.span.end.utf8);
     let labels: Vec<_> = item
         .diags
         .into_iter()
         .map(|d| {
-            LabeledSpan::new(
-                Some(d.message),
-                d.span.start.utf8,
-                d.span.end.utf8 - d.span.start.utf8,
-            )
+            Label::new((source_name, d.span.start.utf8..d.span.end.utf8)).with_message(d.message)
         })
         .collect();
-    let report: miette::Report = MietteDiagnostic::new(msg).with_labels(labels).into();
-    write!(f, "{:?}", report.with_source_code(source))
+
+    let report = Report::build(kind, (source_name, first_start..first_end))
+        .with_message(msg)
+        .with_labels(labels)
+        .with_config(config)
+        .finish();
+
+    if color {
+        report.write((source_name, source), f)
+    } else {
+        let mut buf = Vec::new();
+        report.write((source_name, source), &mut buf)?;
+        f.write_all(&strip_ansi(&buf))
+    }
 }

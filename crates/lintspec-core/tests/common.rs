@@ -1,16 +1,13 @@
 #![cfg(feature = "solar")]
 #![expect(clippy::unwrap_used)]
-use std::{
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::PathBuf;
 
+use ariadne::{CharSet, Config as AriadneConfig, IndexType};
+use lintspec::cli::print_reports;
 use lintspec_core::{
-    lint::{FileDiagnostics, ItemDiagnostics, ValidationOptions, lint},
+    lint::{FileDiagnostics, ValidationOptions, lint},
     parser::{Parse as _, solar::SolarParser},
 };
-use miette::{LabeledSpan, MietteDiagnostic, NamedSource};
 
 #[must_use]
 pub fn snapshot_content(
@@ -51,76 +48,19 @@ fn generate_output(
     let Some(contents) = contents else {
         return String::new();
     };
-    print_reports(&mut buf, PathBuf::new(), diags, contents, compact).unwrap();
+    let config = AriadneConfig::default()
+        .with_color(false)
+        .with_char_set(CharSet::Ascii)
+        .with_index_type(IndexType::Byte);
+    print_reports(
+        &mut buf,
+        PathBuf::new(),
+        diags,
+        contents,
+        compact,
+        config,
+        false,
+    )
+    .unwrap();
     String::from_utf8(buf).unwrap()
-}
-
-/// Print the reports for a given file, either as pretty or compact text output
-///
-/// The root path is the current working directory used to compute relative paths if possible. If the file path is
-/// not a child of the root path, then the full canonical path of the file is used instead.
-/// The writer can be anything that implement [`io::Write`].
-pub fn print_reports(
-    f: &mut impl io::Write,
-    root_path: impl AsRef<Path>,
-    file_diags: FileDiagnostics,
-    contents: String,
-    compact: bool,
-) -> Result<(), io::Error> {
-    fn inner(
-        f: &mut impl io::Write,
-        root_path: &Path,
-        file_diags: FileDiagnostics,
-        contents: String,
-        compact: bool,
-    ) -> Result<(), io::Error> {
-        if compact {
-            let source_name = match file_diags.path.strip_prefix(root_path) {
-                Ok(relative_path) => relative_path.to_string_lossy(),
-                Err(_) => file_diags.path.to_string_lossy(),
-            };
-            for item_diags in file_diags.items {
-                item_diags.print_compact(f, &source_name)?;
-            }
-        } else {
-            let source_name = match file_diags.path.strip_prefix(root_path) {
-                Ok(relative_path) => relative_path.to_string_lossy(),
-                Err(_) => file_diags.path.to_string_lossy(),
-            };
-            let source = Arc::new(NamedSource::new(source_name, contents));
-            for item_diags in file_diags.items {
-                print_report(f, Arc::clone(&source), item_diags)?;
-            }
-        }
-        Ok(())
-    }
-    inner(f, root_path.as_ref(), file_diags, contents, compact)
-}
-
-/// Print a single report related to one source item with [`miette`].
-///
-/// The writer can be anything that implement [`io::Write`].
-fn print_report(
-    f: &mut impl io::Write,
-    source: Arc<NamedSource<String>>,
-    item: ItemDiagnostics,
-) -> Result<(), io::Error> {
-    let msg = if let Some(parent) = &item.parent {
-        format!("{} {}.{}", item.item_type, parent, item.name)
-    } else {
-        format!("{} {}", item.item_type, item.name)
-    };
-    let labels: Vec<_> = item
-        .diags
-        .into_iter()
-        .map(|d| {
-            LabeledSpan::new(
-                Some(d.message),
-                d.span.start.utf8,
-                d.span.end.utf8 - d.span.start.utf8,
-            )
-        })
-        .collect();
-    let report: miette::Report = MietteDiagnostic::new(msg).with_labels(labels).into();
-    write!(f, "{:?}", report.with_source_code(source))
 }

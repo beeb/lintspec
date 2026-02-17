@@ -54,9 +54,10 @@ winnow = "0.7.2"
 zerocopy = "0.8.27"
 
 [dev-dependencies]
+ariadne = "0.6.0"
 divan = { version = "4.0.5", package = "codspeed-divan-compat" }
 insta = "1.42.1"
-miette = { version = "7.5.0", features = ["fancy"] }
+lintspec = { path = "../lintspec", default-features = false }
 similar-asserts = "1.6.1"
 temp-dir = "0.2.0"
 

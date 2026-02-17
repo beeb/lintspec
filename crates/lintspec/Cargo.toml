@@ -20,6 +20,7 @@ solar = ["lintspec-core/solar"]
 slang = ["lintspec-core/slang"]
 
 [dependencies]
+ariadne = "0.6.0"
 clap = { version = "4.5.29", features = ["derive"] }
 clap_complete = "4.5.57"
 dotenvy = "0.15.7"
@@ -28,7 +29,6 @@ figment = { version = "0.10.19", features = ["env", "toml"] }
 lintspec-core = { path = "../lintspec-core", version = "0.15.0", default-features = false, features = [
     "clap",
 ] }
-miette = { version = "7.5.0", features = ["fancy"] }
 rayon = "1.10.0"
 serde_json = "1.0.138"
 toml = "0.9.2"

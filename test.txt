@@ -1,0 +1,114 @@
+function: AbstractBasic.overriddenFunction
+   ,-[ crates/lintspec-core/test-data/BasicSample.sol:5:5 ]
+   |
+ 5 |     function overriddenFunction() internal pure virtual returns (uint256 _returned);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|^^^^^  
+   |                                            `----------------------------------------- @notice is missing
+   |                                                                              |       
+   |                                                                              `------- @return _returned is missing
+---'
+error: BasicSample.BasicSample_SomeError
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:26:41 ]
+    |
+ 26 |     error BasicSample_SomeError(uint256 _param1);
+    |                                         ^^^|^^^  
+    |                                            `----- @param _param1 is missing
+----'
+event: BasicSample.BasicSample_BasicEvent
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:31:42 ]
+    |
+ 31 |     event BasicSample_BasicEvent(uint256 _param1);
+    |                                          ^^^|^^^  
+    |                                             `----- @param _param1 is missing
+----'
+variable: BasicSample.somePublicNumber
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:39:5 ]
+    |
+ 39 | ,->     /**
+    : :   
+ 42 | |->     uint256 public somePublicNumber;
+    | |                                          
+    | `------------------------------------------ @inheritdoc is missing
+----'
+constructor: BasicSample.constructor
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:44:22 ]
+    |
+ 44 |     constructor(bool _randomFlag) {}
+    |                      ^^^^^|^^^^^  
+    |                           `------- @param _randomFlag is missing
+----'
+function: BasicSample.externalSimple
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:46:5 ]
+    |
+ 46 | ,->     /**
+    : :   
+ 54 | |->     function externalSimple(uint256 _magicNumber, string memory _name) external pure returns (bool _isMagic) {
+    | |                                                                                                                    
+    | `-------------------------------------------------------------------------------------------------------------------- @inheritdoc is missing
+----'
+function: BasicSample.multiline
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:64:5 ]
+    |
+ 64 | ,->     /**
+    : :   
+ 69 | |->     function multiline() external pure {}
+    | |                                               
+    | `----------------------------------------------- @inheritdoc is missing
+----'
+function: BasicSample.multitag
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:71:5 ]
+    |
+ 71 | ,->     /**
+    : :   
+ 75 | |->     function multitag() external pure {}
+    | |                                              
+    | `---------------------------------------------- @inheritdoc is missing
+----'
+function: BasicSample.externalSimpleMultipleReturn
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:77:5 ]
+    |
+ 77 | ,->     /**
+    : :   
+ 88 | |->         returns (bool _isMagic, uint256)
+    | |                                              
+    | `---------------------------------------------- @inheritdoc is missing
+----'
+function: BasicSample.externalSimpleMultipleUnnamedReturn
+    ,-[ crates/lintspec-core/test-data/BasicSample.sol:93:5 ]
+    |
+ 93 | ,->     /**
+    : :   
+ 98 | |->     function externalSimpleMultipleUnnamedReturn() external pure returns (bool, uint256) {
+    | |                                                                                                
+    | `------------------------------------------------------------------------------------------------ @inheritdoc is missing
+----'
+function: BasicSample.overriddenFunction
+     ,-[ crates/lintspec-core/test-data/BasicSample.sol:105:75 ]
+     |
+ 105 |     function overriddenFunction() internal pure override returns (uint256 _returned) {
+     |                                                                           ^^^^|^^^^  
+     |                                                                               `------ @return _returned is missing
+-----'
+function: BasicSample.virtualFunction
+     ,-[ crates/lintspec-core/test-data/BasicSample.sol:109:5 ]
+     |
+ 109 |     function virtualFunction() public pure virtual returns (uint256 _returned) {}
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^|^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  
+     |                                          `-------------------------------------- @inheritdoc is missing
+-----'
+modifier: BasicSample.transferFee
+     ,-[ crates/lintspec-core/test-data/BasicSample.sol:114:34 ]
+     |
+ 114 |     modifier transferFee(uint256 _receiver) virtual {
+     |                                  ^^^^|^^^^  
+     |                                      `------ @param _receiver is missing
+-----'
+modifier: ChildContract.transferFee
+     ,-[ crates/lintspec-core/test-data/BasicSample.sol:132:5 ]
+     |
+ 132 | ,->     /// @dev inheritdoc is missing
+     : :   
+ 134 | |->     modifier transferFee(uint256 _receiver) override {
+     | |                                                            
+     | `------------------------------------------------------------ @notice is missing
+-----'
