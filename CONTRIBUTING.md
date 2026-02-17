@@ -56,7 +56,7 @@ This project has strict rules for AI usage:
 These rules apply only to outside contributions to lintspec. Maintainers are exempt from these rules and may use AI
 tools at their discretion; they've proven themselves trustworthy to apply good judgment.
 
-## There are Humans Here
+### There are Humans Here
 
 Please remember that lintspec is maintained by humans.
 
@@ -68,7 +68,7 @@ In a perfect world, AI would produce high-quality, accurate work every time. But
 driver of the AI. And today, most drivers of AI are just not good enough. So, until either the people get better, the AI
 gets better, or both, we have to have strict rules to protect maintainers.
 
-## AI is Accepted Here
+### AI is Accepted Here
 
 This is not an anti-AI policy, it can be a wonderful tool for analysis, debugging and repetitive coding tasks.
 Contributions which use these tools are welcome, as long as they are not a substitute for qualified contributors.
