@@ -52,15 +52,6 @@ fn generate_output(
         .with_color(false)
         .with_char_set(CharSet::Ascii)
         .with_index_type(IndexType::Byte);
-    print_reports(
-        &mut buf,
-        PathBuf::new(),
-        diags,
-        contents,
-        compact,
-        config,
-        false,
-    )
-    .unwrap();
+    print_reports(&mut buf, PathBuf::new(), diags, contents, compact, config).unwrap();
     String::from_utf8(buf).unwrap()
 }

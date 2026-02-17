@@ -20,7 +20,7 @@ solar = ["lintspec-core/solar"]
 slang = ["lintspec-core/slang"]
 
 [dependencies]
-ariadne = "0.6.0"
+ariadne = { version = "0.6.0", features = ["auto-color"] }
 clap = { version = "4.5.29", features = ["derive"] }
 clap_complete = "4.5.57"
 dotenvy = "0.15.7"

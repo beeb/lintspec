@@ -7,9 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ariadne::{
-    CharSet, Color, Config as AriadneConfig, IndexType, Label, Report, ReportKind, Source,
-};
+pub use ariadne::Config as AriadneConfig;
+use ariadne::{CharSet, Color, IndexType, Label, Report, ReportKind, Source};
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator};
@@ -414,7 +413,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
         .collect::<Result<Vec<_>, _>>()?;
 
     // check if we should output to file or to stderr/stdout
-    let (mut output_file, ariadne_config, color): (Box<dyn std::io::Write>, AriadneConfig, bool) =
+    let (mut output_file, ariadne_config): (Box<dyn std::io::Write>, AriadneConfig) =
         if let Some(path) = &config.output.out {
             let file = File::options()
                 .truncate(true)
@@ -429,7 +428,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                 .with_color(false)
                 .with_char_set(CharSet::Ascii)
                 .with_index_type(IndexType::Byte);
-            (Box::new(file), cfg, false)
+            (Box::new(file), cfg)
         } else {
             let writer: Box<dyn std::io::Write> = if diagnostics.is_empty() {
                 Box::new(std::io::stdout())
@@ -437,7 +436,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                 Box::new(std::io::stderr())
             };
             let cfg = AriadneConfig::default().with_index_type(IndexType::Byte);
-            (writer, cfg, true)
+            (writer, cfg)
         };
 
     // no issue was found
@@ -478,7 +477,6 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
                 source,
                 config.output.compact,
                 ariadne_config,
-                color,
             )?;
         }
     }
@@ -494,36 +492,10 @@ pub fn write_default_config() -> Result<PathBuf, Box<dyn Error>> {
     let path = PathBuf::from(".lintspec.toml");
     if path.exists() {
         fs::rename(&path, ".lintspec.bck.toml")?;
-        println!("Existing `.lintspec.toml` file was renamed to `.lintpsec.bck.toml`");
+        println!("Existing `.lintspec.toml` file was renamed to `.lintspec.bck.toml`");
     }
     fs::write(&path, toml::to_string(&config)?)?;
     Ok(dunce::canonicalize(&path)?)
-}
-
-/// Strip ANSI escape sequences (CSI sequences) from a byte buffer.
-///
-/// This is a workaround for ariadne 0.6.0 where `ReportKind::Custom` does not respect
-/// `Config::with_color(false)` for the report header.
-#[must_use]
-pub fn strip_ansi(input: &[u8]) -> Vec<u8> {
-    let mut output = Vec::with_capacity(input.len());
-    let mut i = 0;
-    while i < input.len() {
-        if input[i] == 0x1b && input.get(i + 1) == Some(&b'[') {
-            // Skip ESC[ and everything up to the terminating byte (0x40..=0x7E)
-            i += 2;
-            while i < input.len() && !matches!(input[i], 0x40..=0x7E) {
-                i += 1;
-            }
-            if i < input.len() {
-                i += 1; // skip the terminating character
-            }
-        } else {
-            output.push(input[i]);
-            i += 1;
-        }
-    }
-    output
 }
 
 /// Print the reports for a given file, either as pretty or compact text output
@@ -538,7 +510,6 @@ pub fn print_reports(
     contents: String,
     compact: bool,
     ariadne_config: AriadneConfig,
-    color: bool,
 ) -> Result<(), io::Error> {
     fn inner(
         f: &mut impl io::Write,
@@ -547,7 +518,6 @@ pub fn print_reports(
         contents: String,
         compact: bool,
         ariadne_config: AriadneConfig,
-        color: bool,
     ) -> Result<(), io::Error> {
         let source_name = match file_diags.path.strip_prefix(root_path) {
             Ok(relative_path) => relative_path.to_string_lossy(),
@@ -561,7 +531,7 @@ pub fn print_reports(
             let source_name = source_name.into_owned();
             let source = Source::from(contents);
             for item_diags in file_diags.items {
-                print_report(f, &source_name, &source, item_diags, ariadne_config, color)?;
+                print_report(f, &source_name, &source, item_diags, ariadne_config)?;
             }
         }
         Ok(())
@@ -573,7 +543,6 @@ pub fn print_reports(
         contents,
         compact,
         ariadne_config,
-        color,
     )
 }
 
@@ -586,7 +555,6 @@ pub fn print_report(
     source: &Source,
     item: ItemDiagnostics,
     config: AriadneConfig,
-    color: bool,
 ) -> Result<(), io::Error> {
     let kind = ReportKind::Custom(&item.item_type.to_string(), Color::Yellow);
     let msg = if let Some(parent) = &item.parent {
@@ -610,11 +578,5 @@ pub fn print_report(
         .with_config(config)
         .finish();
 
-    if color {
-        report.write((source_name, source), f)
-    } else {
-        let mut buf = Vec::new();
-        report.write((source_name, source), &mut buf)?;
-        f.write_all(&strip_ansi(&buf))
-    }
+    report.write((source_name, source), f)
 }
