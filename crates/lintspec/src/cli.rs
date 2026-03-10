@@ -231,6 +231,18 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub sort: Option<bool>,
 
+    /// Write diagnostics to stdout instead of stderr (when no `--out` file is specified)
+    ///
+    /// Can be set with `--stdout` (means true), `--stdout=true` or `--stdout=false`.
+    #[arg(short = 's', long, num_args = 0..=1, default_missing_value = "true")]
+    pub stdout: Option<bool>,
+
+    /// Exit with code 0 even when there are diagnostics
+    ///
+    /// Can be set with `--exit-zero` (means true), `--exit-zero=true` or `--exit-zero=false`.
+    #[arg(short = '0', long, num_args = 0..=1, default_missing_value = "true")]
+    pub exit_zero: Option<bool>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -330,6 +342,12 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     }
     if let Some(sort) = args.sort {
         config.output.sort = sort;
+    }
+    if let Some(stdout) = args.stdout {
+        config.output.stdout = stdout;
+    }
+    if let Some(exit_zero) = args.exit_zero {
+        config.output.exit_zero = exit_zero;
     }
     // parser
     #[cfg(feature = "slang")]
@@ -437,7 +455,7 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
             )
         }
         None => {
-            if diagnostics.is_empty() {
+            if diagnostics.is_empty() || config.output.stdout {
                 Box::new(std::io::stdout())
             } else {
                 Box::new(std::io::stderr())

@@ -39,8 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = read_config(args)?;
 
-    match run(&config)? {
-        RunResult::NoDiagnostics => Ok(()),
-        RunResult::SomeDiagnostics => std::process::exit(1), // indicate that there were lint diagnostics
+    match (run(&config)?, config.output.exit_zero) {
+        (RunResult::NoDiagnostics, _) | (RunResult::SomeDiagnostics, true) => Ok(()),
+        (RunResult::SomeDiagnostics, false) => std::process::exit(1),
     }
 }
