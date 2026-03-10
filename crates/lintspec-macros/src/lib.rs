@@ -1,4 +1,5 @@
 #![expect(clippy::doc_markdown)]
+#![expect(clippy::result_large_err)]
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 use unsynn::{
     BraceGroupContaining, BracketGroupContaining, CommaDelimitedVec, Cons, Either, Except, Gt,
