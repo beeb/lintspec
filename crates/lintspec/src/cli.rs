@@ -334,12 +334,6 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     if let Some(out) = args.out {
         config.output.out = Some(out);
     }
-    if let Some(stdout) = args.stdout {
-        config.output.stdout = stdout;
-    }
-    if let Some(exit_zero) = args.exit_zero {
-        config.output.exit_zero = exit_zero;
-    }
     if let Some(json) = args.json {
         config.output.json = json;
     }
@@ -348,6 +342,12 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     }
     if let Some(sort) = args.sort {
         config.output.sort = sort;
+    }
+    if let Some(stdout) = args.stdout {
+        config.output.stdout = stdout;
+    }
+    if let Some(exit_zero) = args.exit_zero {
+        config.output.exit_zero = exit_zero;
     }
     // parser
     #[cfg(feature = "slang")]
