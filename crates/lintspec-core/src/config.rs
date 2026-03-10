@@ -264,6 +264,7 @@ impl Default for BaseConfig {
 /// Output config for the tool
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, bon::Builder)]
 #[non_exhaustive]
+#[expect(clippy::struct_excessive_bools)]
 pub struct OutputConfig {
     /// Path to a file to write the output to (instead of stderr)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -280,6 +281,14 @@ pub struct OutputConfig {
     /// Sort the results by file path
     #[builder(default)]
     pub sort: bool,
+
+    /// Write diagnostics to stdout instead of stderr (when no `--out` file is specified)
+    #[builder(default)]
+    pub stdout: bool,
+
+    /// Exit with code 0 even when there are diagnostics
+    #[builder(default)]
+    pub exit_zero: bool,
 }
 
 /// The parsed and validated config for the tool

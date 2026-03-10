@@ -119,6 +119,8 @@ Options:
       --json                     Output diagnostics in JSON format
       --compact                  Compact output
       --sort                     Sort the results by file path
+  -s, --stdout                   Write diagnostics to stdout instead of stderr
+  -0, --exit-zero                Exit with code 0 even when there are diagnostics
   -h, --help                     Print help (see more with '--help')
   -V, --version                  Print version
 ```
