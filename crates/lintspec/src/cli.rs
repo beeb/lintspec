@@ -515,7 +515,7 @@ pub fn write_default_config() -> Result<PathBuf, Box<dyn Error>> {
     let path = PathBuf::from(".lintspec.toml");
     if path.exists() {
         fs::rename(&path, ".lintspec.bck.toml")?;
-        println!("Existing `.lintspec.toml` file was renamed to `.lintpsec.bck.toml`");
+        println!("Existing `.lintspec.toml` file was renamed to `.lintspec.bck.toml`");
     }
     fs::write(&path, toml::to_string(&config)?)?;
     Ok(dunce::canonicalize(&path)?)
