@@ -243,6 +243,8 @@ pub struct BaseConfig {
     pub notice_or_dev: bool,
 
     /// Number of parallel workers/threads, or 0 to use the number of logical cores
+    ///
+    /// Defaults to 4.
     #[builder(default = 4)]
     pub parallel: usize,
 
