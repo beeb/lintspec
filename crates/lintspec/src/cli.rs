@@ -451,7 +451,8 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
     } else {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
-            .build_global()?;
+            .build_global()
+            .ok();
         paths
             .par_iter()
             .filter_map(|p| {
