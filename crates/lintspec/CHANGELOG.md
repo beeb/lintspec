@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.16.0] - 2026-03-11
+
+### Added
+
+
+-  add `--stdout` and `--exit-zero` cli flags ([#236](https://github.com/beeb/lintspec/pull/236)) - ([230b469](https://github.com/beeb/lintspec/commit/230b469ff467ee3d39e294a82b8f53476cb07447))
+-  [**breaking**] add `-n` to specify parallelism ([#240](https://github.com/beeb/lintspec/pull/240)) - ([2d59f14](https://github.com/beeb/lintspec/commit/2d59f14270e05233bf4131e3e7176d149c07281f))
+
+### Changed
+
+- **(deps)** update toml version ([#239](https://github.com/beeb/lintspec/pull/239)) - ([747c9aa](https://github.com/beeb/lintspec/commit/747c9aa2d9cf67790cbea297d2b8d2ab70432525))
+
+
+
+
+
+
+**Full Changelog**: [0.15.0...0.16.0](https://github.com/beeb/lintspec/compare/v0.15.0...v0.16.0)
+
+
 ## [0.15.0] - 2026-02-15
 
 ### Changed

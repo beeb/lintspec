@@ -1,6 +1,6 @@
 [package]
 name = "lintspec-macros"
-version = "0.2.3"
+version = "0.2.4"
 description = "Convenience macros for lintspec"
 readme = "./README.md"
 authors.workspace = true
