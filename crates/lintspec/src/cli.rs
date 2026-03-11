@@ -4,7 +4,7 @@ use std::{
     error::Error,
     fs::{self, File},
     io,
-    num::{NonZero, NonZeroUsize},
+    num::NonZero,
     path::{Path, PathBuf},
     sync::Arc,
     thread::available_parallelism,
@@ -99,11 +99,11 @@ pub struct Args {
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub notice_or_dev: Option<bool>,
 
-    /// Number of parallel workers/threads
+    /// Number of parallel workers/threads, or 0 to use the number of logical cores
     ///
-    /// If unspecified, uses the number of logical cores, with a maximum of 12 for directory traversal.
+    /// Defaults to 4 for a good balance of parallelism and synchronization overhead.
     #[arg(short = 'n', long, name = "THREADS")]
-    pub parallel: Option<NonZeroUsize>,
+    pub parallel: Option<usize>,
 
     /// Skip the detection of the Solidity version from pragma statements and use the latest supported version.
     ///
@@ -335,7 +335,10 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
         .config
         .or_else(|| env::var("LS_CONFIG_PATH").ok().map(Into::into));
     let mut config: Config = Config::figment(config_path).extract()?;
-    // paths
+    // general
+    if let Some(par) = args.parallel {
+        config.lintspec.parallel = par;
+    }
     config.lintspec.paths.extend(args.paths);
     config.lintspec.exclude.extend(args.exclude);
     // output
@@ -371,9 +374,6 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
     }
     if let Some(notice_or_dev) = args.notice_or_dev {
         config.lintspec.notice_or_dev = notice_or_dev;
-    }
-    if let Some(parallel) = args.parallel {
-        config.lintspec.parallel = Some(parallel);
     }
 
     cli_rule_override!(config, args.title_ignored, title, Req::Ignored);
@@ -430,10 +430,11 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
         .skip_version_detection(config.lintspec.skip_version_detection)
         .build();
 
-    let threads = config
-        .lintspec
-        .parallel
-        .map_or(available_parallelism().map_or(1, NonZero::get), Into::into);
+    let threads = if config.lintspec.parallel == 0 {
+        available_parallelism().map_or(1, NonZero::get)
+    } else {
+        config.lintspec.parallel
+    };
     let diagnostics = if threads == 1 {
         paths
             .into_iter()

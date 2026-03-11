@@ -1,6 +1,6 @@
 //! Find Solidity files to analyze
 use std::{
-    num::{NonZero, NonZeroUsize},
+    num::NonZero,
     path::{Path, PathBuf},
     sync::{Arc, mpsc},
     thread::available_parallelism,
@@ -24,7 +24,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
     paths: &[T],
     exclude: &[T],
     sort: bool,
-    parallel: Option<NonZeroUsize>,
+    threads: usize,
 ) -> Result<Vec<PathBuf>> {
     // canonicalize exclude paths
     let exclude = exclude
@@ -78,10 +78,12 @@ pub fn find_sol_files<T: AsRef<Path>>(
         .add_custom_ignore_filename(".nsignore")
         .types(types);
 
-    let threads = parallel.map_or(
-        available_parallelism().map_or(1, NonZero::get).min(12),
-        Into::into,
-    );
+    let threads = if threads == 0 {
+        // similar to ripgrep, limit to 12 because there are diminishing returns above
+        available_parallelism().map_or(1, NonZero::get).min(12)
+    } else {
+        threads
+    };
     // we use the parallel version even for 1 thread, to allow short-circuiting some branches present
     // in the exclude list, which the non-parallel one does not support
     let walker = walker.threads(threads).build_parallel();
