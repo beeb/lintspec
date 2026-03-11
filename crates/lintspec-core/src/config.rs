@@ -1,5 +1,5 @@
 //! Tool configuration parsing and validation
-use std::path::PathBuf;
+use std::{num::NonZeroUsize, path::PathBuf};
 
 use derive_more::IsVariant;
 use figment::{
@@ -242,6 +242,10 @@ pub struct BaseConfig {
     #[builder(default)]
     pub notice_or_dev: bool,
 
+    /// Number of parallel workers/threads, or use default rayon/ignore behavior
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parallel: Option<NonZeroUsize>,
+
     /// Skip the detection of the Solidity version and use the latest version supported by `slang_solidity`
     #[cfg_attr(not(feature = "slang"), serde(skip))]
     #[builder(default)]
@@ -256,6 +260,7 @@ impl Default for BaseConfig {
             inheritdoc: true,
             inheritdoc_override: false,
             notice_or_dev: false,
+            parallel: None,
             skip_version_detection: false,
         }
     }

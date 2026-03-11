@@ -1,7 +1,9 @@
 //! Find Solidity files to analyze
 use std::{
+    num::{NonZero, NonZeroUsize},
     path::{Path, PathBuf},
     sync::{Arc, mpsc},
+    thread::available_parallelism,
 };
 
 use ignore::{WalkBuilder, WalkState, types::TypesBuilder};
@@ -22,6 +24,7 @@ pub fn find_sol_files<T: AsRef<Path>>(
     paths: &[T],
     exclude: &[T],
     sort: bool,
+    parallel: Option<NonZeroUsize>,
 ) -> Result<Vec<PathBuf>> {
     // canonicalize exclude paths
     let exclude = exclude
@@ -74,8 +77,14 @@ pub fn find_sol_files<T: AsRef<Path>>(
         .git_exclude(false)
         .add_custom_ignore_filename(".nsignore")
         .types(types);
-    let walker = walker.build_parallel();
 
+    let threads = parallel.map_or(
+        available_parallelism().map_or(1, NonZero::get).min(12),
+        Into::into,
+    );
+    // we use the parallel version even for 1 thread, to allow short-circuiting some branches present
+    // in the exclude list, which the non-parallel one does not support
+    let walker = walker.threads(threads).build_parallel();
     let (tx, rx) = mpsc::channel::<PathBuf>();
     walker.run(|| {
         let tx = tx.clone();
