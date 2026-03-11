@@ -49,7 +49,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build -p lintspec --all-features -m walltime --bench e2e
+        run: cargo codspeed build -p lintspec -m walltime --bench e2e
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
