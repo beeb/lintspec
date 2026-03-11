@@ -98,6 +98,7 @@ Options:
       --inheritdoc               Enforce that all public and external items have `@inheritdoc`
       --inheritdoc-override      Enforce that `override` internal functions and modifiers have `@inheritdoc`
       --notice-or-dev            Do not distinguish between `@notice` and `@dev` when considering "required" validation rules
+  -n, --parallel <THREADS>       Number of parallel workers/threads, or 0 to use the number of logical cores
       --title-ignored <TYPE>     Ignore `@title` for these items (can be used more than once)
       --title-required <TYPE>    Enforce `@title` for these items (can be used more than once)
       --title-forbidden <TYPE>   Forbid `@title` for these items (can be used more than once)

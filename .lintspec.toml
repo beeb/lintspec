@@ -4,6 +4,7 @@ exclude = []                # paths to files or folders to exclude, see also `.n
 inheritdoc = true           # enforce that all public and external items have `@inheritdoc`
 inheritdoc_override = false # enforce that `override` internal functions and modifiers have `@inheritdoc`
 notice_or_dev = false       # do not distinguish between `@notice` and `@dev` when considering "required" validation rules
+parallel = 4                # specify the number of parallel workers/threads, or 0 for the number of logical cores
 
 [output]
 # out = ""        # if provided, redirects output to a file

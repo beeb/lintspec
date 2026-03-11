@@ -4,8 +4,10 @@ use std::{
     error::Error,
     fs::{self, File},
     io,
+    num::NonZero,
     path::{Path, PathBuf},
     sync::Arc,
+    thread::available_parallelism,
 };
 
 use clap::{Parser, Subcommand};
@@ -96,6 +98,12 @@ pub struct Args {
     /// Can be set with `--notice-or-dev` (means true), `--notice-or-dev=true` or `--notice-or-dev=false`.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub notice_or_dev: Option<bool>,
+
+    /// Number of parallel workers/threads, or 0 to use the number of logical cores
+    ///
+    /// Defaults to 4 for a good balance of parallelism and synchronization overhead.
+    #[arg(short = 'n', long, name = "THREADS")]
+    pub parallel: Option<usize>,
 
     /// Skip the detection of the Solidity version from pragma statements and use the latest supported version.
     ///
@@ -327,7 +335,10 @@ pub fn read_config(args: Args) -> Result<Config, Box<figment::Error>> {
         .config
         .or_else(|| env::var("LS_CONFIG_PATH").ok().map(Into::into));
     let mut config: Config = Config::figment(config_path).extract()?;
-    // paths
+    // general
+    if let Some(par) = args.parallel {
+        config.lintspec.parallel = par;
+    }
     config.lintspec.paths.extend(args.paths);
     config.lintspec.exclude.extend(args.exclude);
     // output
@@ -394,12 +405,14 @@ pub enum RunResult {
 }
 
 /// Run lintspec
+#[expect(clippy::too_many_lines)]
 pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
     // identify Solidity files to parse
     let paths = find_sol_files(
         &config.lintspec.paths,
         &config.lintspec.exclude,
         config.output.sort,
+        config.lintspec.parallel,
     )?;
     if paths.is_empty() {
         return Err(String::from("no Solidity file found, nothing to analyze").into());
@@ -417,18 +430,42 @@ pub fn run(config: &Config) -> Result<RunResult, Box<dyn Error>> {
         .skip_version_detection(config.lintspec.skip_version_detection)
         .build();
 
-    let diagnostics = paths
-        .par_iter()
-        .filter_map(|p| {
-            lint(
-                parser.clone(),
-                p,
-                &options,
-                !config.output.compact && !config.output.json,
-            )
-            .transpose()
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let threads = if config.lintspec.parallel == 0 {
+        available_parallelism().map_or(1, NonZero::get)
+    } else {
+        config.lintspec.parallel
+    };
+    let diagnostics = if threads == 1 {
+        paths
+            .into_iter()
+            .filter_map(|p| {
+                lint(
+                    parser.clone(),
+                    p,
+                    &options,
+                    !config.output.compact && !config.output.json,
+                )
+                .transpose()
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()
+            .ok();
+        paths
+            .par_iter()
+            .filter_map(|p| {
+                lint(
+                    parser.clone(),
+                    p,
+                    &options,
+                    !config.output.compact && !config.output.json,
+                )
+                .transpose()
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    };
 
     // check if we should output to file or to stderr/stdout
     let mut output_file: Box<dyn std::io::Write> = match &config.output.out {

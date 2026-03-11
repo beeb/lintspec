@@ -242,6 +242,12 @@ pub struct BaseConfig {
     #[builder(default)]
     pub notice_or_dev: bool,
 
+    /// Number of parallel workers/threads, or 0 to use the number of logical cores
+    ///
+    /// Defaults to 4.
+    #[builder(default = 4)]
+    pub parallel: usize,
+
     /// Skip the detection of the Solidity version and use the latest version supported by `slang_solidity`
     #[cfg_attr(not(feature = "slang"), serde(skip))]
     #[builder(default)]
@@ -256,6 +262,7 @@ impl Default for BaseConfig {
             inheritdoc: true,
             inheritdoc_override: false,
             notice_or_dev: false,
+            parallel: 4,
             skip_version_detection: false,
         }
     }

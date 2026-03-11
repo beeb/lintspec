@@ -37,6 +37,7 @@ fn e2e_uniswap(bencher: Bencher) {
         .lintspec(
             BaseConfig::builder()
                 .paths(vec![d.child("v4-core/src")])
+                .parallel(1)
                 .build(),
         )
         .output(
