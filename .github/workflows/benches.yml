@@ -13,8 +13,8 @@ permissions:
   id-token: write # for codspeed OIDC token
 
 jobs:
-  benchmarks-instrumentation:
-    name: Run benchmarks in instrumentation mode
+  benchmarks-core:
+    name: Run core benchmarks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,7 +27,7 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build -p lintspec-core --all-features --bench lint --bench parser
+        run: cargo codspeed build -p lintspec-core --all-features
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
@@ -35,8 +35,8 @@ jobs:
           mode: instrumentation
           run: cargo codspeed run
 
-  benchmarks-walltime:
-    name: Run benchmarks in walltime mode
+  benchmarks-e2e:
+    name: Run e2e benchmarks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -49,10 +49,10 @@ jobs:
           bins: cargo-codspeed
 
       - name: Build the benchmark target(s)
-        run: cargo codspeed build -p lintspec -m walltime --bench e2e
+        run: cargo codspeed build -p lintspec
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v4
         with:
-          mode: walltime
+          mode: instrumentation
           run: cargo codspeed run
