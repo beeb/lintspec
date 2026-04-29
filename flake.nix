@@ -7,12 +7,18 @@
     };
   };
 
-  outputs = { self, nixpkgs, fenix }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      fenix,
+    }:
     let
       forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
     in
     {
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs {
             inherit system;
@@ -22,7 +28,7 @@
         in
         {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [
+            packages = with pkgs; [
               cargo-dist
               cargo-hack
               cargo-insta
@@ -34,7 +40,8 @@
           };
         }
       );
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs { inherit system; };
           lib = pkgs.lib;
@@ -45,7 +52,10 @@
             inherit ((lib.importTOML ./crates/lintspec/Cargo.toml).package) version;
 
             src = lib.cleanSource ./.;
-            cargoBuildFlags = [ "--package" "lintspec" ];
+            cargoBuildFlags = [
+              "--package"
+              "lintspec"
+            ];
 
             cargoLock = {
               lockFile = ./Cargo.lock;
