@@ -1,6 +1,6 @@
 [package]
 name = "lintspec-core"
-version = "0.16.0"
+version = "0.16.1"
 description = "Core library for lintspec"
 readme = "./README.md"
 keywords = ["natspec", "solidity", "linter", "documentation"]
