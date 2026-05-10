@@ -27,14 +27,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@1.94.1
+      - uses: dtolnay/rust-toolchain@stable # correct version will be downloaded by cargo hack
       - uses: taiki-e/install-action@cargo-hack
       - name: cargo hack
-        env:
-          RUSTUP_TOOLCHAIN: 1.94.1
         run: |
-          cargo hack -p lintspec-core check --feature-powerset
-          cargo hack -p lintspec check --feature-powerset --at-least-one-of solar,slang
+          cargo hack --rust-version -p lintspec-core check --feature-powerset
+          cargo hack --rust-version -p lintspec check --feature-powerset --at-least-one-of solar,slang
 
   clippy:
     runs-on: ubuntu-latest
