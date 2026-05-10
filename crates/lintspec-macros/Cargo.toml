@@ -1,23 +1,22 @@
 [package]
 name = "lintspec-macros"
 version = "0.2.4"
+edition.workspace = true
+rust-version.workspace = true
 description = "Convenience macros for lintspec"
 readme = "./README.md"
-authors.workspace = true
-categories.workspace = true
-edition.workspace = true
-license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
-
-[lints]
-workspace = true
+license.workspace = true
+categories.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
 unsynn = { version = "0.3.0", default-features = false, features = [
-    "docgen",
-    "proc_macro2",
+  "docgen",
+  "proc_macro2",
 ] }
+
+[lints]
+workspace = true

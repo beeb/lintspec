@@ -1,25 +1,27 @@
 [workspace]
-members = ["crates/*"]
 resolver = "3"
+members = ["crates/*"]
 
 [workspace.package]
-authors = ["Valentin Bersier <hi@beeb.li>"]
-categories = ["development-tools", "command-line-utilities"]
 edition = "2024"
-license = "MIT OR Apache-2.0"
+rust-version = "1.94.1"
 readme = "./README.md"
 repository = "https://github.com/beeb/lintspec"
-rust-version = "1.89.0"
+license = "MIT OR Apache-2.0"
+categories = ["command-line-utilities", "development-tools"]
 
 [workspace.lints.clippy]
 allow_attributes = "warn"
+expect_used = "deny"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 mod_module_files = "warn"
 module_name_repetitions = "allow"
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
-expect_used = "deny"
+
+[profile.dev.package]
+insta.opt-level = 3
 
 [profile.release]
 lto = "thin"
@@ -28,6 +30,3 @@ lto = "thin"
 [profile.dist]
 inherits = "release"
 lto = "thin"
-
-[profile.dev.package]
-insta.opt-level = 3

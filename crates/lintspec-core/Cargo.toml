@@ -1,39 +1,37 @@
 [package]
 name = "lintspec-core"
 version = "0.16.0"
+edition.workspace = true
+rust-version.workspace = true
 description = "Core library for lintspec"
 readme = "./README.md"
-keywords = ["natspec", "solidity", "linter", "documentation"]
-authors.workspace = true
-categories.workspace = true
-edition.workspace = true
-license.workspace = true
 repository.workspace = true
-rust-version.workspace = true
-
-[lints]
-workspace = true
+license.workspace = true
+keywords = ["documentation", "linter", "natspec", "solidity"]
+categories.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-default = ["solar"]
-clap = ["dep:clap"]
-solar = ["dep:solar-parse"]
-slang = ["dep:regex", "dep:slang_solidity"]
+[[bench]]
+harness = false
+name = "parser"
+
+[[bench]]
+harness = false
+name = "lint"
 
 [dependencies]
 bon = "3.3.2"
 clap = { version = "4.5.29", features = ["derive"], optional = true }
 derive_more = { version = "2.0.1", features = [
-    "add",
-    "display",
-    "from",
-    "from_str",
-    "is_variant",
-    "try_into",
+  "add",
+  "display",
+  "from",
+  "from_str",
+  "is_variant",
+  "try_into",
 ] }
 dunce = "1.0.5"
 fastrand = "2.3.0"
@@ -50,20 +48,24 @@ solar-parse = { version = "0.1.4", default-features = false, optional = true }
 thiserror = "2.0.11"
 thiserror-ext = "0.3.0"
 wide = "1.1.1"
-winnow = "0.7.2"
+winnow = { version = "1.0.2", default-features = false, features = [
+  "ascii",
+  "std"
+] }
 zerocopy = "0.8.27"
 
 [dev-dependencies]
-divan = { version = "4.0.5", package = "codspeed-divan-compat" }
+divan = { package = "codspeed-divan-compat", version = "4.0.5" }
 insta = "1.42.1"
 miette = { version = "7.5.0", features = ["fancy"] }
-similar-asserts = "1.6.1"
+similar-asserts = "2.0.0"
 temp-dir = "0.2.0"
 
-[[bench]]
-name = "parser"
-harness = false
+[features]
+default = ["solar"]
+clap = ["dep:clap"]
+slang = ["dep:regex", "dep:slang_solidity"]
+solar = ["dep:solar-parse"]
 
-[[bench]]
-name = "lint"
-harness = false
+[lints]
+workspace = true
