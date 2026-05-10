@@ -1,23 +1,18 @@
 [package]
 name = "lintspec"
 version = "0.16.0"
-description = "A blazingly fast linter for NatSpec comments in Solidity code"
-keywords = ["natspec", "solidity", "linter", "checker", "documentation"]
-authors.workspace = true
-categories.workspace = true
 edition.workspace = true
-license.workspace = true
+rust-version.workspace = true
+description = "A blazingly fast linter for NatSpec comments in Solidity code"
 readme.workspace = true
 repository.workspace = true
-rust-version.workspace = true
+license.workspace = true
+keywords = ["checker", "documentation", "linter", "natspec", "solidity"]
+categories.workspace = true
 
-[lints]
-workspace = true
-
-[features]
-default = ["solar"]
-solar = ["lintspec-core/solar"]
-slang = ["lintspec-core/slang"]
+[[bench]]
+harness = false
+name = "e2e"
 
 [dependencies]
 clap = { version = "4.5.29", features = ["derive"] }
@@ -26,7 +21,7 @@ dotenvy = "0.15.7"
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
 lintspec-core = { path = "../lintspec-core", version = "0.16.0", default-features = false, features = [
-    "clap",
+  "clap",
 ] }
 miette = { version = "7.5.0", features = ["fancy"] }
 rayon = "1.10.0"
@@ -34,9 +29,13 @@ serde_json = "1.0.138"
 toml = "1.0.6"
 
 [dev-dependencies]
-divan = { version = "4.0.5", package = "codspeed-divan-compat" }
+divan = { package = "codspeed-divan-compat", version = "4.0.5" }
 temp-dir = "0.2.0"
 
-[[bench]]
-name = "e2e"
-harness = false
+[features]
+default = ["solar"]
+slang = ["lintspec-core/slang"]
+solar = ["lintspec-core/solar"]
+
+[lints]
+workspace = true

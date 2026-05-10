@@ -18,7 +18,7 @@
   /></a>
   <a href="https://docs.rs/lintspec-core/latest/lintspec_core/"><img
       alt="MSRV"
-      src="https://img.shields.io/badge/MSRV-1.89.0-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
+      src="https://img.shields.io/badge/MSRV-1.94.1-b83fbf?style=flat&labelColor=555555&logo=docs.rs"
       height="20"
   /></a>
   <a href="https://codspeed.io/beeb/lintspec"><img
