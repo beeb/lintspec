@@ -1,3 +1,5 @@
+#:tombi toml-version = "v1.0.0"
+
 [package]
 name = "lintspec-macros"
 version = "0.3.0"

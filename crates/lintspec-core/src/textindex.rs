@@ -6,7 +6,7 @@ use std::{fmt, ops::Range};
 
 use derive_more::Add;
 use serde::Serialize;
-use wide::{CmpEq as _, CmpLt as _, i8x32};
+use wide::i8x32;
 use zerocopy::transmute_ref;
 
 const SIMD_LANES: usize = i8x32::LANES as usize;

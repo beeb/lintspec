@@ -107,6 +107,7 @@ impl Parse for SolarParser {
                     let mut parser = Parser::from_source_file(&this.sess, &arena, &source_file);
 
                     let ast = parser.parse_file().map_err(|err| err.emit())?;
+                    drop(parser);
                     let mut visitor = LintspecVisitor::new(&this.sess);
 
                     let _ = visitor.visit_source_unit(&ast);

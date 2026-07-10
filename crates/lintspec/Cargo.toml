@@ -1,3 +1,5 @@
+#:tombi toml-version = "v1.0.0"
+
 [package]
 name = "lintspec"
 version = "0.17.0"
@@ -29,7 +31,7 @@ serde_json = "1.0.138"
 toml = "1.0.6"
 
 [dev-dependencies]
-divan = { package = "codspeed-divan-compat", version = "4.0.5" }
+divan = { package = "codspeed-divan-compat", version = "5.0.1" }
 temp-dir = "0.2.0"
 
 [features]
