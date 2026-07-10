@@ -1,3 +1,5 @@
+#:tombi toml-version = "v1.0.0"
+
 [package]
 name = "lintspec-core"
 version = "0.17.0"
@@ -25,17 +27,14 @@ name = "lint"
 [dependencies]
 bon = "3.3.2"
 clap = { version = "4.5.29", features = ["derive"], optional = true }
-derive_more = {
-  version = "2.0.1",
-  features = [
-    "add",
-    "display",
-    "from",
-    "from_str",
-    "is_variant",
-    "try_into",
-  ]
-}
+derive_more = { version = "2.0.1", features = [
+  "add",
+  "display",
+  "from",
+  "from_str",
+  "is_variant",
+  "try_into",
+] }
 dunce = "1.0.5"
 fastrand = "2.3.0"
 figment = { version = "0.10.19", features = ["env", "toml"] }
@@ -51,11 +50,10 @@ solar-parse = { version = "0.2.0", default-features = false, optional = true }
 thiserror = "2.0.11"
 thiserror-ext = "0.3.0"
 wide = "1.1.1"
-winnow = {
-  version = "1.0.2",
-  default-features = false,
-  features = ["ascii", "std"]
-}
+winnow = { version = "1.0.2", default-features = false, features = [
+  "ascii",
+  "std"
+] }
 zerocopy = "0.8.27"
 
 [dev-dependencies]
