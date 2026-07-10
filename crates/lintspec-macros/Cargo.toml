@@ -13,10 +13,14 @@ categories.workspace = true
 proc-macro = true
 
 [dependencies]
-unsynn = { version = "0.3.0", default-features = false, features = [
-  "docgen",
-  "proc_macro2",
-] }
+unsynn = {
+  version = "0.3.0",
+  default-features = false,
+  features = [
+    "docgen",
+    "proc_macro2",
+  ]
+}
 
 [lints]
 workspace = true

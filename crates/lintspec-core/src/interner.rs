@@ -19,13 +19,13 @@ impl Symbol {
 
 /// A string interner, uses [`inturn`] under the hood.
 #[derive(Default)]
-pub struct Interner(inturn::Interner);
+pub struct Interner(inturn::sync::Interner);
 
 impl Interner {
     /// Create a new interner.
     #[must_use]
     pub fn new() -> Self {
-        Self(inturn::Interner::new())
+        Self(inturn::sync::Interner::new())
     }
 
     /// Intern a string reference if needed, and return the corresponding [`Symbol`].

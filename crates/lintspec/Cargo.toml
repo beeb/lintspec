@@ -20,16 +20,21 @@ clap_complete = "4.5.57"
 dotenvy = "0.15.7"
 dunce = "1.0.5"
 figment = { version = "0.10.19", features = ["env", "toml"] }
-lintspec-core = { path = "../lintspec-core", version = "0.17.0", default-features = false, features = [
-  "clap",
-] }
+lintspec-core = {
+  path = "../lintspec-core",
+  version = "0.17.0",
+  default-features = false,
+  features = [
+    "clap",
+  ]
+}
 miette = { version = "7.5.0", features = ["fancy"] }
 rayon = "1.10.0"
 serde_json = "1.0.138"
 toml = "1.0.6"
 
 [dev-dependencies]
-divan = { package = "codspeed-divan-compat", version = "4.0.5" }
+divan = { package = "codspeed-divan-compat", version = "5.0.1" }
 temp-dir = "0.2.0"
 
 [features]
