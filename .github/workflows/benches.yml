@@ -30,7 +30,7 @@ jobs:
         run: cargo codspeed build -p lintspec-core --all-features
 
       - name: Run the benchmarks
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5.0.1
         with:
           mode: instrumentation
           run: cargo codspeed run
@@ -52,7 +52,7 @@ jobs:
         run: cargo codspeed build -p lintspec
 
       - name: Run the benchmarks
-        uses: CodSpeedHQ/action@v4
+        uses: CodSpeedHQ/action@v5.0.1
         with:
           mode: instrumentation
           run: cargo codspeed run
