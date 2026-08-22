@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.18.1] - 2026-08-22
+
+
+
+
+**Full Changelog**: [0.18.0...0.18.1](https://github.com/beeb/lintspec/compare/v0.18.0...v0.18.1)
+
+
 ## [0.18.0] - 2026-07-10
 
 ### Changed
