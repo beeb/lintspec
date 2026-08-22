@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file. See [conven
 ### Changed
 
 
--  update Cargo.lock dependencies - ([0000000](https://github.com/beeb/lintspec/commit/0000000))
+-  **(deps)** update deps - ([#255](https://github.com/beeb/lintspec/pull/255)) - ([07ba0d6](https://github.com/beeb/lintspec/commit/07ba0d6b65848453c418e5edca29138db3517ab2))
 
 
 
