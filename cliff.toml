@@ -12,14 +12,14 @@ body = """
     ### {{ group | upper_first }}
     {% for commit in commits | filter(attribute="scope") | sort(attribute="scope") %}
         - **({{commit.scope}})**{% if commit.breaking %} [**breaking**]{% endif %} \
-            {{ commit.message }} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }}))
+            {{ commit.message }}{% if commit.id != "0000000" %} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }})){% endif %}
     {% endfor %}
     {% raw %}\n{% endraw %}\
     {%- for commit in commits %}
         {%- if commit.scope -%}
         {% else -%}
             - {% if commit.breaking %} [**breaking**]{% endif %} \
-                {{ commit.message }} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }}))
+                {{ commit.message }}{% if commit.id != "0000000" %} - ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }})){% endif %}
         {% endif -%}
     {% endfor -%}
 {% endfor %}\n
