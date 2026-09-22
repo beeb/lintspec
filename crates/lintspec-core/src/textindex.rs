@@ -246,8 +246,7 @@ impl Advance {
         let mut cr_mask = bytes.simd_eq(b'\r' as i8).to_bitmask();
 
         // ignore non-ASCII characters at the end
-        // to_bitmask gives a u64 even if V::LEN is 32 or smaller, so we have to cap the zeros count
-        let n_ascii = nonascii_mask.trailing_zeros().min(V::LEN as u32);
+        let n_ascii = nonascii_mask.lowest_one().unwrap_or(V::LEN as u32);
         if n_ascii == 0 {
             // there are not ASCII bytes at the start of the chunk
             return Advance {
