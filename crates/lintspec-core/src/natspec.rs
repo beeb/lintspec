@@ -380,6 +380,8 @@ fn single_line_comment(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use similar_asserts::assert_eq;
     use winnow::error::ParseError;
 
@@ -526,7 +528,7 @@ mod tests {
     #[test]
     fn test_single_line_weird() {
         let res = single_line_comment.parse(LocatingSlice::new("//// Hello\n"));
-        assert!(matches!(res, Err(ParseError { .. })));
+        assert_matches!(res, Err(ParseError { .. }));
     }
 
     #[test]
@@ -644,6 +646,6 @@ Another notice
         let comment = "/**** @notice Some text
     ** */";
         let res = parse_comment.parse(comment);
-        assert!(matches!(res, Err(ParseError { .. })));
+        assert_matches!(res, Err(ParseError { .. }));
     }
 }
