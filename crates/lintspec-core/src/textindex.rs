@@ -5,11 +5,12 @@
 use std::{fmt, ops::Range};
 
 use derive_more::Add;
+use fearless_simd::{Level, Simd, SimdBase, SimdMask, dispatch, i8x64};
+use fearless_simd_macros::simd;
 use serde::Serialize;
-use wide::i8x32;
 use zerocopy::transmute_ref;
 
-const SIMD_LANES: usize = i8x32::LANES as usize;
+const SIMD_LANES: usize = 64;
 
 /// A span of source code
 pub type TextRange = Range<TextIndex>;
@@ -172,9 +173,10 @@ impl Advance {
     ///
     /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
     /// encountered, or the next offset of interest is reached.
-    #[inline]
+    #[inline(always)]
+    #[expect(clippy::inline_always)]
     #[must_use]
-    fn scan(slice: &[i8], start: usize, next_offset: usize) -> Self {
+    fn scan<S: Simd>(simd: S, slice: &[i8], start: usize, next_offset: usize) -> Self {
         let bytes = &slice[start..next_offset];
         let arr: [i8; SIMD_LANES] = bytes.first_chunk().copied().unwrap_or_else(|| {
             // if we have fewer than the required bytes, we pad with `-1` which corresponds to a non-ASCII character
@@ -182,11 +184,9 @@ impl Advance {
             arr[0..bytes.len()].copy_from_slice(bytes);
             arr
         });
-        Self::from(arr)
+        Self::from_chunk(i8x64::load_array(simd, arr))
     }
-}
 
-impl From<[i8; SIMD_LANES]> for Advance {
     /// Scan a chunk of text and compute how to advance the `TextIndex`
     ///
     /// The return value calculates how much the index can be advanced, until either a non-ASCII character is
@@ -234,18 +234,20 @@ impl From<[i8; SIMD_LANES]> for Advance {
     /// Finally, we subtract the number of `\r` bytes from the last line (`cr_mask.count_ones()`, which do not
     /// increment the column count) from the number of bytes on the last line which we calculated before. This number
     /// is the new value of the `column` field of `TextIndex`.
-    #[inline]
-    #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-    fn from(chunk: [i8; SIMD_LANES]) -> Self {
-        let bytes = i8x32::new(chunk);
-        let nonascii_mask = bytes.simd_lt(i8x32::ZERO).to_bitmask();
-        let lf_bytes = i8x32::splat(b'\n' as i8);
-        let mut lf_mask = bytes.simd_eq(lf_bytes).to_bitmask();
-        let cr_bytes = i8x32::splat(b'\r' as i8);
-        let mut cr_mask = bytes.simd_eq(cr_bytes).to_bitmask();
+    #[inline(always)]
+    #[expect(
+        clippy::inline_always,
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap
+    )]
+    fn from_chunk<S: Simd, V: SimdBase<S, Element = i8>>(bytes: V) -> Self {
+        let nonascii_mask = bytes.simd_lt(0i8).to_bitmask();
+        let mut lf_mask = bytes.simd_eq(b'\n' as i8).to_bitmask();
+        let mut cr_mask = bytes.simd_eq(b'\r' as i8).to_bitmask();
 
         // ignore non-ASCII characters at the end
-        let n_ascii = nonascii_mask.trailing_zeros();
+        // to_bitmask gives a u64 even if V::LEN is 32 or smaller, so we have to cap the zeros count
+        let n_ascii = nonascii_mask.trailing_zeros().min(V::LEN as u32);
         if n_ascii == 0 {
             // there are not ASCII bytes at the start of the chunk
             return Advance {
@@ -254,7 +256,7 @@ impl From<[i8; SIMD_LANES]> for Advance {
                 lines: 0,
             };
         }
-        let shift = SIMD_LANES as u32 - n_ascii; // this is < SIMD_LANES
+        let shift = u64::BITS - n_ascii; // this is < 64
         lf_mask <<= shift;
         cr_mask <<= shift;
 
@@ -272,7 +274,7 @@ impl From<[i8; SIMD_LANES]> for Advance {
                 };
             }
             // we ignore the \r in the last line for the columns count
-            cr_mask >>= SIMD_LANES as u32 - n_last_line; // the shift amount is < SIMD_LANES
+            cr_mask >>= u64::BITS - n_last_line; // the shift amount is < 64
             Column::Set(n_last_line - cr_mask.count_ones())
         } else {
             Column::Increment(n_ascii - cr_mask.count_ones())
@@ -293,8 +295,14 @@ impl From<[i8; SIMD_LANES]> for Advance {
 /// if it matches a desired offset.
 ///
 /// SIMD is used to accelerate processing of ASCII-only sections in the source.
+#[must_use]
 pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     assert!(!source.is_empty(), "source cannot be empty");
+    dispatch!(Level::new(), simd => compute_indices_simd(simd, source, offsets))
+}
+
+#[simd]
+fn compute_indices_simd<S: Simd>(simd: S, source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     let mut text_indices = Vec::with_capacity(offsets.len()); // upper bound for the size
     let mut current = TextIndex::ZERO;
 
@@ -307,7 +315,7 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
     'outer: loop {
         // process ASCII chunks with SIMD
         loop {
-            let advance = Advance::scan(bytes, current.utf8, *next_offset);
+            let advance = Advance::scan(simd, bytes, current.utf8, *next_offset);
             current.advance_by(&advance);
             if &current.utf8 == next_offset {
                 // we reached a target position, store it
@@ -356,11 +364,38 @@ pub fn compute_indices(source: &str, offsets: &[usize]) -> Vec<TextIndex> {
 }
 
 #[cfg(test)]
-#[expect(clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
 mod tests {
+    use fearless_simd::{i8x16, i8x32};
     use similar_asserts::assert_eq;
 
     use super::*;
+
+    fn advance(chunk: [i8; 32]) -> Advance {
+        dispatch!(Level::new(), simd => Advance::from_chunk(i8x32::load_array(simd, chunk)))
+    }
+
+    fn scan(slice: &[i8], start: usize, next_offset: usize) -> Advance {
+        dispatch!(Level::new(), simd => Advance::scan(simd, slice, start, next_offset))
+    }
+
+    /// Scalar equivalent of [`Advance::from_chunk`], used to cross-check the mask arithmetic
+    fn reference(chunk: &[i8]) -> Advance {
+        let head = chunk.split(|b| *b < 0).next().unwrap_or_default();
+        let mut segments = head.rsplit(|b| *b == b'\n' as i8);
+        let last_line = segments.next().unwrap_or_default();
+        let lines = segments.count() as u32;
+        let cols = last_line.iter().filter(|b| **b != b'\r' as i8).count() as u32;
+        Advance {
+            bytes: head.len() as u32,
+            lines,
+            column: if lines == 0 {
+                Column::Increment(cols)
+            } else {
+                Column::Set(cols)
+            },
+        }
+    }
 
     #[test]
     fn test_advance_simple() {
@@ -369,7 +404,7 @@ mod tests {
             .map(|b| *b as i8)
             .collect();
         let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
-        let advance = Advance::from(chunk);
+        let advance = advance(chunk);
         assert_eq!(
             advance,
             Advance {
@@ -387,7 +422,7 @@ mod tests {
             .map(|b| *b as i8)
             .collect();
         let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
-        let advance = Advance::from(chunk);
+        let advance = advance(chunk);
         assert_eq!(
             advance,
             Advance {
@@ -405,7 +440,7 @@ mod tests {
             .map(|b| *b as i8)
             .collect();
         let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
-        let advance = Advance::from(chunk);
+        let advance = advance(chunk);
         assert_eq!(
             advance,
             Advance {
@@ -423,7 +458,7 @@ mod tests {
             .map(|b| b as i8)
             .collect();
         let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
-        let advance = Advance::from(chunk);
+        let advance = advance(chunk);
         assert_eq!(
             advance,
             Advance {
@@ -441,7 +476,7 @@ mod tests {
             .map(|b| b as i8)
             .collect();
         let chunk: [i8; 32] = chunk.as_slice().try_into().unwrap();
-        let advance = Advance::from(chunk);
+        let advance = advance(chunk);
         assert_eq!(
             advance,
             Advance {
@@ -458,7 +493,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::scan(chunk.as_slice(), 0, 28);
+        let advance = scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
@@ -475,7 +510,7 @@ mod tests {
             .iter()
             .map(|b| *b as i8)
             .collect();
-        let advance = Advance::scan(chunk.as_slice(), 0, 28);
+        let advance = scan(chunk.as_slice(), 0, 28);
         assert_eq!(
             advance,
             Advance {
@@ -484,6 +519,41 @@ mod tests {
                 column: Column::Set(0)
             }
         );
+    }
+
+    #[test]
+    fn test_advance_widths_match_reference() {
+        let inputs: &[&str] = &[
+            "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+            "abc\ndef\r\nghi\rjkl\n\nmnopqrstuvwxyz0123456789abcdefghijklmnopqrst",
+            "\nabcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0\n",
+            "🦀abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxy",
+            "abcdefghijkl\nmnopqrstuvwx🦀yz0123456789abcdefghijklmnopqrstuvw",
+            "abcdefghijklmnopqrstuvwxyz0123\n456789abcdefghijklmnopq🦀rstuvw",
+            "abc\rdef\rghi\rjkl\rmno\rpqr\rstu\rvwx\ryz0\r123\r456\r789\rABC\rDEF\rGHI\r",
+            "ab\rcd\ref\rgh🦀ijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrs",
+        ];
+        for input in inputs {
+            let mut chunk = [-1i8; 64];
+            for (slot, b) in chunk.iter_mut().zip(input.bytes()) {
+                *slot = b as i8;
+            }
+            assert_eq!(
+                dispatch!(Level::new(), simd => Advance::from_chunk(i8x16::from_slice(simd, &chunk[..16]))),
+                reference(&chunk[..16]),
+                "16 lanes: {input:?}"
+            );
+            assert_eq!(
+                dispatch!(Level::new(), simd => Advance::from_chunk(i8x32::from_slice(simd, &chunk[..32]))),
+                reference(&chunk[..32]),
+                "32 lanes: {input:?}"
+            );
+            assert_eq!(
+                dispatch!(Level::new(), simd => Advance::from_chunk(i8x64::load_array(simd, chunk))),
+                reference(&chunk),
+                "64 lanes: {input:?}"
+            );
+        }
     }
 
     #[test]
@@ -740,6 +810,6 @@ mod tests {
     fn test_compute_indices_empty_source() {
         let source = "";
         let offsets = vec![0];
-        compute_indices(source, &offsets);
+        let _ = compute_indices(source, &offsets);
     }
 }
