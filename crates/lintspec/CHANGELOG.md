@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.19.0] - 2026-09-22
+
+### Added
+
+
+-  [**breaking**] change MSRV to 1.97.1 ([#260](https://github.com/beeb/lintspec/pull/260)) - ([9e836ef](https://github.com/beeb/lintspec/commit/9e836ef0e6e3ed29fea3e32bd3684f56c879e5e4))
+
+### Fixed
+
+
+-  fix changelog ([#257](https://github.com/beeb/lintspec/pull/257)) - ([928bab8](https://github.com/beeb/lintspec/commit/928bab87c819498977e72ad919f02688c807f951))
+
+
+
+
+**Full Changelog**: [0.18.1...0.19.0](https://github.com/beeb/lintspec/compare/v0.18.1...v0.19.0)
+
+
 ## [0.18.1] - 2026-08-22
 
 ### Changed

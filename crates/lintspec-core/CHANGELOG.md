@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.19.0] - 2026-09-22
+
+### Added
+
+
+-  [**breaking**] change MSRV to 1.97.1 ([#260](https://github.com/beeb/lintspec/pull/260)) - ([9e836ef](https://github.com/beeb/lintspec/commit/9e836ef0e6e3ed29fea3e32bd3684f56c879e5e4))
+
+### Changed
+
+- **(textindex)** migrate to fearless_simd ([#259](https://github.com/beeb/lintspec/pull/259)) - ([fac8c98](https://github.com/beeb/lintspec/commit/fac8c980683b2bfbe846949b5fe99616b115c11c))
+
+
+
+
+
+
+**Full Changelog**: [0.18.1...0.19.0](https://github.com/beeb/lintspec/compare/v0.18.1...v0.19.0)
+
+
 ## [0.18.1] - 2026-08-22
 
 
