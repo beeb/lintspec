@@ -55,8 +55,7 @@ fn e2e_uniswap(bencher: Bencher) {
         if let Err(err) = res {
             drop(d);
             panic!("{err:#?}")
-        } else {
-            d // keep temp dir around
         }
+        d // keep temp dir around
     });
 }
