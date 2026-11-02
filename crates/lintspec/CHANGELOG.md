@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 
+## [0.20.0] - 2026-11-02
+
+### Changed
+
+- **(deps)** [**breaking**] update deps ([#261](https://github.com/beeb/lintspec/pull/261)) - ([3e4e8be](https://github.com/beeb/lintspec/commit/3e4e8bec355cc832227f86de43de88fc63bf058a))
+
+
+
+
+
+
+**Full Changelog**: [0.19.0...0.20.0](https://github.com/beeb/lintspec/compare/v0.19.0...v0.20.0)
+
+
 ## [0.19.0] - 2026-09-22
 
 ### Added
