@@ -89,12 +89,12 @@ dev = "ignored"
 param = "ignored"   # `@param` on structs is not in the official spec
 
 [variable.private]
-notice = "required"
-dev = "ignored"
+notice = "ignored"
+dev = "required"
 
 [variable.internal]
-notice = "required"
-dev = "ignored"
+notice = "ignored"
+dev = "required"
 
 [variable.public]
 notice = "required"
